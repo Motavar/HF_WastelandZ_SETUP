@@ -460,6 +460,67 @@ WantedBy=multi-user.target</pre></div>
 </div></section>
 </div>
 
+<!-- ================= ROLES (shared) ================= -->
+<style>
+  .tablewrap{overflow-x:auto;margin:12px 0}
+  .rtab{width:100%;border-collapse:collapse;font-size:14.5px}
+  .rtab th,.rtab td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  .rtab th{font-family:var(--font-display);text-transform:uppercase;letter-spacing:.12em;font-size:12px;color:var(--rust);font-weight:600;white-space:nowrap}
+  .rtab td .role{font-family:var(--font-mono);color:var(--sand);white-space:nowrap}
+  .rtab td:first-child{white-space:nowrap}
+</style>
+<section><div class="wrap">
+  <span class="section-tag">Everyday admin</span>
+  <h2>Players, roles &amp; reserved slots</h2>
+  <p class="muted">This part is the same on Windows and Linux — it&rsquo;s done with config files and in-game commands.</p>
+
+  <h3>The five roles</h3>
+  <p class="muted">Every player has a role. Higher beats lower. Roles live in one file: <code class="inline">$profile:HFWastelandZ_admins.conf</code>, keyed by Steam64 ID.</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Role</th><th>Can do</th></tr>
+    <tr><td><span class="role">OWNER</span></td><td>Everything, including <code class="inline">/admin restart</code>. Set by editing the file only.</td></tr>
+    <tr><td><span class="role">ADMIN</span></td><td>Game Master (Zeus), promote/demote others, save, all mission &amp; spot editing.</td></tr>
+    <tr><td><span class="role">MOD</span></td><td>Kick, ban, mute, teleport, heal, god, announce.</td></tr>
+    <tr><td><span class="role">TRUSTED</span></td><td>Donor / verified helper (reserved for future perks).</td></tr>
+    <tr><td><span class="role">EVERYONE</span></td><td>Default — every normal player. No line needed.</td></tr>
+  </table></div>
+
+  <h3>Make someone a mod, admin, or owner</h3>
+  <p><b>Your first admin — and the only way to set OWNER — is by editing the file.</b> Add a line and restart:</p>
+  <div class="code"><pre><span class="c"># in $profile:HFWastelandZ_admins.conf</span>
+OWNER 76561198000000001
+ADMIN 76561198000000002
+MOD   76561198000000003</pre></div>
+  <p class="muted">Steam64 IDs are the 17-digit numbers from <a href="https://steamid.io" target="_blank" rel="noopener">steamid.io</a>. Anyone not listed is EVERYONE.</p>
+  <p>After you have one admin, change roles <b>live, no restart</b>, from in-game chat:</p>
+  <div class="code"><pre>/admin promote &lt;name|playerId&gt; &lt;EVERYONE|TRUSTED|MOD|ADMIN&gt;</pre></div>
+  <div class="note warn"><div class="h">Two safety rules</div><p>You must be <b>ADMIN or OWNER</b> to promote. And <code class="inline">/admin promote</code> can <b>never</b> grant OWNER — that stays file-only so no one can lock you out. Seed yourself as <span class="role" style="color:var(--sand);font-family:var(--font-mono)">OWNER</span> in the file first.</p></div>
+
+  <h3>See who has what role</h3>
+  <div class="code"><pre>/admin who</pre></div>
+  <p class="muted">Lists everyone online with their role. Any MOD or higher can run it.</p>
+
+  <h3>Change what each command needs (command tiers)</h3>
+  <p>Every command has a <b>minimum role</b>. To run it, your role must be equal or higher. Change any command&rsquo;s required role in <code class="inline">$profile:HFWastelandZ_command_tiers.conf</code>:</p>
+  <div class="code"><pre><span class="c"># format:  &lt;command&gt;.&lt;subcommand&gt; = &lt;ROLE&gt;</span>
+admin.god  = OWNER     <span class="c"># only owner can use god mode</span>
+admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></div>
+  <p class="muted">So <b>admins.conf</b> sets what role each <i>player</i> has, and <b>command_tiers.conf</b> sets what role each <i>command</i> needs. Restart to apply changes.</p>
+
+  <h3>Reserved login slots (staff always get in)</h3>
+  <p class="muted">Keeps a couple of slots open so your staff can always join a full server, without permanently wasting seats. Set these in <code class="inline">$profile:HFWastelandZ_server.conf</code>:</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setting</th><th>Default</th><th>What it does</th></tr>
+    <tr><td><span class="role">RESERVED_SLOTS_ENABLED</span></td><td>0</td><td>Master on/off. Set to <b>1</b> to turn it on.</td></tr>
+    <tr><td><span class="role">RESERVED_BUFFER</span></td><td>2</td><td>Slots always kept free so staff join instantly.</td></tr>
+    <tr><td><span class="role">RESERVED_HIGHRISK_COUNT</span></td><td>8</td><td>How many newest regular players are &ldquo;bumpable.&rdquo;</td></tr>
+    <tr><td><span class="role">RESERVED_MIN_TIER</span></td><td>20</td><td>Lowest role treated as staff (20 = MOD).</td></tr>
+    <tr><td><span class="role">RESERVED_TOTAL_SLOTS</span></td><td>0</td><td>Leave 0 on a real server (read automatically). Only set on a Workbench test host.</td></tr>
+  </table></div>
+  <p><b>Setup:</b> in the game&rsquo;s <code class="inline">config.json</code>, set <code class="inline">game.maxPlayers</code> to your playable count <b>plus</b> the buffer, and set <code class="inline">RESERVED_TOTAL_SLOTS</code> to that same number. Example: 128 players &rarr; <code class="inline">maxPlayers 130</code>, <code class="inline">RESERVED_BUFFER 2</code>. ADMIN/OWNER always get in; MOD only bumps regular players.</p>
+  <div class="note tip"><div class="h">How to see it working</div><p>It runs on the server, so watch the <b>server console / log</b> — set <code class="inline">HF_DEBUG_ADMIN 1</code> in <code class="inline">server.conf</code> and you&rsquo;ll see lines like <code class="inline">ReservedSlots: ON total=130 buffer=2&hellip;</code> and <code class="inline">BUMP&hellip;</code> when it acts. Players in a bumpable slot also see a &ldquo;high-risk&rdquo; banner in their HUD.</p></div>
+</div></section>
+
 <footer><div class="wrap">
   <span class="credit">Wasteland-Z &middot; Dedicated Server Setup</span>
   <span class="credit">By <b>Motavar</b> &middot; wasteland-z.com</span>

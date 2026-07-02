@@ -1,33 +1,60 @@
 # ============================================================
-# HFWastelandZ — Admin Configuration
-# File: $profile:HFWastelandZ_admins.conf
+# HFWastelandZ — Admins / Player Roles
+# Copy this file to:  $profile:HFWastelandZ_admins.conf
 # ============================================================
 #
-# Defines server administrators by Steam64 ID.
-# Admins get elevated access: Game Master (Zeus) mode,
-# future in-game admin panel, dev tools visibility.
+# This file decides each player's ROLE (their permission tier),
+# keyed by Steam64 ID. The server is the only machine that reads
+# it — players cannot fake their role.
 #
-# FORMAT:
-#   ADMIN <Steam64ID>   — one admin per line
+# THE FIVE ROLES  (higher number = more power)
+#   OWNER    40   you — full control, including server restart
+#   ADMIN    30   full admin: Game Master (Zeus), promote others, save, etc.
+#   MOD      20   moderator: kick, ban, mute, teleport, heal, god, announce
+#   TRUSTED  10   donor / verified helper (reserved for future perks)
+#   EVERYONE  0   default — every normal player (no line needed)
 #
-# Steam64 IDs are 17-digit numbers. Find yours at:
-#   https://steamid.io/ or in your Steam profile URL
+# FORMAT  (one player per line)
+#   <ROLE> <Steam64ID>
 #
-# BEHAVIOR:
-#   No config file      → no admins, GM access denied for all
-#   Empty config        → no admins, GM access denied for all
-#   ADMIN entries       → listed players get GM/admin access
+# Steam64 IDs are 17-digit numbers. Find one at https://steamid.io
+# or from a Steam profile URL. Anyone NOT listed here is EVERYONE.
 #
-# PERMISSIONS (future — currently all admins are full access):
-#   ADMIN <Steam64ID>           — full admin (GM, kick, ban, teleport, etc.)
-#   MODERATOR <Steam64ID>       — limited (kick, mute — future feature)
+# EXAMPLE
+#   OWNER   76561198000000001
+#   ADMIN   76561198000000002
+#   MOD     76561198000000003
+#   TRUSTED 76561198000000004
 #
+# ------------------------------------------------------------
+# HOW TO SET SOMEONE'S ROLE
+# ------------------------------------------------------------
+# 1) FIRST admin (and the ONLY way to set OWNER): edit this file.
+#    Add a line like  OWNER 7656119...  then restart the server.
+#
+# 2) After that, do it live in-game (no restart) with the command:
+#       /admin promote <name|playerId> <EVERYONE|TRUSTED|MOD|ADMIN>
+#    - You must be ADMIN or OWNER to use it.
+#    - It can NEVER grant OWNER (that stays file-only, on purpose,
+#      so nobody can lock you out). OWNER is set by editing here.
+#    - It rewrites this file for you, so the change survives restarts.
+#
+# SEE WHO HAS WHAT ROLE
+#       /admin who        (lists everyone online with their role)
+#
+# WHAT EACH ROLE CAN DO
+#   Each command has a minimum role. Defaults, for example:
+#     MOD    — /admin who, kick, ban, mute, tp, heal, god, announce
+#     ADMIN  — /admin promote, save, debug; all /mission and /spot editing
+#     OWNER  — /admin restart
+#   You can change any command's required role in
+#   HFWastelandZ_command_tiers.conf (see that file).
+#
+# BEHAVIOR
+#   No file / empty file  → no admins; Game Master access denied for all.
 # ============================================================
 
-# --- ADMINS ---
-# Add one ADMIN line per server administrator
-# Example:
-#   ADMIN 76561198012345678
-
-# ADMIN 76561198012345678
-# ADMIN 76561198087654321
+# --- ROLES ---  (uncomment and use your own Steam64 IDs)
+# OWNER 76561198000000001
+# ADMIN 76561198000000002
+# MOD   76561198000000003
