@@ -494,7 +494,8 @@ MOD   76561198000000003</pre></div>
   <p class="muted">Steam64 IDs are the 17-digit numbers from <a href="https://steamid.io" target="_blank" rel="noopener">steamid.io</a>. Anyone not listed is EVERYONE.</p>
   <p>After you have one admin, change roles <b>live, no restart</b>, from in-game chat:</p>
   <div class="code"><pre>/admin promote &lt;name|playerId&gt; &lt;EVERYONE|TRUSTED|MOD|ADMIN&gt;</pre></div>
-  <div class="note warn"><div class="h">Two safety rules</div><p>You must be <b>ADMIN or OWNER</b> to promote. And <code class="inline">/admin promote</code> can <b>never</b> grant OWNER — that stays file-only so no one can lock you out. Seed yourself as <span class="role" style="color:var(--sand);font-family:var(--font-mono)">OWNER</span> in the file first.</p></div>
+  <div class="note warn"><div class="h">The rules</div><p>You must be <b>ADMIN or OWNER</b> to change roles. An ADMIN can grant any role <b>up to and including ADMIN</b>. <b>OWNER</b> is never granted in-game — it&rsquo;s file-only so no one can lock you out, so seed yourself as OWNER in the file first. You also can&rsquo;t change someone already at or above your own rank.</p></div>
+  <p>You can also change roles in the game — open the <b>F8 admin menu &rarr; Players</b> tab. The right-hand <b>STAFF</b> list shows everyone with a role (including <b>offline</b> people); click a player or staff row, then a role button (twice to confirm).</p>
 
   <h3>See who has what role</h3>
   <div class="code"><pre>/admin who</pre></div>

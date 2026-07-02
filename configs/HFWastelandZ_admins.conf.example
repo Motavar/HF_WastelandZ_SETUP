@@ -35,9 +35,17 @@
 # 2) After that, do it live in-game (no restart) with the command:
 #       /admin promote <name|playerId> <EVERYONE|TRUSTED|MOD|ADMIN>
 #    - You must be ADMIN or OWNER to use it.
-#    - It can NEVER grant OWNER (that stays file-only, on purpose,
-#      so nobody can lock you out). OWNER is set by editing here.
+#    - An ADMIN can grant any role up to and including ADMIN. OWNER is
+#      NEVER granted in-game (file-only, on purpose, so nobody can lock
+#      you out) - set OWNER by editing this file.
+#    - You cannot change the role of someone who is already at or above
+#      your own rank (so admins can't demote each other).
 #    - It rewrites this file for you, so the change survives restarts.
+#
+# 3) Or use the in-game F8 admin menu -> Players tab. The right-hand
+#    STAFF list shows everyone in this file, including OFFLINE staff.
+#    Click a player or staff row, then click a role button (twice to
+#    confirm). Same rules and audit as /admin promote.
 #
 # SEE WHO HAS WHAT ROLE
 #       /admin who        (lists everyone online with their role)
