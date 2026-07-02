@@ -38,8 +38,9 @@
 #    - An ADMIN can grant any role up to and including ADMIN. OWNER is
 #      NEVER granted in-game (file-only, on purpose, so nobody can lock
 #      you out) - set OWNER by editing this file.
-#    - You cannot change the role of someone who is already at or above
-#      your own rank (so admins can't demote each other).
+#    - You can change anyone at or below your own rank (so an ADMIN can
+#      demote a peer ADMIN down to MOD), but never someone ABOVE you.
+#    - An OWNER can NEVER be changed in-game by anyone - edit this file.
 #    - It rewrites this file for you, so the change survives restarts.
 #
 # 3) Or use the in-game F8 admin menu -> Players tab. The right-hand
