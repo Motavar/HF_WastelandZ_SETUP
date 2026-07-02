@@ -1,0 +1,125 @@
+# ============================================================
+# HFWastelandZ — Town Definitions
+# File: HFTowns_<MapBasename>.conf  (this example is for Arland)
+# Location: $profile: directory
+#
+# WHAT THIS IS
+# Towns are the foundation of the spawn system. Each town is a
+# named center point + radius + type. Towns drive every other
+# spawn subsystem: loot crate placement, vehicle spawning, map
+# markers, town radar, mission anchors, HVT zones, etc.
+#
+# HOW THE GAME FINDS THIS FILE
+# At server boot, HFTownConfig looks for these files in $profile:
+#   1. HFTowns_<MapBasename>.conf   ← preferred (per-map)
+#   2. HFTowns.conf                  ← generic fallback
+# MapBasename comes from the loaded world filename (e.g. Arland).
+#
+# AUTO-POPULATING FROM A LOADED MAP
+# Don't write this file by hand for a new map. Instead:
+#   1. Set TOWN_EXTRACT_ON_BOOT 1 in HFWastelandZ_server.conf
+#   2. Boot the server once with the new map loaded
+#   3. The extractor writes HFTowns_<MapBasename>_generated.conf
+#      with every named location it finds (city, town, village,
+#      military base) from the engine map descriptor system.
+#   4. Review the generated file, edit radii / types / names.
+#   5. Rename to HFTowns_<MapBasename>.conf to activate.
+#   6. Set TOWN_EXTRACT_ON_BOOT 0.
+#
+# CAPTURING POSITIONS MANUALLY
+# Use HFCoordTool in the editor (admin keybind) to capture exact
+# world positions of any spot, then edit the X / Y / Z fields below.
+#
+# ============================================================
+# FORMAT
+# ============================================================
+#
+#   TOWN <name> <radius> <type> <X> <Y> <Z> [radar_on] [circle_visible]
+#
+#   name    Town display name. NO SPACES — use underscores. Must be
+#           unique across the file. Shown on the world map.
+#   radius  Town radius in meters from the center point. Drives
+#           which tier the town gets (small/medium/large) for
+#           loot/vehicle slot counts. Recommended ranges:
+#               small  : 150 - 300   (outposts, hamlets)
+#               medium : 301 - 450   (towns, small bases)
+#               large  : 451 - 800   (cities, military bases)
+#           Above 800 is allowed but unusual.
+#   type    Town category. Determines which loot pool the town
+#           draws from (configured in HFLootPools_<map>.conf).
+#           Valid values:
+#               civilian   — towns, villages, residential
+#               military   — bases, airfields, depots
+#               industrial — factories, warehouses, ports
+#               special    — bunkers, relics, lore-locked sites
+#   X Y Z   World position. Y is normally 0; the spawn system
+#           terrain-snaps when actually placing crates/vehicles.
+#
+#   radar_on       (OPTIONAL) 1 = radar active for this town (default).
+#                  0 = this town never triggers radar (circle stays
+#                  white even when players are inside). Use for safe
+#                  zones or spawn areas you don't want to light up.
+#   circle_visible (OPTIONAL) 1 = circle shown on map (default).
+#                  0 = circle hidden. Town still functions for loot/
+#                  vehicles/radar checks, just not drawn on the map.
+#
+# Lines starting with # or // are comments. Blank lines OK.
+#
+# ============================================================
+# PER-TOWN VEHICLE OVERRIDE (OPTIONAL)
+# ============================================================
+# Append 'veh:N' to any TOWN row to override the tier default
+# vehicle count for that specific town only. Default = tier value
+# from HFTownTiers.conf.
+#
+# Examples:
+#   TOWN Island_Outpost 150 civilian 3900 0 1200 1 1 veh:2
+#     → this specific town spawns 2 vehicles (tier default would
+#       be 4 for a small town).
+#
+#   TOWN Bunker_Echo 80 special 5100 0 3300 1 0 veh:0
+#     → this town spawns NO vehicles at all (veh:0 is a first-
+#       class option — respawn never fires, map stays clean).
+#
+# Towns without 'veh:N' continue to use the tier default. Order
+# of optional fields doesn't matter: 'veh:N' can appear before or
+# after the positional radar_on/circle_visible flags.
+#
+# Re-extraction note: if you regenerate the town list via
+# TOWN_EXTRACT_ON_BOOT, your 'veh:N' overrides will be lost —
+# the extractor only writes the positional fields. Keep a backup
+# before re-extracting.
+#
+# ============================================================
+# EXAMPLE TOWNS (placeholder coordinates — REPLACE THESE)
+# ============================================================
+#
+# These are illustrative placeholders. They are NOT real Arland
+# locations. To get real Arland data, use TOWN_EXTRACT_ON_BOOT
+# (see above) — that will write a proper starter file with the
+# actual map's named locations.
+#
+# Layout intent (for reference only):
+#   - 1 large military base (top-tier loot, vehicles)
+#   - 1 medium civilian town (mid-tier survival + civilian gear)
+#   - 1 medium industrial site (mixed tools, fuel, parts)
+#   - 1 small special bunker (rare, low slot count, top quality)
+#   - 1 small civilian outpost (basic survival)
+#
+
+TOWN Outpost_North         300  military    3200  0  2800
+TOWN Harbor_East           400  civilian    2400  0  1800
+TOWN Industrial_Zone       350  industrial  2500  0  1900
+TOWN Bunker_Site_Echo      250  special     5800  0  4200
+TOWN Highway_Stop          200  civilian    1500  0  3500
+
+# ============================================================
+# RECOMMENDED COUNTS PER MAP SIZE
+# ============================================================
+#   Small map  ( <40km²) :  6 - 10 towns
+#   Medium map (40-80km²): 10 - 16 towns
+#   Large map  ( >80km²) : 16 - 24 towns
+#
+# More towns = more spread-out PvP, less concentration. Fewer
+# towns = more loot density per location, more contested fights.
+# ============================================================

@@ -1,0 +1,147 @@
+# ============================================================
+# HFWastelandZ — Loadout Configuration
+# File: $profile:HFWastelandZ_loadouts.conf
+# ============================================================
+#
+# Defines starting gear per faction. Server admins control what
+# players spawn with — weapons, ammo, medical, gear.
+#
+# FORMAT:
+#   STRIP_DEFAULT true|false     — global: strip BI default gear?
+#   FACTION_BEGIN <faction_key>  — start faction block (FIA, US, USSR)
+#   ROLE <role_name>             — role name (RIFLEMAN, future: SNIPER, MEDIC)
+#   STRIP true|false             — per-faction override of STRIP_DEFAULT
+#   ITEM <resource_path>         — one item per line (full Workbench path)
+#   FACTION_END                  — end faction block
+#
+# ITEM paths come from Workbench Resource Browser. Right-click any
+# item prefab and copy its resource path including the {GUID} prefix.
+# Example: {3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et
+#
+# BEHAVIOR:
+#   No config for a faction  → BI default gear preserved (no change)
+#   STRIP = false + ITEMs    → items ADDED on top of BI defaults
+#   STRIP = true  + ITEMs    → BI defaults removed, only config items applied
+#   STRIP = true  + no ITEMs → character spawns with nothing
+#
+# This file is designed to be compatible with the future WastelandZ
+# Admin Console. Keys and structure are machine-parseable (INI-block
+# style). Admin console will read/write this file directly.
+#
+# ============================================================
+
+# --- GLOBAL SETTINGS ---
+# true  = strip all BI default gear before applying items (dev: test full path)
+# false = keep BI default gear (items added on top)
+STRIP_DEFAULT true
+
+# ============================================================
+# GREEN / SURVIVORS (FIA)
+# Survival start — beanie, surplus pistol (PM), basic medical
+# ============================================================
+FACTION_BEGIN FIA
+ROLE RIFLEMAN
+STRIP true
+# Clothing
+ITEM {BE19A15F1073E7BD}Prefabs/Characters/HeadGear/Hat_Knitted_01/Hat_Knitted_01_black.et
+ITEM {BBA08EC4EC40FA94}Prefabs/Characters/Uniforms/Jacket_M70.et
+ITEM {06BC3F18B47799AE}Prefabs/Characters/Uniforms/Pants_M70.et
+ITEM {C7923961D7235D70}Prefabs/Characters/Footwear/CombatBoots_Soviet_01.et
+# Sidearm + 2 mags
+ITEM {C0F7DD85A86B2900}Prefabs/Weapons/Handguns/PM/Handgun_PM.et
+ITEM {8B853CDD11BA916E}Prefabs/Weapons/Magazines/Magazine_9x18_PM_8rnd_Ball.et
+ITEM {8B853CDD11BA916E}Prefabs/Weapons/Magazines/Magazine_9x18_PM_8rnd_Ball.et
+# Medical — 2 bandages to heal (HF revive kit is auto-issued by the revive system)
+ITEM {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et
+ITEM {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et
+# Grenades — 1 frag + 1 smoke
+ITEM {645C73791ECA1698}Prefabs/Weapons/Grenades/Grenade_RGD5.et
+ITEM {77EAE5E07DC4678A}Prefabs/Weapons/Grenades/Smoke_RDG2.et
+# navigation gear — required for spawn-system town markers
+ITEM {983B57B8E95C1F52}Prefabs/Items/Equipment/Maps/PaperMap_01_folded_FIA.et
+ITEM {7CEF68E2BC68CE71}Prefabs/Items/Equipment/Compass/Compass_Adrianov.et
+# Night vision — NOT in base Reforger content; add a line here if/when it ships.
+FACTION_END
+
+# ============================================================
+# BLUE / MILITARY (US)
+# Survival start — beanie, M9 sidearm, basic medical
+# ============================================================
+FACTION_BEGIN US
+ROLE RIFLEMAN
+STRIP true
+# Clothing
+ITEM {BE19A15F1073E7BD}Prefabs/Characters/HeadGear/Hat_Knitted_01/Hat_Knitted_01_black.et
+ITEM {C7861F11D5334C0E}Prefabs/Characters/Uniforms/Jacket_US_BDU.et
+ITEM {604BB72BE8E023C2}Prefabs/Characters/Uniforms/Pants_US_BDU.et
+ITEM {DAAFD15478BDE1C3}Prefabs/Characters/Footwear/CombatBoots_US_01.et
+# Sidearm + 2 mags
+ITEM {1353C6EAD1DCFE43}Prefabs/Weapons/Handguns/M9/Handgun_M9.et
+ITEM {9C05543A503DB80E}Prefabs/Weapons/Magazines/Magazine_9x19_M9_15rnd_Ball.et
+ITEM {9C05543A503DB80E}Prefabs/Weapons/Magazines/Magazine_9x19_M9_15rnd_Ball.et
+# Medical — 2 bandages to heal (HF revive kit is auto-issued by the revive system)
+ITEM {A81F501D3EF6F38E}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et
+ITEM {A81F501D3EF6F38E}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et
+# Grenades — 1 frag + 1 smoke
+ITEM {E8F00BF730225B00}Prefabs/Weapons/Grenades/Grenade_M67.et
+ITEM {9DB69176CEF0EE97}Prefabs/Weapons/Grenades/Smoke_ANM8HC.et
+# navigation gear — required for spawn-system town markers
+ITEM {922F95F91943F69A}Prefabs/Items/Equipment/Maps/PaperMap_01_folded_US.et
+ITEM {7CEF68E2BC68CE71}Prefabs/Items/Equipment/Compass/Compass_Adrianov.et
+# Night vision — NOT in base Reforger content; add a line here if/when it ships.
+FACTION_END
+
+# ============================================================
+# RED / BANDITS (USSR)
+# Survival start — beanie, surplus pistol (PM), basic medical
+# ============================================================
+FACTION_BEGIN USSR
+ROLE RIFLEMAN
+STRIP true
+# Clothing
+ITEM {BE19A15F1073E7BD}Prefabs/Characters/HeadGear/Hat_Knitted_01/Hat_Knitted_01_black.et
+ITEM {9F546CCA2582D16F}Prefabs/Characters/Uniforms/Jacket_M88.et
+ITEM {DCF980831E880F6A}Prefabs/Characters/Uniforms/Pants_M88.et
+ITEM {C7923961D7235D70}Prefabs/Characters/Footwear/CombatBoots_Soviet_01.et
+# Sidearm + 2 mags
+ITEM {C0F7DD85A86B2900}Prefabs/Weapons/Handguns/PM/Handgun_PM.et
+ITEM {8B853CDD11BA916E}Prefabs/Weapons/Magazines/Magazine_9x18_PM_8rnd_Ball.et
+ITEM {8B853CDD11BA916E}Prefabs/Weapons/Magazines/Magazine_9x18_PM_8rnd_Ball.et
+# Medical — 2 bandages to heal (HF revive kit is auto-issued by the revive system)
+ITEM {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et
+ITEM {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et
+# Grenades — 1 frag + 1 smoke
+ITEM {645C73791ECA1698}Prefabs/Weapons/Grenades/Grenade_RGD5.et
+ITEM {77EAE5E07DC4678A}Prefabs/Weapons/Grenades/Smoke_RDG2.et
+# navigation gear — required for spawn-system town markers
+ITEM {F849217AB3BA88BE}Prefabs/Items/Equipment/Maps/PaperMap_01_folded_USSR.et
+ITEM {7CEF68E2BC68CE71}Prefabs/Items/Equipment/Compass/Compass_Adrianov.et
+# Night vision — NOT in base Reforger content; add a line here if/when it ships.
+FACTION_END
+
+# ============================================================
+# PRODUCTION EXAMPLE (uncomment and replace above for release)
+# Wasteland style — no weapons, bandages only, scavenge to survive
+# ============================================================
+# STRIP_DEFAULT true
+#
+# FACTION_BEGIN FIA
+# ROLE RIFLEMAN
+# STRIP true
+# ITEM {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et
+# ITEM {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et
+# FACTION_END
+#
+# FACTION_BEGIN US
+# ROLE RIFLEMAN
+# STRIP true
+# ITEM {A81F501D3EF6F38E}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et
+# ITEM {A81F501D3EF6F38E}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et
+# FACTION_END
+#
+# FACTION_BEGIN USSR
+# ROLE RIFLEMAN
+# STRIP true
+# ITEM {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et
+# ITEM {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et
+# FACTION_END

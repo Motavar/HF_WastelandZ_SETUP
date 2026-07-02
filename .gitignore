@@ -1,0 +1,13 @@
+# Secrets — never commit
+gateway/config.py
+
+# Local database scratch files
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+
+# OS junk
+Thumbs.db
+.DS_Store

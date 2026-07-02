@@ -1,0 +1,1284 @@
+# ============================================================
+# HFWastelandZ Server Configuration
+# File: HFWastelandZ_server.conf
+# Location: $profile: directory (see setup docs)
+#
+# This file contains general server settings.
+# Format: KEY VALUE (one per line)
+# Comments: lines starting with # or //
+#
+# For API keys and passwords, use secrets.conf instead.
+# ============================================================
+
+# ============================================================
+# === MASTER SPAWN SCALERS ===================================
+# These two keys are the highest-leverage tuning knobs in the
+# entire spawn system. They multiply the loot and vehicle
+# counts produced by the per-tier town config (small/medium/
+# large). Use them for quick "more loot please" or "hardcore
+# scarcity" rebalances WITHOUT touching individual tier files.
+#
+# For granular control (per-tier slot counts, per-pool weights),
+# edit HFTownTiers.conf and HFLootPools_<map>.conf instead.
+#
+# ============================================================
+
+# MAP_NAME (DEPRECATED — legacy fallback only; normally leave UNSET)
+# HF now derives the map identity at runtime from the loaded Game
+# Master world basename (e.g. GM_Arland, GM_Cain). You normally do NOT
+# set this — it is read only as a fallback if runtime detection fails.
+#
+# Per-map configs AUTO-GENERATE on first boot under:
+#     hf_wastelandz/configs/map/<World>/
+# e.g. hf_wastelandz/configs/map/GM_Arland/HFWastelandZ_towns_GM_Arland.conf
+#          ...HFWastelandZ_spawn_points_GM_Arland.conf
+#          ...HFWastelandZ_loot_pools_GM_Arland.conf   (+ the store catalogs)
+# Edit those generated files; do not pre-create bare-map names.
+#
+# To pin the identity anyway (rare), set the world basename, e.g.:
+# MAP_NAME GM_Arland
+
+# LOOT_DENSITY_GLOBAL_MULT
+# Multiplies all per-tier loot_slots counts at server boot.
+# Default: 1.0 (use tier counts as-defined).
+# Range: 0.1 to 10.0 (clamped). Below 0.1 effectively disables loot.
+# Examples:
+#   0.5 = halve all loot slots (hardcore scarcity)
+#   1.0 = default
+#   2.0 = double all loot slots (casual / weekend event mode)
+# Gameplay impact: VERY HIGH. Directly controls how much gear
+#   spawns per town at server init. PvP tempo is sensitive to this.
+# Performance impact: low — only affects entity count at boot.
+LOOT_DENSITY_GLOBAL_MULT 1.0
+
+# VEHICLE_DENSITY_GLOBAL_MULT
+# Multiplies all per-tier vehicle_slots counts at server boot.
+# Default: 1.0. Range: 0.1 to 10.0 (clamped).
+# Examples:
+#   0.5 = half the vehicles (foot-combat focus, fuel scarcity)
+#   1.0 = default
+#   2.0 = double the vehicles (mobile / large-map mode)
+# Gameplay impact: HIGH. More vehicles = faster cross-map travel,
+#   more vehicle combat, faster loot rotation.
+# Performance impact: low to moderate — vehicles are heavier
+#   than crates. Avoid >3.0 on populated servers.
+VEHICLE_DENSITY_GLOBAL_MULT 1.0
+
+# WORLD_LOOT_CHANCE
+# Master scaler for the World Loot Scanner. Every
+# candidate interior position inside a building OUTSIDE any town
+# radius rolls against this percentage. A HIT spawns a loot crate;
+# a MISS spawns nothing. Building then enters cooldown (see
+# WORLD_LOOT_BUILDING_COOLDOWN_SEC).
+# Default: 50. Range: 0-100.
+# Rationale: the world loot pool carries survival staples — medical,
+# ammo, backpacks, and (planned) food + water. Players travelling
+# between towns should reliably find enough to keep moving, so the
+# default leans generous. Tune down for harder PvP, up for casual.
+# Examples:
+#   0   = disables World Loot entirely (scanner dormant)
+#   15  = sparse — rare find, outside-town travel is mostly empty
+#   25  = balanced survival (roughly 1 crate per 3-building cluster)
+#   50  = default — reliable survival pickups en route
+#   80  = loot-rich (weekend event / casual server)
+# Gameplay impact: HIGH. Directly controls whether buildings
+#   between towns have loot to reward exploration.
+# Performance impact: low — rolls are trivial; the scan cost is
+#   dominated by the sphere query, not the roll.
+WORLD_LOOT_CHANCE 50
+
+# LOOT_UPPER_FLOOR_WEIGHT
+# Biases crate placement toward upper floors vs the ground floor.
+# Range: 0.0 to 1.0 (clamped). Default: 0.6 (60 % upper / 40 % ground).
+# Design intent: push players to climb to upper floors for better
+#   pickings. Making buildings dynamic — forces players to expose
+#   themselves by climbing stairs, peek from upper windows instead
+#   of hugging the ground floor, rewards exploration of the full
+#   interior, and encourages the classic Wasteland flow of ground-
+#   level combat punctuated by vertical looting decisions.
+# Examples:
+#   0.0 = all crates on ground floor only
+#   0.4 = ground-heavy (safer; more predictable for new players)
+#   0.5 = equal distribution (classic)
+#   0.6 = default — slight upward bias, encourages climbing
+#   0.8 = strong upper bias (hardcore exploration mode)
+#   1.0 = all crates on top floor only (extreme vertical focus)
+# Middle floors in 3+ story buildings get linearly interpolated
+# weight between ground and top.
+# Only affects multi-floor buildings; 1-story structures get 100 %
+# ground-floor placement regardless.
+LOOT_UPPER_FLOOR_WEIGHT 0.6
+
+# TOWN_EXTRACT_ON_BOOT
+# One-shot admin tool. When set to 1, the server walks the loaded
+# world at boot, finds all map locations (cities, towns, villages,
+# military bases) via the engine MapDescriptorComponent system, and
+# writes a starter town config to:
+#     $profile:HFTowns_<MapBasename>_generated.conf
+#
+# This file is NOT loaded by the live spawn system (the _generated
+# suffix excludes it). Admin reviews, edits radii / types / names
+# as needed, then renames to HFTowns_<MapBasename>.conf to activate.
+#
+# Set this to 1 the first time you load a new map, restart the
+# server once, then set it back to 0. Safe to leave at 0 forever
+# after the per-map config exists.
+#
+# Default: 0 (off). Range: 0 or 1.
+TOWN_EXTRACT_ON_BOOT 0
+
+# TOWN_DEDUPE_MAP_NAMES
+# When enabled (1), hides duplicate BI town labels on the map
+# that overlap with HF town circles. When disabled (0), both
+# BI labels and HF circles are visible (may look cluttered).
+#
+# Default: 1 (on). Range: 0 or 1.
+TOWN_DEDUPE_MAP_NAMES 1
+
+# TOWN_RADAR_ENABLED
+# Master toggle for the town proximity radar system. When enabled (1),
+# the server scans player positions every 5 seconds. When any player
+# is inside a town's radius, that town's circle turns RED on the map
+# for ALL players — strategic intel visible to enemies.
+#
+# When disabled (0), no radar checks run and all town circles stay
+# their default color. Per-town radar_on flags in the town config
+# are ignored when this is off.
+#
+# Gameplay impact: MEDIUM. Radar gives all players real-time intel
+#   on which towns are occupied. Disabling it makes the map quieter
+#   but removes a strategic layer.
+# Default: 1 (on). Range: 0 or 1.
+TOWN_RADAR_ENABLED 1
+
+# TOWN_ENTRY_BANNER_ENABLED
+# When enabled (1), players see a toast notification when they cross
+# a town's radius boundary: "Entering <town>" on entry, "Leaving
+# <town>" on exit. 60-second cooldown per town per player prevents
+# spam at town edges.
+#
+# Default: 1 (on). Range: 0 or 1.
+TOWN_ENTRY_BANNER_ENABLED 1
+
+# === STORE PROXIMITY RADAR (anti-camp) ======================
+# Same mechanic as town radar, scoped to stores: when a player is
+# within STORE_RADAR_RADIUS_M of a store, that store's map circle
+# turns RED for ALL players — deters camping high-value transit
+# points. ATMs NEVER get radar (low-traffic, not worth deterring).
+#
+# STORE_RADAR_ENABLED      — gun-store radar on/off (master / anti-camp default)
+# STORE_RADAR_GENERAL_ENABLED — also light up general stores (opt-in)
+# STORE_RADAR_VEHICLE_ENABLED — also light up vehicle stores (opt-in)
+# STORE_RADAR_RADIUS_M     — player-presence radius in meters (shared)
+#
+# Gameplay impact: MEDIUM. Turning a type on broadcasts when players
+# are shopping there. Default: gun on, general/vehicle off, 125 m.
+# STORE_RADAR_RADIUS_M is BOTH the on-map ring size and the proximity
+# detection distance (they're the same zone). Raise/lower to taste.
+STORE_RADAR_ENABLED 1
+STORE_RADAR_GENERAL_ENABLED 0
+STORE_RADAR_VEHICLE_ENABLED 0
+STORE_RADAR_RADIUS_M 125
+#
+# STORE_CIRCLES_ON_DETECTION_ONLY — store radar circles only on detection.
+# 0 (default) = the store circle is always shown and recolors RED while a player
+#   is in radar range, back to white when clear (today's behavior).
+# 1 = the store circle is HIDDEN until a player enters the radar range; the RED
+#   circle appears only while occupied, then disappears on leave — a transient
+#   "someone's here" alert rather than an always-on ring.
+# NOTE: requires STORE_RADAR_* enabled (no radar = no detection = never appears).
+# (Towns use their own per-town circle flags; there is no town equivalent.)
+STORE_CIRCLES_ON_DETECTION_ONLY 0
+#
+# STORE_CIRCLES_ENABLED — draw the store proximity CIRCLE on the map at all.
+# 1 (default) = draw the circle. 0 = NO store circle even when radar is on;
+#   the store ICON still turns red on radar (detection is independent of the
+#   ring), giving an icon-only store radar with no map circle.
+STORE_CIRCLES_ENABLED 1
+
+# === END MASTER SPAWN SCALERS ===============================
+
+# ============================================================
+# === LOOT SYSTEM ============================================
+# These keys configure the loot pool and tier config files,
+# and the base respawn time for loot crates.
+#
+# For pool contents (what items spawn), edit the pool config
+# file directly. For tier brackets (how many crates per town
+# size), edit the tier config file. These server.conf keys
+# control which files to load and the respawn timing.
+# ============================================================
+
+# LOOT_RESPAWN_BASE_TIME_SEC
+# Base respawn time for loot slots, in seconds. When a crate is
+# emptied or destroyed, the slot waits this long before spawning
+# a new crate.
+# Actual respawn time is scaled by town radius:
+#   respawn = base × (town.radius / 300)
+# So a small town (250m) refreshes in ~25 min, while a large
+# town (500m) takes ~50 min at the default 1800s base.
+#
+# Default: 1800 (30 minutes). Range: 60–7200.
+# Gameplay impact: HIGH. Shorter = faster gear turnover, more
+#   action. Longer = more scarcity, more meaningful loot finds.
+LOOT_RESPAWN_BASE_TIME_SEC 1800
+
+# TOWN_TIERS_FILE
+# Filename of the town tier config in $profile:.
+# Defines small/medium/large tier brackets and per-tier
+# loot/vehicle slot counts.
+# Default: HFTownTiers.conf
+TOWN_TIERS_FILE HFTownTiers.conf
+
+# LOOT_POOL_FILE
+# Filename of the loot pool config in $profile:.
+# Defines what items spawn in town crates per town type.
+# The server also tries HFLootPools_<MAP_NAME>.conf first
+# for map-specific pools.
+# Default: HFLootPools_Arland.conf
+LOOT_POOL_FILE HFLootPools_Arland.conf
+
+# Note: the loot crate BUILDING ALLOWLIST (which prefab paths
+# can receive crates) lives in its own file for readability:
+#     $profile:HFLootFilter.conf
+# See HFLootFilter.conf.example shipped with the mod for format
+# and defaults. If the file is missing, the server falls back to
+# hardcoded defaults identical to the shipped example. No key
+# in server.conf controls it — edit the filter file directly.
+
+# === END LOOT SYSTEM ========================================
+
+# ============================================================
+# === VEHICLE SYSTEM =========================================
+# Town vehicle spawning, trunk loot, idle despawn.
+#
+# Per-town vehicle counts come from HFTownTiers.conf
+# (vehicle_slots per tier) scaled by VEHICLE_DENSITY_GLOBAL_MULT
+# defined above in the master-scalers section.
+#
+# The catalog of eligible vehicles lives in HFWastelandZ_vehicle_spawn.conf.
+# ============================================================
+
+# VEHICLE_SPAWN_CATALOG_FILE
+# Filename of the town vehicle spawn catalog in $profile:.
+# Lists every prefab eligible for town spawning, grouped into
+# sections (Cars, Military Jeeps US, HMMWV, etc.). Section
+# headers classify entries as civilian or military for trunk
+# loot lookup.
+#
+# Structurally similar to HFWastelandZ_vehicle_catalog.conf
+# (the vehicle store list) but without prices.
+# Default: HFWastelandZ_vehicle_spawn.conf
+VEHICLE_SPAWN_CATALOG_FILE HFWastelandZ_vehicle_spawn.conf
+
+# VEHICLE_TOWN_IDLE_DESPAWN_SEC
+# How long a town-spawned vehicle sits empty before it despawns.
+# Re-entering the vehicle resets the timer. Default 3600 (1 hour).
+# Range: 300 to 86400 (5 min to 24 hours).
+# Gameplay impact: HIGH. Shorter = players lose vehicles faster
+#   if they walk away; longer = parked vehicles become remote
+#   stash boxes. 1 hour is the Wasteland-standard sweet spot.
+# Purchased vehicles (Vehicle Ownership subsystem, future) are
+#   exempt — this key only affects vehicles spawned by the town
+#   spawner at EOnInit or respawn cycles.
+VEHICLE_TOWN_IDLE_DESPAWN_SEC 3600
+
+# VEHICLE_DESPAWN_WARNING_SEC
+# How long before the idle-despawn fires that the last known
+# driver receives a warning notification — if they are online.
+# Silent if the driver is offline (they logged out knowing the
+# vehicle was disposable). Default 600 (10 min).
+# Range: 30 to (VEHICLE_TOWN_IDLE_DESPAWN_SEC - 30). Clamped at
+# load so the warning always has room to fire before despawn.
+VEHICLE_DESPAWN_WARNING_SEC 600
+
+# VEHICLE_TRUNK_LOOT_CHANCE
+# Percentage chance (0-100) that a town-spawned vehicle gets
+# trunk loot rolled on fresh spawn. Default 90 per design doc.
+# A rolled vehicle gets a weapon + mags from the appropriate
+# civilian or military trunk pool in HFLootPools_<map>.conf.
+# Civilian sections in the spawn catalog use the
+# 'vehicle_civilian_trunk' pool; military sections use the
+# 'vehicle_military_trunk' pool.
+# Gameplay impact: HIGH. Near-universal trunk loot means
+#   every vehicle is a soft gear drop, encouraging exploration
+#   of town vehicles even by well-equipped players.
+# Range: 0-100 (clamped). 0 = never roll, 100 = always roll.
+VEHICLE_TRUNK_LOOT_CHANCE 90
+
+# VEHICLE_INITIAL_FUEL_PCT
+# Starting fuel percentage (0-100) for town-spawned vehicles.
+# Default 50. Forces players to find fuel to go long distances,
+# prevents instant cross-map escape on a fresh stolen vehicle.
+# Range: 0-100 (clamped).
+#   0   = empty (vehicle won't start; cruel but valid)
+#   25  = hardcore (every trip needs refuelling)
+#   50  = default (one good outing, then refuel)
+#   100 = full tank (casual / testing mode)
+# Wiring lives in HFVehicleSpawner; applied immediately after
+# SpawnEntityPrefab via FuelManagerComponent + BaseFuelNode.SetFuel.
+VEHICLE_INITIAL_FUEL_PCT 50
+
+# VEHICLE_SPAWN_CENTER_RADIUS_FRAC
+# Defines the "center zone" of a town as a fraction of the town's
+# radius. Used with VEHICLE_SPAWN_CENTER_WEIGHT_PCT to bias vehicle
+# positions toward the town center.
+# Range: 0.05 to 0.95 (clamped). Default 0.40.
+# Examples:
+#   0.25 = inner 25% of town radius is "center"
+#   0.40 = default — inner 40%
+#   0.60 = roomier center zone
+# Per-town: inner radius in metres = fraction × town.radius.
+#   e.g. 150m town + 0.40 → center zone is 60m from town center.
+VEHICLE_SPAWN_CENTER_RADIUS_FRAC 0.40
+
+# VEHICLE_SPAWN_CENTER_WEIGHT_PCT
+# Percentage chance (0-100) that each vehicle slot's anchor lands
+# INSIDE the center zone (defined above). The remainder lands in
+# the outer ring (center-zone-edge to 95% of town radius).
+# Default 70 → about 70% of vehicles near center, 30% spread out.
+# Range: 0-100 (clamped).
+#   0   = always outer ring
+#   30  = mostly outer, occasional near-center
+#   50  = even split across the two zones
+#   70  = default — concentration near center, some spread
+#   100 = always center (tight clustering at the core)
+# Applies to both the crate-anchored placement AND the polar-
+# sweep fallback used for towns with no loot crates.
+VEHICLE_SPAWN_CENTER_WEIGHT_PCT 70
+
+# SOLO_VEHICLE_UNFLIP
+# When 1, a single player can roll a flipped vehicle back onto its
+# wheels using the "flip vehicle" action (vanilla needs ~4 players
+# pushing together — the "0/4" prompt). When 0, vanilla behavior.
+# Default: 1 (on). Range: 0 or 1.
+SOLO_VEHICLE_UNFLIP 1
+
+# VEHICLE_UNFLIP_FORCE_FACTOR
+# How much righting force a single pusher applies, as a multiple of
+# the vehicle's mass. Higher rolls heavier/awkwardly-flipped vehicles;
+# too high can fling them into the air. Only used when
+# SOLO_VEHICLE_UNFLIP is 1. Default: 5. Range: 1 to 50.
+VEHICLE_UNFLIP_FORCE_FACTOR 5
+
+# VEHICLE_RESPAWN_ENABLED
+# Master toggle for the per-town respawn system. When enabled (1),
+# the despawn manager's 30s tick loop also checks each town's
+# current vehicle count vs its tier target, and respawns to keep
+# towns populated after destruction / despawn / moved-away vehicles.
+# When disabled (0), towns slowly empty of vehicles as players
+# destroy or relocate them — survival-game feel.
+# Default: 1 (on). Range: 0 or 1.
+# Performance: negligible (one per-town count per 30s tick).
+VEHICLE_RESPAWN_ENABLED 1
+
+# VEHICLE_RESPAWN_DELAY_SEC
+# How long a town must sit below its target vehicle count before
+# a respawn fires. Short delay = quick re-population (helps in
+# contested zones). Long delay = gear has to last; encourages
+# players to treat vehicles as persistent resources.
+# Default: 300 (5 min). Range: 30 to 3600 (clamped).
+# Examples:
+#   60   = near-instant (vehicles feel infinite)
+#   300  = default (5 min grace after destruction)
+#   900  = slow (15 min — vehicles matter more)
+#   3600 = 1 hour (hardcore — vehicles are precious)
+VEHICLE_RESPAWN_DELAY_SEC 300
+
+# VEHICLE_RESPAWN_SKIP_IF_OCCUPIED
+# When enabled (1), respawn is held while ANY player is inside
+# the town's radius. Prevents "magic appearance" of vehicles in
+# front of players. When disabled (0), respawn fires regardless
+# of player presence.
+#
+# Default: 1 (skip while players in town). Range: 0 or 1.
+# Gameplay impact:
+#   1 = natural feel, but contested towns may stay low on vehicles
+#   0 = always topped up, but jarring pop-ins possible
+VEHICLE_RESPAWN_SKIP_IF_OCCUPIED 1
+
+# VEHICLE_RESPAWN_MAX_PER_TICK
+# Cap on replacements spawned per town per 30s tick. Prevents
+# burst-spawning 10 vehicles in one frame after a mass wipe.
+# Default: 1 (staggered). Range: 1 to 10 (clamped).
+# Examples:
+#   1  = default, 1 vehicle per 30s (smooth, gradual recovery)
+#   3  = faster recovery (3 per 30s = 6/min)
+#   10 = immediate full top-up on first eligible tick
+VEHICLE_RESPAWN_MAX_PER_TICK 1
+
+# VEHICLE_MAX_GLOBAL
+# Hard global cap on alive town-spawned vehicles across the WHOLE
+# map. Performance safety valve for crowded servers. When the sum
+# of per-town targets (tier × VEHICLE_DENSITY_GLOBAL_MULT) exceeds
+# this cap, each town's target is scaled down proportionally at
+# server init so the map-wide total fits under the cap. Respawn
+# automatically inherits the scaled targets.
+#
+# Default: 0 (unlimited — per-town targets control). Range: 0-2000.
+#
+# Sizing guide: every town-spawned vehicle consumes a replicated-
+# entity slot and physics body. Typical performance concern starts
+# around 150+ total vehicles on a busy server, critical around
+# 500+. Loot crates and players share the engine budget too.
+#
+# Example: Arland with default tiers (4/6/10 per small/medium/large)
+# and the shipped 23-town layout yields ~120 natural targets. Set
+# VEHICLE_MAX_GLOBAL 80 to scale every town down to ~67% of natural
+# targets — small towns get 3 instead of 4, etc. (minimum 1 per town).
+#
+# Set 0 to disable the cap entirely and trust per-town targets.
+VEHICLE_MAX_GLOBAL 0
+
+# === END VEHICLE SYSTEM =====================================
+
+# === WORLD LOOT SYSTEM ==========================
+# Procedural loot CRATES placed lazily in buildings OUTSIDE town
+# radii when a player approaches. Uses the same door-based
+# placement algorithm as town loot (one tested placement system,
+# two callers).
+#
+# The WORLD_LOOT_CHANCE master scaler is at the TOP of this file
+# alongside LOOT_DENSITY_GLOBAL_MULT and VEHICLE_DENSITY_GLOBAL_MULT.
+#
+# Crate contents are defined in HFWorldLoot_<map>.conf (see
+# HFWorldLoot_Arland.conf.example — admin-editable pool of
+# backpacks + medical + ammo mags + per-crate item count).
+
+# WORLD_LOOT_BUILDING_COOLDOWN_SEC
+# After any roll (hit or miss), a building is locked out from
+# future rolls for this many seconds. Prevents loot spam from
+# players pacing back and forth across a building entrance.
+# Default: 7200 (2 hours). Range: 60-86400.
+# Examples:
+#   3600  = aggressive loot churn (1 h)
+#   7200  = default (2 h)
+#   14400 = more scarcity (4 h)
+# Gameplay impact: MED. Shorter = more loot, less exploration
+#   reward. Longer = more "arrived too late" moments.
+# Performance impact: none — just a map lookup.
+WORLD_LOOT_BUILDING_COOLDOWN_SEC 7200
+
+# WORLD_LOOT_CRATE_DESPAWN_SEC
+# [DEPRECATED in Session E] World loot crates now share the
+# unified crate lifecycle with town-loot crates. Tune
+# LOOT_CRATE_IDLE_DESPAWN_SEC / LOOT_CRATE_LOCKED_DESPAWN_SEC
+# instead — those are interaction-aware (an untouched crate
+# times out vs a re-used crate that keeps resetting its timer).
+#
+# This key is still parsed so legacy configs don't error, but
+# its value is ignored by the scanner as of Session E.
+# Default kept as 3600 for documentation. Remove from your
+# live server.conf at your leisure.
+WORLD_LOOT_CRATE_DESPAWN_SEC 3600
+
+# WORLD_LOOT_SCAN_INTERVAL_SEC
+# Per-player tick cadence for the scanner. Each tick walks every
+# online player whose position moved enough since last scan.
+# Default: 15. Range: 3-300.
+# Lower = snappier "I walked into this zone" reaction + more CPU
+#   per player. Higher = cheaper but slightly slower to trigger.
+# Gameplay impact: LOW. The 2-hour per-building cooldown
+#   dominates perceived pacing, not this interval.
+# Performance impact: direct. 3 s at 20 players = 400 sphere
+#   queries per minute. 15 s at 20 players = 80 per minute.
+WORLD_LOOT_SCAN_INTERVAL_SEC 15
+
+# WORLD_LOOT_SCAN_RADIUS_M
+# Sphere radius around each player that the scanner queries for
+# candidate buildings. Default: 80. Range: 20-400.
+# Examples:
+#   40  = tight scan (urban servers, high building density)
+#   80  = default — balanced for Arland
+#   150 = wide scan (wilderness maps with sparse buildings)
+# Gameplay impact: MED. Larger = players "prime" loot faster
+#   as they approach; smaller = loot only appears when you're
+#   almost at the door.
+# Performance impact: scales with building count in the sphere —
+#   doubling radius quadruples building count on average.
+WORLD_LOOT_SCAN_RADIUS_M 80
+
+# WORLD_LOOT_POOL_FILE
+# Pool definition filename (admin-editable). Loaded from
+# $profile:<this_filename>. See HFWorldLoot_Arland.conf.example
+# for the format (flat weighted pool + ITEMS_PER_CRATE_MIN/MAX +
+# CRATE_PREFAB).
+# Default: HFWorldLoot_Arland.conf.
+WORLD_LOOT_POOL_FILE HFWorldLoot_Arland.conf
+
+# === END WORLD LOOT SYSTEM ==================================
+
+# ============================================================
+# === LOOT RESPAWN + CRATE LIFECYCLE =============
+# Controls how emptied / carried-off / destroyed loot crates
+# are replaced, and how moved crates despawn when abandoned.
+#
+# KEY CONCEPTS:
+# - Slot = an invisible anchor per town (count set by tier).
+#   Slot position is NOT fixed — each respawn picks a fresh
+#   random interior position from the town's buildings.
+# - Crate = the physical entity at a slot. Players can pick it
+#   up and carry it off; it then becomes personal storage.
+# - Share model: once any item is taken, the slot starts its
+#   respawn timer immediately and the crate idle-despawns on
+#   a short timer so leftovers are still available for a
+#   passerby before the crate vanishes.
+# - No activity pause: respawn timers tick regardless of who
+#   is inside the town. Spawns land inside buildings, so the
+#   pop-in is rarely visible.
+#
+# ============================================================
+
+# LOOT_RESPAWN_ENABLED
+# Master toggle. 1 = crates respawn on schedule. 0 = crates
+# spawn once at boot and are never replaced (survival-game
+# freeze mode). Default 1.
+LOOT_RESPAWN_ENABLED 1
+
+# LOOT_RESPAWN_RADIUS_REF_M
+# Divisor in the radius-scaled respawn formula:
+#   actual = LOOT_RESPAWN_BASE_TIME_SEC * (town.radius / ref)
+# 300 means a 300 m town gets exactly the base time, a 150 m
+# town refills in half, a 600 m town in double. Lower values
+# steepen the curve (small towns refill much faster than
+# large); higher values flatten it.
+# Default 300. Range 50-2000.
+LOOT_RESPAWN_RADIUS_REF_M 300
+
+# LOOT_RESPAWN_MIN_SEC / LOOT_RESPAWN_MAX_SEC
+# Floor and ceiling clamps applied AFTER radius scaling.
+# Prevents absurd timers at extreme town sizes.
+# Default 600 / 7200 (10 min / 2 h). Range 60-86400 each.
+LOOT_RESPAWN_MIN_SEC 600
+LOOT_RESPAWN_MAX_SEC 7200
+
+# LOOT_RESPAWN_TAKEN_SPEEDUP_PCT
+# Percentage of normal respawn time used when the crate was
+# CARRIED OFF or DESTROYED (not just emptied in place). Small
+# values = visible towns refill faster when stripped wholesale.
+# Default 50 (half the normal wait). Range 10-100.
+# Examples:
+#   25  = aggressive refill (towns barely look looted)
+#   50  = default — carry-offs refill noticeably faster
+#   100 = no speedup (carry-off is treated identically to
+#         emptying in place)
+LOOT_RESPAWN_TAKEN_SPEEDUP_PCT 50
+
+# LOOT_IDLE_REFRESH_SEC
+# Slow content rotation for untouched crates. When > 0, a crate
+# that has sat at its slot untouched for this many seconds gets
+# a fresh content roll from the town's pool (same slot, new
+# contents). Keeps abandoned towns from going stale without
+# forcing a full respawn cycle.
+# Default 0 (disabled). Recommended if enabled: 14400 (4 h).
+# Range 0-86400.
+LOOT_IDLE_REFRESH_SEC 0
+
+# LOOT_CRATE_PARTIAL_IDLE_SEC
+# Share-model partial-loot timer. Once any item is taken from
+# a crate AT ITS ORIGINAL SLOT, the crate despawns after this
+# many seconds even if items remain — the slot's respawn timer
+# has already started, so lingering longer just holds the slot.
+# A passerby can still scavenge leftovers if they arrive in time.
+# Default 600 (10 min). Range 30-86400.
+LOOT_CRATE_PARTIAL_IDLE_SEC 600
+
+# LOOT_CRATE_IDLE_DESPAWN_SEC
+# UNLOCKED + MOVED crate idle despawn. A crate that has been
+# picked up and carried off its original slot follows personal-
+# storage rules. After this many seconds of no interaction
+# (open / insert / remove), the crate is deleted. Any interaction
+# resets the timer.
+# Default 3600 (1 h). Range 60-86400.
+# Supersedes WORLD_LOOT_CRATE_DESPAWN_SEC when the unified
+# crate lifecycle is active (see below).
+LOOT_CRATE_IDLE_DESPAWN_SEC 3600
+
+# LOOT_CRATE_LOCKED_DESPAWN_SEC
+# LOCKED + MOVED crate idle despawn. A crate that has been
+# locked (via the "Lock Crate" action) persists much longer
+# with no interaction — intended for base stashes. Any
+# interaction resets the timer. Lock action is symmetric:
+# anyone near the crate can lock or unlock it.
+# Default 28800 (8 h). Range 60-604800 (1 min-7 days).
+LOOT_CRATE_LOCKED_DESPAWN_SEC 28800
+
+# LOOT_CRATE_LOCKING_ENABLED
+# Master toggle for the "Lock Crate" action. When 0, the action
+# is hidden and all moved crates follow the unlocked-idle timer.
+# Default 1.
+LOOT_CRATE_LOCKING_ENABLED 1
+
+# LOOT_CRATE_VEHICLE_EXEMPT
+# When 1, crates stored inside a vehicle's inventory are EXEMPT
+# from idle despawn — the vehicle's own lifecycle governs them.
+# When 0, crates in vehicles decay on the normal timer (harsh
+# scarcity setting).
+# Default 1.
+LOOT_CRATE_VEHICLE_EXEMPT 1
+
+# === END LOOT RESPAWN + CRATE LIFECYCLE =====================
+
+# ============================================================
+# === SPAWN SOFT MITIGATIONS ==
+# Server-side guardrails against spawn-camping and zerg
+# stacking. Wired into the future spawn menu; no
+# runtime gameplay effect on their own.
+# ============================================================
+
+# SPAWN_TOWN_PLAYER_COOLDOWN_SEC
+# After a player spawns at a town, that town is on cooldown
+# for THAT PLAYER for this many seconds. Prevents instant
+# re-spawn at the same town after death (spawn-camping your
+# own corpse). Other players are unaffected.
+# Default 120 (2 min). Range 0-3600.
+SPAWN_TOWN_PLAYER_COOLDOWN_SEC 120
+
+# SPAWN_TOWN_COOLDOWN_ENABLED
+# Master toggle. 0 disables the per-player town cooldown
+# entirely — players can hot-drop back to their death spot
+# immediately. Default 1.
+SPAWN_TOWN_COOLDOWN_ENABLED 1
+
+# SPAWN_DISTRIBUTION_WINDOW_SEC
+# Sliding window (seconds) used by the RANDOM SPAWN weighting.
+# Towns that have received more spawns inside this window are
+# weighted LOWER for the next random pick — spreads load
+# across the map instead of stacking everyone at one town.
+# Default 300 (5 min). Range 30-3600.
+SPAWN_DISTRIBUTION_WINDOW_SEC 300
+
+# SPAWN_DISTRIBUTION_ENABLED
+# Master toggle. 0 makes RANDOM SPAWN a flat uniform pick
+# (every town equally likely). Default 1.
+SPAWN_DISTRIBUTION_ENABLED 1
+
+# === END SPAWN SOFT MITIGATIONS =============================
+
+# ============================================================
+# === SPAWN MENU + DEATH FLOW ====================
+# Custom HFSpawnMenu replaces the BI deploy screen for first
+# join AND post-death respawn. Player picks RANDOM / TOWN LIST
+# / BEACON LIST / LAST LOCATION; HFSpawnRouter validates and
+# teleports. WB host caveat: the menu opens fine on WB but the
+# spawn pipeline (faction join, character placement) only
+# works on PeerPlugin1 / PeerPlugin2 — test full flow there.
+# ============================================================
+
+# RESPAWN_DELAY_SEC
+# Seconds between death and HFSpawnMenu opening. Default 0 —
+# the open RPC fires immediately and HFSpawnMenu replaces the
+# BI auto-deploy menu cleanly. Raise (e.g. 3-5) to get a death
+# cinematic pause before the spawn UI appears, with the side
+# effect that the BI deploy menu is visible during the window.
+# First-join opens the menu immediately regardless.
+# Default 0. Range 0-60.
+RESPAWN_DELAY_SEC 0
+
+# HF_CORPSE_DESPAWN_SEC
+# Seconds after a player dies before their corpse — and the gear worn on
+# it (backpack, vest, clothing) — is removed from the world. This is the
+# looting window: a longer value gives players more time to loot a kill.
+# Was a hardcoded 30s (too short for looting); now configurable. The corpse
+# stays the dead player's controlled entity during this window (keeps the
+# spawn-menu RPC channel open), so keep it at or above RESPAWN_DELAY_SEC.
+#   30   = old behavior (fast cleanup)
+#   120  = default (comfortable looting window)
+#   300  = 5 min (loot-heavy servers)
+# Default 120. Range 10-3600.
+HF_CORPSE_DESPAWN_SEC 120
+
+# HF_RESYNC_STAGGER_MS
+# GATEWAY (DB) OUTAGE RESILIENCE — recovery-resync pacing.
+# If the gateway (database) goes UNREACHABLE, players keep playing from server
+# memory; anyone who joined during the outage is UNVERIFIED and their saves are
+# quarantined (so a network blip can never overwrite a real player's record).
+# When the gateway comes back ONLINE, the server RESYNCS every connected player —
+# it saves the DB-verified ones (persisting what changed during the outage) and
+# reloads the unverified ones (reconciling their real record + lifting the
+# quarantine). This value is the delay BETWEEN each player's request so the
+# freshly-restarted gateway isn't hit by all N players at once (a "thundering
+# herd"). At N players the whole resync takes about N × this value.
+#   0    = no stagger, all at once (small servers / fast gateways only)
+#   250  = default (~4 requests/sec; e.g. 128 players ≈ 32s to fully resync)
+#   100  = faster resync, ~10 req/s (needs a gateway that can take the burst)
+#   500  = gentler on the gateway, slower resync
+# WHY IT'S NEEDED: on a large (e.g. 128-player) server, an un-staggered resync
+# would fire ~128 DB requests in one frame the instant the gateway recovers,
+# which can overload it right when it's coming back up. Staggering spreads them.
+# Default 250. Range 0-5000.
+HF_RESYNC_STAGGER_MS 250
+
+# SPAWN_WATER_SEA_LEVEL_Y
+# Terrain height (Y) below which HFSpawnRouter treats a candidate
+# spawn position as "underwater" and searches outward for dry land.
+# Used by RANDOM / TOWN / LAST LOCATION spawns (polish
+# 2026-04-30 — fixes "spawned in water" on coastal towns).
+#
+# Arland's ocean surface sits at Y=0; terrain mesh extends below
+# that on the ocean floor. The 0.5 m default catches both:
+#   - underwater (terrain Y < 0)
+#   - shoreline splash zone (terrain Y barely above 0)
+# Both spawn the player partially submerged with the swim animation
+# triggering. Maps with non-zero ocean baselines (community maps)
+# should override this to (sea_level + 0.5).
+#
+# Setting to a very large negative number (e.g. -9999) effectively
+# disables the fallback — the router returns whatever GetSurfaceY
+# says, even underwater.
+#
+# Default: 0.5  Range: -9999 to 100  (Float, meters Y)
+# Gameplay impact: LOW. Affects edge-case shoreline spawns only.
+SPAWN_WATER_SEA_LEVEL_Y 0.5
+
+# SPAWN_WATER_SEARCH_RADIUS_M
+# Maximum radius the router scans for dry land when the configured
+# spawn point is over water. The scan runs concentric rings (50 m
+# apart, 16 angles each) up to this radius; the first dry-land hit
+# wins. If nothing dry is found within radius, the router logs a
+# WARN and spawns the player at the wet position (better than
+# soft-locking on spawn — admin sees the warning and can fix the
+# offending town config).
+#
+# Tune up for maps with large bodies of water between towns; tune
+# down for tight inland maps. The scan cost is trivial (a handful
+# of GetSurfaceY calls per spawn), so the upper bound is mostly
+# about how far the player tolerates being pushed from the picked
+# spawn point — at 200 m the offset is rarely noticeable.
+#
+# Default: 200.0  Range: 25 to 1000  (Float, meters)
+# Gameplay impact: LOW. Affects edge-case shoreline spawns only.
+SPAWN_WATER_SEARCH_RADIUS_M 200.0
+
+# SPAWN_TOWN_MIN_RADIUS_FRAC / SPAWN_TOWN_MAX_RADIUS_FRAC
+# RANDOM and TOWN player spawns are scattered at a uniform random
+# point inside a ring around the town center. The ring is defined as
+# a fraction of the town's configured radius:
+#   inner edge = MIN * town.radius
+#   outer edge = MAX * town.radius
+# After picking the point the router validates a player-clear spot
+# there (no spawning inside buildings/rocks) and still runs the
+# water-avoidance + anti-stack + anti-fall-through passes on top.
+#
+# To push players toward the OUTER EDGE of town, raise MIN:
+#   MIN 0.90  MAX 0.98  -> spawn in the outer 90-98% ring (edge bias)
+#   MIN 0.00  MAX 0.95  -> spread across the whole town (default)
+# MAX is clamped to be >= MIN so the band can't invert.
+#
+# LAST LOCATION is unaffected — it always returns the exact saved
+# position.
+#
+# Default: 0.0 / 0.95   Range: 0.0 to 0.99 each   (Float, fraction)
+# Gameplay impact: MEDIUM. Controls where in town players appear.
+SPAWN_TOWN_MIN_RADIUS_FRAC 0.0
+SPAWN_TOWN_MAX_RADIUS_FRAC 0.95
+
+# === END SPAWN MENU + DEATH FLOW ============================
+
+# ============================================================
+# === HVT SYSTEM =======================
+# Players carrying HVT_THRESHOLD or more in their wallet
+# (NOT bank — bank is safe storage by design) become tracked
+# targets. Every HVT_BROADCAST_INTERVAL_SEC the server places
+# a NATO MEDICAL marker (red cross in an OPFOR red frame) on
+# the world map at a fuzzed 100m-grid position, visible to
+# ALL players for HVT_VISIBILITY_DURATION_SEC seconds before
+# fading. The HVT also receives a "WANTED" hint each cycle
+# they qualify.
+#
+# Uses BI's built-in PLACED_MILITARY marker pipeline — no
+# custom assets, no HF marker prefab. Server-authoritative;
+# clients can only receive broadcasts.
+# ============================================================
+
+# HVT_ENABLED
+# Master toggle. 1 = system active, 0 = dormant (loop still
+# ticks but short-circuits before scanning, so a runtime flip
+# from 0 → 1 resumes broadcasts within one interval). Default 1.
+HVT_ENABLED 1
+
+# HVT_THRESHOLD
+# Wallet amount at or above which a player becomes an HVT.
+# Bank balance is never counted. Default 10000 ($10k — per
+# Decision 13). Range 1 to
+# 999,999,999. Lower = more HVTs, more frequent broadcasts;
+# higher = HVT status is rarer / a true status symbol.
+# Gameplay impact: HIGH — directly tunes the "carry cash,
+# get hunted" loop.
+HVT_THRESHOLD 10000
+
+# HVT_THRESHOLD_TOP
+# Wallet at or above this amount earns a distinct "TOP HVT" marker
+# label on the map (vs the plain "HVT" label) — an elite / top-bounty
+# tier. Keep this >= HVT_THRESHOLD. Default 20000 ($20k). Range 1 to
+# 999,999,999.
+HVT_THRESHOLD_TOP 20000
+
+# HVT_BROADCAST_INTERVAL_SEC
+# Seconds between scan ticks. Each tick walks the online
+# player list, flags wallets at or above threshold, and
+# broadcasts a fresh marker for each HVT. Default 300 (5 min,
+# locked Decision 13). Range 30-7200. Tuning: lower for more
+# pressure (HVT can't lose pursuers between broadcasts);
+# higher if HVT-flagged players never get downtime to bank
+# or escape.
+HVT_BROADCAST_INTERVAL_SEC 300
+
+# HVT_VISIBILITY_DURATION_SEC
+# How long each broadcast marker persists on the map before
+# being removed. Default 60. Range 5-3600. Should be much
+# less than HVT_BROADCAST_INTERVAL_SEC so HVTs get periodic
+# windows of map invisibility — that's the "moment to
+# relocate" baked into the design. Setting this >= the
+# broadcast interval makes HVTs permanently visible while
+# wealthy.
+HVT_VISIBILITY_DURATION_SEC 60
+
+# HVT_KILL_BROADCAST_ENABLED
+# Master toggle for the global "Player X eliminated HVT —
+# $Y dropped" notification fired to every connected player
+# when an HVT is killed in PvP. Default 1 (on). Set to 0
+# to silence the popup; the player_stats_daily.hvt_kills
+# DB stat continues to accrue independently of this flag.
+# Suicides and environmental deaths never trigger the
+# broadcast even when this flag is on.
+HVT_KILL_BROADCAST_ENABLED 1
+
+# === END HVT SYSTEM ==========================================
+
+# ============================================================
+# MISSION CLEANUP-DWELL
+# After a mission completes (its reward has already dropped), the
+# leftover event scene/AI is despawned by PRESENCE, not a fixed
+# timer: only once no player has been within CLEANUP_DWELL_DISTANCE_M
+# of the mission center for CLEANUP_DWELL_DURATION_SEC. Replaces the
+# old fixed 3-minute auto-despawn so a mission never vanishes while
+# players are still on site (looting, mopping up).
+# ============================================================
+
+# CLEANUP_DWELL_ENABLED
+# 1 = presence-gated cleanup (default). 0 = legacy fixed 3-min grace.
+CLEANUP_DWELL_ENABLED 1
+
+# CLEANUP_DWELL_DISTANCE_M
+# Radius (metres) around the mission center that counts as "someone is
+# still here". Default 10. Range 1-5000.
+CLEANUP_DWELL_DISTANCE_M 10
+
+# CLEANUP_DWELL_DURATION_SEC
+# How long the area must be CONTINUOUSLY empty before the leftover
+# scene despawns. Default 300 (5 min). Options: 60/180/300/600 =
+# 1/3/5/10 min. Range 10-7200.
+CLEANUP_DWELL_DURATION_SEC 300
+
+
+# === VEHICLE RESUPPLY COSTS ==================================
+# Cost model for refuel / repair / rearm at marker-defined
+# service stations. Two-tier: catalog vehicles use a percentage
+# of their store price; wild vehicles (no catalog match) use a
+# flat per-service fallback. Both branches are pro-rated by the
+# percentage of service actually applied — cancelling mid-service
+# only pays for what was applied.
+#
+# Worked example: catalog Tank costs $40,000. REFUEL_PCT_OF_STORE_PRICE
+# = 5 → full-tank cost = $40,000 × 5% = $2,000. Player refuels from
+# 60% to 100% (40% of capacity applied) → $2,000 × 40% = $800 charged.
+#
+# Wild example: BI UAZ469 spawned by the world (no catalog price).
+# REFUEL_FALLBACK_COST = 100 → full-tank cost = $100. Same 40% refuel
+# → $40 charged.
+#
+# Set all to 0 for a sandbox-mode economy where money is irrelevant
+# (field-DIY path still requires a Jerry Can or Repair Kit from
+# inventory regardless of these knobs — items remain the gate).
+#
+
+# RESUPPLY_REFUEL_PCT_OF_STORE_PRICE
+# Catalog vehicles: full-tank-from-empty cost as a percentage of
+# the vehicle's store price. Range 0-100. Default 5 (5%).
+# Pro-rated by % of capacity restored.
+RESUPPLY_REFUEL_PCT_OF_STORE_PRICE 5
+
+# RESUPPLY_REPAIR_PCT_OF_STORE_PRICE
+# Catalog vehicles: full-restore-from-zero-HP cost as a percentage
+# of the vehicle's store price. Range 0-100. Default 10 (10%).
+# Pro-rated by % of HP restored.
+RESUPPLY_REPAIR_PCT_OF_STORE_PRICE 10
+
+# RESUPPLY_REARM_PCT_OF_STORE_PRICE
+# Catalog vehicles: full-rearm cost as a percentage of the
+# vehicle's store price. Range 0-100. Default 8 (8%).
+# Phase 1.5 — REARM service ships in a later commit; knob is
+# reserved and parsed today, safe to set in advance.
+RESUPPLY_REARM_PCT_OF_STORE_PRICE 8
+
+# RESUPPLY_REFUEL_FALLBACK_COST
+# Wild vehicles (no catalog match): flat $ for a full-tank refuel.
+# Pro-rated by % of capacity restored (40% filled = $40 on the
+# default knob). Range 0+. Default 100. Set to 0 for free wild-
+# vehicle refuel.
+RESUPPLY_REFUEL_FALLBACK_COST 100
+
+# RESUPPLY_REPAIR_FALLBACK_COST
+# Wild vehicles: flat $ for a full-restore repair. Default 200
+# (2:1 ratio vs refuel, mirrors the catalog ratio).
+RESUPPLY_REPAIR_FALLBACK_COST 200
+
+# RESUPPLY_REARM_FALLBACK_COST
+# Wild vehicles: flat $ for a full rearm. Default 150.
+# Phase 1.5 — read by HFResupplyService when REARM lands.
+RESUPPLY_REARM_FALLBACK_COST 150
+
+# RESUPPLY_REFUEL_DURATION_MS
+# How long the player must stay in the station with the popup open
+# before the refuel completes and money is charged. Milliseconds.
+# Clamped 250..60000 (¼s..1min). Default 5000 (5s). Lower = snappier
+# UX; higher = a more committed cast window where dismount cancels
+# meaningfully refund-by-not-charging.
+RESUPPLY_REFUEL_DURATION_MS 5000
+
+# RESUPPLY_REPAIR_DURATION_MS
+# Cast time for repair service. Same model as refuel. Independent
+# knob so admins can make repair feel slower (more involved) than
+# a quick refuel if desired. Default 5000.
+RESUPPLY_REPAIR_DURATION_MS 5000
+
+# RESUPPLY_REARM_DURATION_MS
+# Cast time for rearm service. Default 5000. Phase 1.5 — read by
+# HFResupplyService when the REARM service backend lands.
+RESUPPLY_REARM_DURATION_MS 5000
+
+# === END VEHICLE RESUPPLY ====================================
+
+# ============================================================
+# === REVIVE / DOWNED STATE ==================================
+# Controls the player-to-player downed/revive mechanic. The
+# foundational verbs (HF_DownPlayer / HF_RevivePlayer) live on
+# HFCharacterDamageManagerComponent and are tested via the
+# /down and /revive chat commands during Step 2 verification.
+#
+# The engine handles the death timer automatically — when a
+# downed player's blood hitzone reaches the DESTROYED state,
+# SCR_CharacterDamageManagerComponent.UpdateConsciousness()
+# fires Kill(GetInstigator()). These three knobs control HOW
+# the down state is set up, which is what determines how long
+# they survive.
+#
+# ============================================================
+
+# DOWN_RESILIENCE_HP
+# Resilience HP value passed to ForceUnconsciousness() when a
+# player goes down. Higher = more resilience buffer before
+# additional damage finalizes their death (because resilience
+# tracks how much "knockdown reserve" is left). MUST be > 0
+# (a value of 0 wakes them up).
+# Default: 50.0. Range: 0.0–1000.0 (clamped).
+# Gameplay impact: MEDIUM. Higher values give downed players
+#   more grace before being finished off by stray bullets.
+DOWN_RESILIENCE_HP 50.0
+
+# DOWN_BLEED_HITZONE
+# Which hitzone bleeds when a player goes down. The engine
+# bleeds blood at the configured rate; when blood reaches
+# DESTROYED, the engine kills the player automatically.
+# Use a vanilla hitzone name like "Chest", "Head", "LeftArm",
+# "RightLeg", etc. Empty string ("") falls back to the
+# engine's AddRandomBleeding() — picks any non-bleeding zone
+# at random.
+# Default: "Chest". Empty for random.
+# Gameplay impact: LOW. Affects which body part the red
+#   bleeding effect emphasizes; minimal mechanical impact.
+DOWN_BLEED_HITZONE Chest
+
+# DOWN_BLEED_INTENSITY
+# Controls how long a downed player bleeds out (time to death).
+# It is the Chest hitzone HEALTH FRACTION (0..1) used to start the
+# bleed; the bleed RATE is the INVERSE: rate = MaxRate * (1 - value).
+# So the knob is INVERTED — HIGHER = SLOWER bleed, LOWER = FASTER.
+#   ~0.68 = testing (fast)
+#   ~0.84 = ~8-9 min
+#   ~0.92 = slower (measured ~15-18 min)
+#   0.0   = ~max bleed (dies in well under a minute)
+#   -1.0  = engine WOUNDED default (very fast)
+# Re-dial linearly: new = 1 - (1 - old) * (measured_sec / target_sec).
+# *** NEEDS VALIDATION *** exact time-to-death not yet pinned (death
+#   fires at the blood DESTROYED threshold, not 0). Measure your own
+#   bleed-out and tune; a seconds-based knob may replace this later.
+# Default: 0.68 (testing — fast). Range: -1.0 to 1.0.
+# Gameplay impact: VERY HIGH — directly sets downed survival time.
+DOWN_BLEED_INTENSITY 0.68
+
+# INSTA_DEATH_HP
+# Placeholder for future damage-magnitude gating. v1 auto-down
+# uses OnLifeStateChanged — engine's natural resilience math
+# decides UNCONSCIOUS vs DEAD on its own. This knob is plumbed
+# for Phase 2 when we have real damage telemetry from playtest.
+# Default: 100.0. Range: 1.0–10000.0 (clamped).
+INSTA_DEATH_HP 100.0
+
+# REVIVE_CAST_TIME_S
+# Duration of the medkit revive cast, in seconds. Server-tunable
+# while we dial in feel — test windows: 5, 15, 30, 45, 60.
+# Cast interrupts if the reviver moves out of range (REVIVE_RANGE_M)
+# or cancels. Medkit is consumed only on successful revive.
+# Default: 30.0. Range: 1.0–600.0 (clamped).
+REVIVE_CAST_TIME_S 30.0
+
+# REVIVE_RANGE_M
+# How close the reviver must STAY to the downed teammate (metres)
+# for the cast to keep ticking. Walking beyond this cancels the
+# revive (medkit kept). Also the max distance to start a revive.
+# Default: 3.0. Range: 1.0–10.0 (clamped).
+REVIVE_RANGE_M 3.0
+
+# REVIVE_SYSTEM_ENABLED
+# Master toggle for HF's revive system. Set to 0 if you want to
+# layer a different revive system from another mod, or run with
+# no revive system at all.
+#   1 = ON (default). HF auto-down on lethal damage + downed-
+#       disconnect Kill + medkit revive action all active.
+#   0 = OFF. HF revive paths become no-ops. Engine + other mods
+#       can handle unconscious/revive however they want.
+# NOTE: admin chat commands /admin down and /admin revive bypass
+# this flag — they remain available regardless for testing.
+REVIVE_SYSTEM_ENABLED 1
+
+# AI_DOWN_KILL_SEC
+# Seconds a downed (incapacitated) MISSION AI is given before HF
+# finishes it off, when no medic AI revives it. Mission AI use the
+# engine's native down state (NOT HF's player revive UI), and the
+# engine does NOT bleed an unrevived AI out on its own — without this
+# they stay incapacitated forever and a mission can never reach
+# "all AI dead" (no reward / no despawn). This window also doubles as
+# the AI medic-revive grace: a medic AI that revives the downed enemy
+# within it cancels the finisher.
+# Gameplay impact: MEDIUM. Lower = missions wrap up faster after the
+#   last enemy goes down; higher = bigger medic-revive window.
+# Default: 12. Range: 1-600 (clamped).
+AI_DOWN_KILL_SEC 12
+
+# AI_DEFEND_RADIUS_M
+# Radius (metres) of the Defend waypoint that leashes a spawned
+# mission / wave AI group to its anchor (the hidden event placement
+# marker the composition spawns around). Members HOLD and engage
+# within this area instead of wandering off — a wandering enemy that
+# the player can't find leaves the mission stuck on "all AI dead"
+# (no reward / no despawn). Applies to event AI groups and to LOGIC
+# SPAWN_WAVE reinforcements (leashed to their own marker).
+# Gameplay impact: MEDIUM. Smaller = enemies bunch tight near the
+#   marker (easy to clear); larger = they hold a wider footprint.
+# Default: 30. Range: 5-200 (clamped).
+AI_DEFEND_RADIUS_M 30
+
+# === END REVIVE / DOWNED STATE ==============================
+
+# ============================================================
+# === PLAYER MARKERS / NAMETAGS ==============================
+# HF ships its own team-marker HUD (HFTeamMarkerHUD): a faction-
+# colored name + dot over teammates that ALSO shows revive/downed
+# status. The engine also has its own built-in floating player
+# nametags (SCR_NameTagDisplay). These two toggles let you choose
+# which layer your server runs — HF's, the engine's native, both,
+# or neither — and the choice is symmetric with the revive system
+# (REVIVE_SYSTEM_ENABLED above) so an admin can go fully native.
+#
+# IMPORTANT — what these toggles ARE and ARE NOT:
+# These are DISPLAY toggles. Both BI's nametags and HF's markers
+# only PAINT friendly-position data the engine already replicates
+# for core gameplay — neither opens a new server→client data
+# channel, and HF's HUD blocks cross-faction unconditionally (no
+# enemy ESP). Turning a display off does NOT un-send replicated
+# core data (that would break the game); it stops the corresponding
+# CLIENT-side machinery, which is exactly what going native wants.
+# Both values are server-authoritative and replicated to clients —
+# a client cannot flip them.
+#
+# Common setups:
+#   HF markers (default):  HF_MARKERS_ENABLED 1  +  DISABLE_BUILTIN_PLAYER_MARKERS 1
+#   Native nametags only:  HF_MARKERS_ENABLED 0  +  DISABLE_BUILTIN_PLAYER_MARKERS 0
+#   Both (not advised):    HF_MARKERS_ENABLED 1  +  DISABLE_BUILTIN_PLAYER_MARKERS 0
+#   Neither (clean HUD):   HF_MARKERS_ENABLED 0  +  DISABLE_BUILTIN_PLAYER_MARKERS 1
+# ============================================================
+
+# HF_MARKERS_ENABLED
+# Master on/off for HF's team-marker HUD (name + dot + revive status).
+# When 0 the HUD goes FULLY dormant: it does not tick, creates no
+# widgets, and the per-player marker-pref DB load + owner RPC are
+# skipped (a real off-switch, not a hidden overlay). When 1 the HUD
+# runs and each player controls their own marker prefs via the J menu.
+# Default: 1 (on). Range: 0 or 1.
+HF_MARKERS_ENABLED 1
+
+# DISABLE_BUILTIN_PLAYER_MARKERS
+# When 1, HF suppresses the engine's built-in floating player nametags
+# (so they don't double-draw over HF's markers) via the engine's own
+# per-entity filter gate. When 0 the native nametags run untouched.
+# Leave at 1 when HF_MARKERS_ENABLED 1; set to 0 if you want the
+# engine's native nametags instead of HF's markers.
+# Default: 1 (built-in nametags suppressed). Range: 0 or 1.
+DISABLE_BUILTIN_PLAYER_MARKERS 1
+
+# === END PLAYER MARKERS / NAMETAGS ==========================
+
+# --- Gateway Connection ---
+# URL of the WastelandZ Gateway API. The gateway is a SEPARATE service
+# (the Python/Flask bridge to MySQL) with its OWN config file
+# (config.py in the gateway repo) holding the DB credentials, the API key,
+# and its own FLASK_DEBUG flag. None of those live here — this game server
+# only needs the URL below (the API key goes in HFWastelandZ_secrets.conf).
+# Must end with trailing slash. Default: http://localhost:5000/
+GATEWAY_URL http://localhost:5000/
+
+# --- Economy ---
+# Starting money for new players (first spawn)
+STARTING_MONEY 1000
+
+# Auto-save player data interval (seconds)
+# Player data is saved to the database on this interval
+AUTO_SAVE_INTERVAL 300
+
+# --- Server Identity ---
+# Server name (shown in admin tools and logs)
+SERVER_NAME WastelandZ Dev Server
+
+# Unique server ID. This MUST EXACTLY MATCH this server's SERVER_ID in the
+# gateway config (config.py — for a single server, or the matching entry's
+# server_id in the gateway's SERVERS list). The gateway stamps DB rows with the
+# server id and the mod compares it to decide "same server -> restore my last
+# location + gear" — if they differ, your saved position/gear will NOT restore.
+# Servers sharing a hive use the same database (gateway HIVE_ID); player
+# money/inventory are shared hive-wide, world objects stay per-server.
+SERVER_ID dev-01
+
+# --- Dev Mode (GAME server) ---
+# This is the GAME server's dev switch — NOT the gateway's FLASK_DEBUG (that
+# is a separate Python service). For mod log verbosity see HF_DEBUG below.
+# 1 = ON (debug markers, verbose logs, dev tools visible)
+# 0 = OFF (clean gameplay, no debug markers)
+# Set to 0 for production servers
+DEV_MODE 1
+
+# --- Death Drops ---
+# What happens when a player dies
+
+# % of wallet dropped as a money pile near corpse (0-100)
+DEATH_MONEY_DROP_PERCENT 50
+
+# Drop loose consumables from inventory near corpse (true/false)
+DEATH_DROP_FOOD true
+DEATH_DROP_WATER true
+DEATH_DROP_MEDICAL true
+DEATH_DROP_REPAIR_KITS true
+
+# How far items scatter from corpse (meters, 1-10)
+DEATH_DROP_SCATTER_RADIUS 2
+
+# % chance each eligible inventory item drops loose (0-100)
+DEATH_DROP_ITEM_PERCENT 50
+
+# --- Inventory System ---
+# Backpack 2x = 80kg capacity. Clothing/weapon 1x = vanilla.
+WEIGHT_MULTIPLIER 1
+WEIGHT_MULT_BACKPACK 1
+WEIGHT_MULT_CLOTHING 1
+WEIGHT_MULT_WEAPON 1
+STAMINA_ENABLED 0
+# FOLIAGE_SLOWDOWN_ENABLED
+# Arma 1.7 added a movement slowdown when players push through bushes and
+# tall foliage. When disabled (0), players move at full speed through
+# bushes — the 1.7 slowdown is neutralized. When enabled (1), the vanilla
+# 1.7 bush slowdown applies. Movement is owner-predicted, so this value is
+# replicated to every client to keep them in sync.
+#
+# Default: 0 (off — no bush slowdown). Range: 0 or 1.
+FOLIAGE_SLOWDOWN_ENABLED 0
+ALLOW_WEAPONS_IN_CLOTHING 1
+MAX_NESTING_DEPTH 3
+
+# --- Debug Logging (syslog-style tiers + 8 channels) ---
+#
+# CRIT and WARN logs ALWAYS print regardless of any flag below — they are
+# the syslog you grep for problems:
+#   grep -E '\[HF\]\[(CRIT|WARN)\]' script.log
+#
+# DEBUG logs are gated by the master switch + optional per-channel filter:
+#   HF_DEBUG 0  → all DEBUG silenced (ship default).
+#   HF_DEBUG 1, no per-channel set → all 8 channels print.
+#   HF_DEBUG 1 + HF_DEBUG_<CHANNEL> 1 → only listed channels print.
+# Per-channel acts as a WHITELIST when master is on. It does NOT override
+# master = 0 (that's by design — one switch kills everything).
+#
+# Per-channel example to debug only inventory drag issues live:
+#   HF_DEBUG 1
+#   HF_DEBUG_INVENTORY 1
+#
+# Channels:
+#   SECURITY    cheat trips, untracked items, bans, RPC abuse
+#   ECONOMY     wallet, store buy/sell, ATM
+#   INVENTORY   drag, weight, validator, gear equip
+#   SPAWN       player spawn, vehicle spawn, loot spawn, respawn
+#   MAP         markers, towns, HVT
+#   PLAYER      connect, disconnect, death, identity, HUD/menu
+#   GATEWAY     DB save/load, REST
+#   ADMIN       menu, GM, commands
+#
+# THIRD ship-lock: HFDebug.PRODUCTION_BUILD compile-time const in
+# HFDebug.c. Flip true before workshop publish — kills DEBUG everywhere
+# regardless of any conf below. Defense against admin-conf typos.
+#
+# DIAG tier (added 2026-05-24): paired SERVER/PEER RPC pipeline traces.
+# Compile-time gated only — no conf key. Default OFF (HFDebug.DIAG_ENABLED
+# = false in HFDebug.c). Flip true + recompile when chasing RPC dispatch
+# / peer pre-spawn issues. Bypasses HF_DEBUG so it works on peers before
+# server.conf reaches them. Output prefix: [HF][TS][DIAG][CHANNEL].
+#
+HF_DEBUG 0
+HF_DEBUG_SECURITY 0
+HF_DEBUG_ECONOMY 0
+HF_DEBUG_INVENTORY 0
+HF_DEBUG_SPAWN 0
+HF_DEBUG_MAP 0
+HF_DEBUG_PLAYER 0
+HF_DEBUG_GATEWAY 0
+HF_DEBUG_ADMIN 0
+
+# ============================================================
+# === RESERVED ADMIN SLOTS ============================
+# Lets owner/admins/mods always get on a full server WITHOUT
+# wasting slots: the reserved slots stay PLAYABLE by regular
+# players ("high-risk"), and a high-risk player is bumped only
+# when staff actually join. A player who shifts into a safe
+# slot is never at-risk again (only newest joiners sit in the
+# risky band).
+#
+# HOW IT WORKS: set game.maxPlayers (in config.json) to your
+# desired PLAYABLE cap PLUS a small buffer, and set
+# RESERVED_TOTAL_SLOTS to the SAME maxPlayers number. The buffer
+# is kept free so staff are admitted instantly (never queued),
+# then the newest high-risk regular is bumped.
+#
+# Example: 128 playable + 2 buffer -> config.json maxPlayers 130,
+#          RESERVED_TOTAL_SLOTS 130, RESERVED_BUFFER 2.
+#
+# ============================================================
+
+# Master on/off (0 = off, default). Feature does nothing until 1.
+RESERVED_SLOTS_ENABLED 0
+
+# On a real dedicated server this is read AUTOMATICALLY from the engine
+# (DSSession.PlayerLimit) and this key is ignored. It is only a fallback
+# for a WB host / listen server (no dedicated session) — set it to your
+# config.json game.maxPlayers when testing in Workbench. 0 = use engine value.
+RESERVED_TOTAL_SLOTS 0
+
+# Free slots held for instant staff entry (>=1). The cost of the
+# guarantee; 2 covers near-simultaneous admin joins.
+RESERVED_BUFFER 2
+
+# How many of the newest regulars are "high-risk" (warned on join,
+# bumped first when staff arrive).
+RESERVED_HIGHRISK_COUNT 8
+
+# Minimum admin tier that is protected + can bump (20=MOD, 30=ADMIN,
+# 40=OWNER). Tiers come from HFWastelandZ_admins.conf.
+RESERVED_MIN_TIER 20

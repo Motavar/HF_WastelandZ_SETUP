@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "triggers": [
+    "server_uptime_warmup.json",
+    "cache_cadence.json"
+  ]
+}

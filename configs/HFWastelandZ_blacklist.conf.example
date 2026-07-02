@@ -1,0 +1,28 @@
+# ============================================================
+# HFWastelandZ — Blacklist Configuration
+# File: $profile:HFWastelandZ_blacklist.conf
+# ============================================================
+#
+# Local file-based player bans. Players on this list are
+# kicked immediately on spawn. Works alongside the database
+# blacklist system for instant enforcement.
+#
+# FORMAT:
+#   BAN <Steam64ID>     — one banned player per line
+#
+# BEHAVIOR:
+#   No config file      → no local bans (DB bans still checked)
+#   Empty config        → no local bans
+#   BAN entries         → listed players kicked on connect
+#
+# For database-managed bans (with expiration, scope, etc.)
+# use the MotaBot !ban command or gateway API.
+#
+# ============================================================
+
+# --- BANNED PLAYERS ---
+# Add one BAN line per banned player
+# Example:
+#   BAN 76561198012345678
+
+# BAN 76561198012345678

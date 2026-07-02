@@ -1,0 +1,312 @@
+# ============================================================
+# HFWastelandZ General Store Catalog Configuration
+# ============================================================
+#
+# OVERVIEW:
+#   This file defines what items are available at general stores
+#   (medical, survival, tools, grenades, explosives, ammo, mags).
+#   Server admins can create multiple named catalogs with different
+#   items and prices, then assign each store on the map to a catalog
+#   via HFSpawnPoints_*.conf.
+#
+# LOCATION:
+#   Place this file at: $profile:HFWastelandZ_general_catalog.conf
+#
+# FORMAT (same as HFWastelandZ_store_catalog.conf):
+#   [CATALOG catalog_name]
+#   SectionName
+#     DisplayName  {GUID}Prefabs/Path/Item.et  PRICE
+#
+# All entries below have REAL per-prefab resource GUIDs extracted
+# directly from data/resourceDatabase.rdb on 2026-04-21.
+# ============================================================
+#
+# PRICING NOTES (suggested starting values — admin-tunable):
+#   Medical (dressing, gauze):     30 - 100
+#   Medical (tourniquet, morphine):100 - 250
+#   Medical kits:                  500
+#   Navigation (compass, map):     50 - 300
+#   Binoculars:                    350 - 400
+#   Radios:                        450 - 800
+#   Grenades (frag):               300
+#   Smoke/Flares:                  80 - 150
+#   Explosives (demo, mines):      1,000 - 2,500
+#   Loose ammo (rounds):           3 - 45
+#   Rifle magazines:               200 - 375
+#   LMG belts/boxes:               500 - 1,500
+#
+# Overlap with gun store:
+#   - Grenades, smoke, flares, explosives, ammo, and magazines
+#     are intentionally duplicated for admin convenience. Comment
+#     out any section with # if exclusivity is desired.
+# ============================================================
+
+[CATALOG default]
+
+# ===========================================================
+# MEDICAL
+# ===========================================================
+Medical
+  Field Dressing (US)               {A81F501D3EF6F38E}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et 50
+  Field Dressing (USSR)             {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et 50
+  Gauze                             {CDCC313B2FB76FE7}Prefabs/Items/Medicine/FieldDressing_01/Gauze_01.et      30
+  Tourniquet (US)                   {D70216B1B2889129}Prefabs/Items/Medicine/Tourniquet_01/Tourniquet_US_01.et 100
+  Tourniquet (USSR)                 {80E75A71C29190DB}Prefabs/Items/Medicine/Tourniquet_01/Tourniquet_USSR_01.et 100
+  Morphine Injector                 {0D9A5DCF89AE7AA9}Prefabs/Items/Medicine/MorphineInjection_01/MorphineInjection_01.et 200
+  Saline Bag (US)                   {00E36F41CA310E2A}Prefabs/Items/Medicine/SalineBag_01/SalineBag_US_01.et   250
+  Saline Bag (USSR)                 {527D7C5D2E476BDC}Prefabs/Items/Medicine/SalineBag_01/SalineBag_USSR_01.et 250
+  Medical Kit (US)                  {AE578EEA4244D41F}Prefabs/Items/Equipment/Kits/MedicalKit_01/MedicalKit_01_US.et 500
+  Medical Kit (USSR)                {21EF98BFC1EB3793}Prefabs/Items/Equipment/Kits/MedicalKit_01/MedicalKit_01_USSR.et 500
+  Medical Kit (FIA)                 {9132672C4D9B2102}Prefabs/Items/Equipment/Kits/MedicalKit_01/MedicalKit_01_FIA.et 500
+  HF Medical Kit (Field Revive)     {6AAA5BE1837E75EE}Prefabs/Items/HF_MedicalKit.et 400
+
+# ===========================================================
+# NAVIGATION
+# ===========================================================
+Navigation
+  Compass (Adrianov)                {7CEF68E2BC68CE71}Prefabs/Items/Equipment/Compass/Compass_Adrianov.et      75
+  Compass (SY-183)                  {61D4F80E49BF9B12}Prefabs/Items/Equipment/Compass/Compass_SY183.et         75
+  Compass w/ Map (Adrianov)         {C819E0B7454461F2}Prefabs/Items/Equipment/Compass/Compass_Adrianov_Map.et  150
+  Compass w/ Map (SY-183)           {72691366C26BD901}Prefabs/Items/Equipment/Compass/Compass_SY183_Map.et     150
+  Paper Map (Folded)                {13772C903CB5E4F7}Prefabs/Items/Equipment/Maps/Map_Paper_01/PaperMap_01_folded.et 50
+  Paper Map (US)                    {922F95F91943F69A}Prefabs/Items/Equipment/Maps/Map_Paper_01/PaperMap_01_folded_US.et 50
+  Paper Map (USSR)                  {F849217AB3BA88BE}Prefabs/Items/Equipment/Maps/Map_Paper_01/PaperMap_01_folded_USSR.et 50
+  Paper Map (FIA)                   {983B57B8E95C1F52}Prefabs/Items/Equipment/Maps/Map_Paper_01/PaperMap_01_folded_FIA.et 50
+  Paper Map (Kolguyev)              {6D4780D5233AD3DD}Prefabs/Items/Equipment/Maps/Map_Paper_01/PaperMap_01_folded_Kolguyev.et 50
+  Watch w/ Map (Orlik38)            {DCB293AEF79CCD7D}Prefabs/Items/Equipment/Watches/Watch_Orlik38/Watch_Orlik38_Map.et 300
+  Watch w/ Map (SandY184A)          {6ECDF523E1035A0F}Prefabs/Items/Equipment/Watches/Watch_SandY184A_Map.et   300
+  Watch w/ Map (Vostok)             {4FAD128BE9F66C6F}Prefabs/Items/Equipment/Watches/Watch_Vostok_Map.et      300
+
+# ===========================================================
+# OPTICS
+# ===========================================================
+Optics
+  Binoculars M22                    {0CF54B9A85D8E0D4}Prefabs/Items/Equipment/Binoculars/Binoculars_M22/Binoculars_M22.et 400
+  Binoculars B8                     {243948B23D90BECB}Prefabs/Items/Equipment/Binoculars/Binoculars_B8/Binoculars_B8.et 350
+  Binoculars B12                    {F2539FA5706E51E4}Prefabs/Items/Equipment/Binoculars/Binoculars_B12/Binoculars_B12.et 400
+
+# ===========================================================
+# COMMUNICATIONS
+# ===========================================================
+Communications
+  Radio ANPRC-68                    {73950FBA2D7DB5C5}Prefabs/Items/Equipment/Radios/Radio_ANPRC68.et          600
+  Radio ANPRC-77                    {9B6B61BB3FE3DFB0}Prefabs/Items/Equipment/Radios/Radio_ANPRC77.et          800
+  Radio R-107M                      {54C68E438DD34265}Prefabs/Items/Equipment/Radios/Radio_R107M.et            600
+  Radio R-107M (FIA)                {4181B1C8B5E56392}Prefabs/Items/Equipment/Radios/Radio_R107M_FIA.et        600
+  Radio R-148                       {E1A5D4B878AA8980}Prefabs/Items/Equipment/Radios/Radio_R148.et             500
+  Radio R-148 (FIA)                 {540C08AD5F21A5FA}Prefabs/Items/Equipment/Radios/Radio_R148_FIA.et         500
+  Radio RF-10                       {73EFD7591F4134D3}Prefabs/Items/Equipment/Radios/Radio_RF10/Radio_RF10.et  450
+
+# ===========================================================
+# LIGHT
+# ===========================================================
+Light
+  Flashlight MX991                  {3A421547BC29F679}Prefabs/Items/Equipment/Flashlights/Flashlight_MX991/Flashlight_MX991.et 75
+  Flashlight (Soviet)               {575EA58E67448C2A}Prefabs/Items/Equipment/Flashlights/Flashlight_Soviet_01/Flashlight_Soviet_01.et 75
+
+# ===========================================================
+# TOOLS
+# ===========================================================
+Tools
+  Entrenching Tool (ALICE)          {0619993AE6CDBF85}Prefabs/Items/Equipment/Accessories/ETool_ALICE/ETool_ALICE.et 100
+  Entrenching Tool (MPL-50)         {8A89D3F70713E55B}Prefabs/Items/Equipment/Accessories/ETool_MPL50/ETool_MPL50.et 100
+  Repair Kit (Wrench)               {33B2DFDCD0EBA3DB}Prefabs/Items/Equipment/Kits/RepairKit_01/RepairKit_01_wrench.et 500
+  Canteen (US)                      {630FB4AD4A735264}Prefabs/Items/Equipment/Canteens/Canteen_US_01.et        50
+  Canteen (Soviet)                  {70BC751317551D9B}Prefabs/Items/Equipment/Canteens/Canteen_Soviet_01.et    50
+  Ballistic Table (US)              {6113990D163E5249}Prefabs/Items/Equipment/BallisticTable/BallisticTable_US.et 150
+  Ballistic Table (USSR)            {B41607EAB58A4252}Prefabs/Items/Equipment/BallisticTable/BallisticTable_USSR.et 150
+
+# ===========================================================
+# REARMING KITS
+# ===========================================================
+Rearming Kits
+  Rearming Kit (US)                 {5028D9E699AE3A73}Prefabs/Items/Equipment/Kits/RearmingKit_01/RearmingKit_01_US.et 800
+  Rearming Kit (USSR)               {CE46DE74E8896BEA}Prefabs/Items/Equipment/Kits/RearmingKit_01/RearmingKit_01_USSR.et 800
+  Rearming Kit (FIA)                {36696C3AC01ACE96}Prefabs/Items/Equipment/Kits/RearmingKit_01/RearmingKit_01_FIA.et 800
+  Mortar Rearming Kit (US)          {905F6CCA37A82DDB}Prefabs/Items/Equipment/Kits/MortarRearmingKit/MortarRearmingKit_US.et 1200
+  Mortar Rearming Kit (USSR)        {6DC231B93D42AF21}Prefabs/Items/Equipment/Kits/MortarRearmingKit/MortarRearmingKit_USSR.et 1200
+  Mortar Rearming Kit (FIA)         {6D23A74151533374}Prefabs/Items/Equipment/Kits/MortarRearmingKit/MortarRearmingKit_FIA.et 1200
+
+# ===========================================================
+# GRENADES
+# ===========================================================
+Grenades
+  Fragmentation M67                 {E8F00BF730225B00}Prefabs/Weapons/Grenades/Grenade_M67.et                  300
+  Fragmentation RGD-5               {645C73791ECA1698}Prefabs/Weapons/Grenades/Grenade_RGD5.et                 300
+
+# ===========================================================
+# SMOKE
+# ===========================================================
+Smoke
+  Smoke M18 (Red)                   {3343A055A83CB30D}Prefabs/Weapons/Grenades/M18/Smoke_M18_Red.et            150
+  Smoke M18 (Green)                 {D41D22DD1B8E921E}Prefabs/Weapons/Grenades/M18/Smoke_M18_Green.et          150
+  Smoke M18 (Yellow)                {9BBDEE253A16CC66}Prefabs/Weapons/Grenades/M18/Smoke_M18_Yellow.et         150
+  Smoke M18 (Violet)                {14C1A0F061D9DDEE}Prefabs/Weapons/Grenades/M18/Smoke_M18_Violet.et         150
+  Smoke RDG-2                       {77EAE5E07DC4678A}Prefabs/Weapons/Grenades/Smoke_RDG2.et                   100
+  Smoke ANM8HC                      {9DB69176CEF0EE97}Prefabs/Weapons/Grenades/Smoke_ANM8HC.et                 150
+
+# ===========================================================
+# FLARES
+# ===========================================================
+Flares
+  Flare RSP-30 (Red)                {36218D5F0C7095E6}Prefabs/Weapons/Flares/Flare_RSP30_red.et                80
+  Flare RSP-30 (Green)              {FC79F6BDEB7F1BC2}Prefabs/Weapons/Flares/Flare_RSP30_green.et              80
+  Flare RSP-30 (White)              {327103CB218E7CA1}Prefabs/Weapons/Flares/Flare_RSP30_white.et              80
+  Flare Parachute M126 (Red)        {756231FF84F158A4}Prefabs/Weapons/Flares/FlareStarParachute_M126A1_red.et  120
+  Flare Parachute M127 (White)      {EC9BDA3D9DDD8795}Prefabs/Weapons/Flares/FlareStarParachute_M127A1_white.et 120
+  Flare Parachute M195 (Green)      {51D9E3AEC8476BA4}Prefabs/Weapons/Flares/FlareStarParachute_M195_green.et  120
+
+# ===========================================================
+# EXPLOSIVES
+# ===========================================================
+Explosives
+  Demo Block M112 (C-4)             {33CBDE73AB48172A}Prefabs/Weapons/Explosives/DemoBlock_M112/DemoBlock_M112.et 1500
+  Demo Block TSh-400g               {97064F8597F2D7BF}Prefabs/Weapons/Explosives/DemoBlock_TSh400g/DemoBlock_TSh400g.et 1500
+  Antipersonnel Mine M14            {E4C9F0A4090CFE4D}Prefabs/Weapons/Explosives/Mine_M14/Mine_M14.et          1000
+  Antipersonnel Mine PMN-4          {B05A816C0BF50802}Prefabs/Weapons/Explosives/Mine_PMN4/Mine_PMN4.et        1000
+  Antitank Mine M15AT               {49FFE8F373F55960}Prefabs/Weapons/Explosives/Mine_M15AT/Mine_M15AT.et      2500
+  Antitank Mine TM-62M              {D6EF54367CECE1D9}Prefabs/Weapons/Explosives/Mine_TM62M/Mine_TM62M.et      2500
+
+# ===========================================================
+# AMMO 5.45X39
+# ===========================================================
+Ammo 5.45x39
+  5.45x39 Ball 7N6                  {1D9DDE1632F33A9E}Prefabs/Weapons/Ammo/Ammo_545x39_Ball_7N6.et             5
+  5.45x39 Ball 7U1                  {DFA2A30FEAA24E7C}Prefabs/Weapons/Ammo/Ammo_545x39_Ball_7U1.et             5
+  5.45x39 AP 7N10                   {33F3FD3662F44BB7}Prefabs/Weapons/Ammo/Ammo_545x39_AP_7N10.et              8
+  5.45x39 AP 7N22                   {F606179DC6D9E781}Prefabs/Weapons/Ammo/Ammo_545x39_AP_7N22.et              10
+  5.45x39 AP 7N24M                  {25132C7F440C6746}Prefabs/Weapons/Ammo/Ammo_545x39_AP_7N24M.et             10
+  5.45x39 AP 7N39                   {44253A67E6B31576}Prefabs/Weapons/Ammo/Ammo_545x39_AP_7N39.et              12
+  5.45x39 Tracer 7T3                {2BC4C9C3D171A53B}Prefabs/Weapons/Ammo/Ammo_545x39_Tracer_7T3.et           7
+
+# ===========================================================
+# AMMO 5.56X45
+# ===========================================================
+Ammo 5.56x45
+  5.56x45 Ball M193                 {9CE4CC890A2A574F}Prefabs/Weapons/Ammo/Ammo_556x45_Ball_M193.et            5
+  5.56x45 Ball M855                 {AC26AB660097633D}Prefabs/Weapons/Ammo/Ammo_556x45_Ball_M855.et            6
+  5.56x45 Ball M855A1               {ADC333EA402B0039}Prefabs/Weapons/Ammo/Ammo_556x45_Ball_M855A1.et          7
+  5.56x45 AP M995                   {9C1E802A384C6F9B}Prefabs/Weapons/Ammo/Ammo_556x45_AP_M995.et              12
+  5.56x45 Tracer M196               {9F01DD8C46AD2618}Prefabs/Weapons/Ammo/Ammo_556x45_Tracer_M196.et          7
+  5.56x45 Tracer M856               {A0CEFA7FA41091F7}Prefabs/Weapons/Ammo/Ammo_556x45_Tracer_M856.et          7
+  5.56x45 OTM Mk262                 {267D38E9CF11FD68}Prefabs/Weapons/Ammo/Ammo_556x45_OTM_Mk262.et            10
+  5.56x45 OTM Mk318                 {06D24B9BA91D5E51}Prefabs/Weapons/Ammo/Ammo_556x45_OTM_Mk318.et            10
+
+# ===========================================================
+# AMMO 7.62X39
+# ===========================================================
+Ammo 7.62x39
+  7.62x39 Ball 57N231               {2FBCA0A7CEDDE7B0}Prefabs/Weapons/Ammo/Ammo_762x39_Ball_57N231.et          5
+  7.62x39 Ball 57N231U              {242BDA2D5403716B}Prefabs/Weapons/Ammo/Ammo_762x39_Ball_57N231U.et         5
+  7.62x39 Ball 57N231/89            {3C30A5D3E1B91A23}Prefabs/Weapons/Ammo/Ammo_762x39_Ball_57N231_89.et       6
+  7.62x39 AP 7N23                   {F5FA521C0F7F1996}Prefabs/Weapons/Ammo/Ammo_762x39_AP_7N23.et              10
+  7.62x39 API 57BZ231               {C1C9A9F1AFA12CD1}Prefabs/Weapons/Ammo/Ammo_762x39_API_57BZ231.et          10
+  7.62x39 Tracer 57T231P            {B9AB11A51D795EC5}Prefabs/Weapons/Ammo/Ammo_762x39_Tracer_57T231P.et       7
+
+# ===========================================================
+# AMMO 7.62X51
+# ===========================================================
+Ammo 7.62x51
+  7.62x51 Ball M80                  {C14C5DE6F97F06F0}Prefabs/Weapons/Ammo/Ammo_762x51_Ball_M80.et             6
+  7.62x51 Ball M80A1                {80AB427C3A1E3363}Prefabs/Weapons/Ammo/Ammo_762x51_Ball_M80A1.et           7
+  7.62x51 Ball M118                 {B7DC0C3C3D1784C2}Prefabs/Weapons/Ammo/Ammo_762x51_Ball_M118.et            8
+  7.62x51 AP M61                    {9F39DD07E2860466}Prefabs/Weapons/Ammo/Ammo_762x51_AP_M61.et               10
+  7.62x51 AP M993                   {30839F4B814E9497}Prefabs/Weapons/Ammo/Ammo_762x51_AP_M993.et              12
+  7.62x51 Tracer M62                {9CCBDD2ACB73FFA9}Prefabs/Weapons/Ammo/Ammo_762x51_Tracer_M62.et           8
+  7.62x51 OTM M118LR                {0123C6F85A562AF0}Prefabs/Weapons/Ammo/Ammo_762x51_OTM_M118LR.et           10
+  7.62x51 OTM M118Mk316Mod0         {500DEC40730B0755}Prefabs/Weapons/Ammo/Ammo_762x51_OTM_M118Mk316Mod0.et    10
+  7.62x51 OTM M852                  {9E93A0F34E19039D}Prefabs/Weapons/Ammo/Ammo_762x51_OTM_M852.et             9
+
+# ===========================================================
+# AMMO 7.62X54R
+# ===========================================================
+Ammo 7.62x54R
+  7.62x54R Ball 7N1                 {A871758F07494882}Prefabs/Weapons/Ammo/Ammo_762x54r_Ball_7N1.et            7
+  7.62x54R Ball 57N323S             {AC29AE3D5ECD6390}Prefabs/Weapons/Ammo/Ammo_762x54r_Ball_57N323S.et        7
+  7.62x54R AP 7N13                  {05EA370CE87C6C80}Prefabs/Weapons/Ammo/Ammo_762x54r_AP_7N13.et             10
+  7.62x54R AP 7N14                  {34CBDF68B826C5DD}Prefabs/Weapons/Ammo/Ammo_762x54r_AP_7N14.et             10
+  7.62x54R API 7BZ3                 {3157B65339DC38A1}Prefabs/Weapons/Ammo/Ammo_762x54r_API_7BZ3.et            12
+  7.62x54R Tracer 7T2               {279B4FEECCA799BD}Prefabs/Weapons/Ammo/Ammo_762x54r_Tracer_7T2.et          9
+
+# ===========================================================
+# AMMO 9MM
+# ===========================================================
+Ammo 9mm
+  9x18 Ball 57N181S                 {4DE72DF927310A8B}Prefabs/Weapons/Ammo/Ammo_9x18_Ball_57N181S.et           3
+  9x18 AP 7N25                      {B3010C5DF1ED82ED}Prefabs/Weapons/Ammo/Ammo_9x18_AP_7N25.et                5
+  9x19 Ball M882                    {9D290AA75ADA4618}Prefabs/Weapons/Ammo/Ammo_9x19_Ball_M882.et              3
+  9x19 Ball M1152                   {8148DD2D63F51C2C}Prefabs/Weapons/Ammo/Ammo_9x19_Ball_M1152.et             4
+  9x19 AP 7N21                      {7687761020B01947}Prefabs/Weapons/Ammo/Ammo_9x19_AP_7N21.et                6
+  9x19 AP 7N31                      {018D1E98D412F637}Prefabs/Weapons/Ammo/Ammo_9x19_AP_7N31.et                8
+  9x19 HP JHP                       {9DA944F4D6A611BA}Prefabs/Weapons/Ammo/Ammo_9x19_HP_JHP.et                 5
+  9x19 HP M1153                     {5FD0CE76730FDC47}Prefabs/Weapons/Ammo/Ammo_9x19_HP_M1153.et               5
+  9x39 Ball SP5                     {43544DC90B3CB6B1}Prefabs/Weapons/Ammo/Ammo_9x39_Ball_SP5.et               10
+  9x39 AP SP6                       {2F007929B7F8399F}Prefabs/Weapons/Ammo/Ammo_9x39_AP_SP6.et                 12
+
+# ===========================================================
+# AMMO 12.7MM
+# ===========================================================
+Ammo 12.7mm
+  12.7x99 Ball M33                  {A4E070505C87AD42}Prefabs/Weapons/Ammo/Ammo_127x99_Ball_M33.et             15
+  12.7x99 AP M2                     {6DEC9F287271AB24}Prefabs/Weapons/Ammo/Ammo_127x99_AP_M2.et                20
+  12.7x99 APIT M20                  {39E8316BCCE5133A}Prefabs/Weapons/Ammo/Ammo_127x99_APIT_M20.et             22
+  12.7x99 Tracer M10                {678188455B777E61}Prefabs/Weapons/Ammo/Ammo_127x99_Tracer_M10.et           17
+  12.7x108 API B32                  {158CA8519769A66F}Prefabs/Weapons/Ammo/Ammo_127x108_API_B32.et             20
+  12.7x108 API BS                   {7FBC7E465D4DA14B}Prefabs/Weapons/Ammo/Ammo_127x108_API_BS.et              22
+  12.7x108 APIT BZT44               {27E671E1F169ED18}Prefabs/Weapons/Ammo/Ammo_127x108_APIT_BZT44.et          22
+  14.5x114 API 57BZ561S             {AF3D459E8AE71B58}Prefabs/Weapons/Ammo/Ammo_145x114_API_57BZ561S.et        40
+  14.5x114 APIT 57BZT561S           {DDC9BE44E2BD135B}Prefabs/Weapons/Ammo/Ammo_145x114_APIT_57BZT561S.et      45
+  14.5x114 IAI 7Z1                  {FBBF91CB9F696344}Prefabs/Weapons/Ammo/Ammo_145x114_IAI_7Z1.et             40
+
+# ===========================================================
+# MAGAZINES AK/RPK (5.45X39)
+# ===========================================================
+Magazines AK/RPK (5.45x39)
+  AK 30rnd Ball                     {BBB50A815A2F916B}Prefabs/Weapons/Magazines/Magazine_545x39_AK_30rnd_Ball.et 200
+  AK 30rnd Tracer                   {E5912E45754CD421}Prefabs/Weapons/Magazines/Magazine_545x39_AK_30rnd_Tracer.et 250
+  AK 30rnd Last 5 Tracer            {0A84AA5A3884176F}Prefabs/Weapons/Magazines/Magazine_545x39_AK_30rnd_Last_5Tracer.et 225
+  RPK 45rnd Ball                    {BC74DAC891D48540}Prefabs/Weapons/Magazines/Magazine_545x39_RPK_45rnd_Ball.et 300
+  RPK 45rnd 4Ball 1Tracer           {D78C667F59829717}Prefabs/Weapons/Magazines/Magazine_545x39_RPK_45rnd_4Ball_1Tracer.et 325
+  RPK 45rnd Tracer                  {5897D01F41DB5D2D}Prefabs/Weapons/Magazines/Magazine_545x39_RPK_45rnd_Tracer.et 375
+
+# ===========================================================
+# MAGAZINES STANAG (5.56X45)
+# ===========================================================
+Magazines STANAG (5.56x45)
+  STANAG 30rnd M193 Ball            {FB5EB0F6D447E858}Prefabs/Weapons/Magazines/Magazine_556x45_STANAG_30rnd_M193_Ball.et 200
+  STANAG 30rnd M855 Ball            {2EBF60EF24B108FC}Prefabs/Weapons/Magazines/Magazine_556x45_STANAG_30rnd_M855_Ball.et 220
+  STANAG 30rnd M196 Tracer          {4575737B3D3A4505}Prefabs/Weapons/Magazines/Magazine_556x45_STANAG_30rnd_M196_Tracer.et 250
+  STANAG 30rnd M856 Tracer          {A9A385FE1F7BF4BD}Prefabs/Weapons/Magazines/Magazine_556x45_STANAG_30rnd_M856_Tracer.et 250
+  STANAG 30rnd M193 Last 5Tracer    {7ECA478D7C80ACC0}Prefabs/Weapons/Magazines/Magazine_556x45_STANAG_30rnd_M193_M196_Last_5Tracer.et 240
+  STANAG 30rnd M855 Last 5Tracer    {D8F2CA92583B23D3}Prefabs/Weapons/Magazines/Magazine_556x45_STANAG_30rnd_M855_M856_Last_5Tracer.et 260
+
+# ===========================================================
+# MAGAZINES M14 (7.62X51)
+# ===========================================================
+Magazines M14 (7.62x51)
+  M14 20rnd M80 Ball                {BCB5E5C608ECFF50}Prefabs/Weapons/Magazines/Magazine_762x51_M14_20rnd_M80.et 220
+  M14 20rnd M61 AP                  {C319540BC96AE9BB}Prefabs/Weapons/Magazines/Magazine_762x51_M14_20rnd_M61_AP.et 280
+  M14 20rnd M62 Tracer              {F7C9D35FB2AFADFF}Prefabs/Weapons/Magazines/Magazine_762x51_M14_20rnd_M62_Tracer.et 260
+  M14 20rnd Special Ball            {627255315038152A}Prefabs/Weapons/Magazines/Magazine_762x51_M14_20rnd_SpecialBall.et 240
+
+# ===========================================================
+# LMG BOXES (5.56 M249 / 7.62 M60 / 7.62 PK)
+# ===========================================================
+LMG Boxes (5.56 M249 / 7.62 M60 / 7.62 PK)
+  M249 200rnd Ball                  {4FCBBDF274FD2157}Prefabs/Weapons/Magazines/Box_556x45_M249_200rnd_Ball.et 600
+  M249 200rnd Tracer                {4EEDDB27C023B8B9}Prefabs/Weapons/Magazines/Box_556x45_M249_200rnd_Tracer.et 700
+  M249 200rnd 4Ball 1Tracer         {06D722FC2666EB83}Prefabs/Weapons/Magazines/Box_556x45_M249_200rnd_4Ball_1Tracer.et 650
+  M60 100rnd Ball                   {982F5BA41A3738CF}Prefabs/Weapons/Magazines/Box_762x51_M60_100rnd_Ball.et  500
+  M60 100rnd AP                     {75632A0CA07D3817}Prefabs/Weapons/Magazines/Box_762x51_M60_100rnd_AP.et    600
+  M60 100rnd Tracer                 {AD8AB93729348C3E}Prefabs/Weapons/Magazines/Box_762x51_M60_100rnd_Tracer.et 550
+  M60 100rnd 4Ball 1Tracer          {4D2C1E8F3A81F894}Prefabs/Weapons/Magazines/Box_762x51_M60_100rnd_4Ball_1Tracer.et 525
+  M60 100rnd 4AP 1Tracer            {AAF51CFA75A9CF8B}Prefabs/Weapons/Magazines/Box_762x51_M60_100rnd_4AP_1Tracer.et 650
+  PK 100rnd Ball                    {A6737DA00653A39C}Prefabs/Weapons/Magazines/Box_762x54_PK_100rnd_Ball.et   500
+  PK 100rnd Tracer                  {BEEA49E27174B224}Prefabs/Weapons/Magazines/Box_762x54_PK_100rnd_Tracer.et 550
+  PK 100rnd 4Ball 1Tracer           {E5E9C5897CF47F44}Prefabs/Weapons/Magazines/Box_762x54_PK_100rnd_4Ball_1Tracer.et 525
+  M2 .50cal 100rnd Ball             {B8921B7BFE8CAEF0}Prefabs/Weapons/Magazines/Box_127x99_M2_100rnd_Ball.et   1200
+  M2 .50cal 100rnd AP               {25CE9A2A7EAD5B9D}Prefabs/Weapons/Magazines/Box_127x99_M2_100rnd_AP.et     1400
+  M2 .50cal 100rnd Tracer           {4068585808DF8DF2}Prefabs/Weapons/Magazines/Box_127x99_M2_100rnd_Tracer.et 1300
+  M2 .50cal 100rnd 4AP 1APIT        {C820846B0521423B}Prefabs/Weapons/Magazines/Box_127x99_M2_100rnd_4AP_1APIT.et 1500
+  M2 .50cal 100rnd 4AP 1Tracer      {50A242E5D9742C62}Prefabs/Weapons/Magazines/Box_127x99_M2_100rnd_4AP_1Tracer.et 1450
+  M2 .50cal 100rnd 4Ball 1Tracer    {CC7F787C3ECF678F}Prefabs/Weapons/Magazines/Box_127x99_M2_100rnd_4Ball_1Tracer.et 1350

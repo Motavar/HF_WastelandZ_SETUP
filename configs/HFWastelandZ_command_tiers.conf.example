@@ -1,0 +1,80 @@
+# ============================================================
+# HFWastelandZ_command_tiers.conf — server-side per-command tier overrides
+#
+# Copy this file to:  $profile:HFWastelandZ_command_tiers.conf
+# (Windows server typical path:
+#  C:\Users\<you>\Documents\My Games\ArmaReforger\profile\
+#  Workbench host typical path:
+#  C:\Users\<you>\Documents\My Games\ArmaReforgerWorkbench\profile\ )
+#
+# Restart the server to pick up changes. There is no live reload yet.
+#
+# FORMAT
+#   <root>.<sub> = <TIER>
+#   # comments start with # or //
+#
+# TIER KEYWORDS  (case-sensitive)
+#   EVERYONE  TRUSTED  MOD  ADMIN  OWNER
+#
+# ROOT-ONLY commands (e.g. /echo, /help, /menu) use an empty subcommand:
+#   echo. = EVERYONE
+#   help. = EVERYONE
+#   menu. = EVERYONE
+#
+# AUTHORITY MODEL
+#   Server is the only machine that reads this file. Clients always use
+#   the hardcoded code defaults for their /menu / /help / F8 COMMANDS
+#   tab filtering. A client may see a command in /menu that the server
+#   denies, or vice versa — the server is the sole authority on whether
+#   the command actually runs.
+#
+# AUDIT
+#   On server restart, every overridden command logs a line like:
+#     [HF][LOG][ADMIN] HFCommandRegistry: /admin god tier overridden by config: 30 -> 40
+#   Grep `tier overridden by config` after restart to confirm your edits.
+#
+# CODE DEFAULTS  (the value in HFCommandRegistry.Register call per command)
+#   /help              EVERYONE   /menu             EVERYONE   /echo             EVERYONE
+#   /admin who         MOD        /admin kick       MOD        /admin tp         MOD
+#   /admin tphere      MOD        /admin heal       MOD        /admin god        ADMIN
+#   /admin down        ADMIN      /admin revive     ADMIN
+#   /mission new       ADMIN      /mission save     ADMIN      /mission cancel   ADMIN
+#   /spot capture      ADMIN      /spot save        ADMIN      /spot cancel      ADMIN
+#   /spot tier         ADMIN      /spot type        ADMIN      /spot tag         ADMIN
+#   /spot yaw          ADMIN      /spot mindist     ADMIN      /spot cd          ADMIN
+#   /spot enabled      ADMIN      /spot show        ADMIN      /spot hide        ADMIN
+#   /spot list         ADMIN      /spot delete      ADMIN      /spot delete_name ADMIN
+#   /spot disable      ADMIN      /spot enable      ADMIN      /spot tp          ADMIN
+# ============================================================
+
+# ─── EXAMPLES — uncomment any line to override that command ───
+#
+# (Steam64 UIDs in /admin command examples elsewhere in this repo are
+# always the placeholder pattern 76561198XXXXXXXXX — replace each X
+# with your own digits. Real player UIDs look like 7656119xxxxxxxxxx.)
+
+
+# Lock god mode to OWNER-only (so even regular ADMIN can't use it)
+# admin.god = OWNER
+
+# Promote /admin kick from MOD to ADMIN (no moderator kicks)
+# admin.kick = ADMIN
+
+# Demote /admin kick to TRUSTED (donor helpers can kick)
+# admin.kick = TRUSTED
+
+# Open /admin who to everyone — anyone can see who's online
+# admin.who = EVERYONE
+
+# Hide the /echo smoke-test from non-mods
+# echo. = MOD
+
+# Promote /spot capture from ADMIN to TRUSTED so trusted helpers can author missions
+# spot.capture = TRUSTED
+
+# Lock all mission editing to OWNER-only on a strict server
+# mission.new    = OWNER
+# mission.save   = OWNER
+# mission.cancel = OWNER
+
+# ─── Add your overrides below this line ───

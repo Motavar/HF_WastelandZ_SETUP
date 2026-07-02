@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "server_uptime_warmup_announce",
+  "enabled": true,
+  "cooldown_seconds": 999999,
+  "logic": "ALL",
+
+  "condition_types": ["server_uptime"],
+  "condition_arg1":  [">="],
+  "condition_arg2":  [""],
+  "condition_arg3":  ["300"],
+
+  "action_type": "announce",
+  "action_arg1": "Wasteland missions warming up — first activity in 5 minutes",
+  "action_arg2": "",
+  "action_arg3": ""
+}

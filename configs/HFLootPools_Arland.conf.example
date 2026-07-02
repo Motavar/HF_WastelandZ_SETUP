@@ -1,0 +1,220 @@
+# ============================================================
+# HFWastelandZ — Loot Pool Definitions (Arland)
+# File: HFLootPools_<MapName>.conf  (this example is for Arland)
+# Location: $profile: directory
+#
+# WHAT THIS IS
+# Loot pools define what items can spawn in town crates.
+# Each pool is named to match a town type (civilian, military,
+# industrial, special). When a town spawns its loot crates,
+# each crate draws from the pool matching the town's type.
+#
+# HOW LOOT ROLLS WORK
+# Each crate gets exactly one roll from GUARANTEED (always
+# spawns 1 item), then a separate dice roll against the BONUS
+# section. The BONUS chance is multiplied by the town's tier
+# bonus_chance_mult (see HFTownTiers.conf).
+#
+# Example: military pool, large tier town (2.0x multiplier):
+#   - Guaranteed: always 1 weapon from the GUARANTEED list
+#   - Bonus: 15% base × 2.0 = 30% chance of a bonus item
+#   - If weapon rolled, bundled magazines (mags:N) spawn too
+#
+# WEIGHT SYSTEM
+# Within each section, items have a weight:N value. Higher
+# weight = more likely to be picked. Weights are relative:
+#   weight:30 + weight:30 + weight:20 + weight:20 = 100 total
+#   First item: 30% chance, last item: 20% chance
+#
+# MAGAZINES
+# Items with mags:N are weapons. When rolled, N magazines of
+# the weapon's compatible type are automatically spawned into
+# the same crate. The magazine prefab is auto-detected from
+# the weapon's BaseMuzzleComponent — no need to specify it.
+#
+# ADDING ITEMS
+# 1. Find the item's prefab GUID+path (use the store catalog
+#    or Workbench resource browser)
+# 2. Add a line under the appropriate pool and section
+# 3. Format: {GUID}Prefabs/Path/Item.et  weight:N  [mags:N]
+# 4. The server validates every prefab at boot — invalid paths
+#    are skipped with a warning log
+#
+# WORLD POOL
+# The "world" pool is used by the World Loot Scanner
+# for loose items inside buildings. It should contain survival
+# items only — no weapons. World loot is casual exploration
+# flavor, not a combat source.
+#
+# ============================================================
+
+# ============================================================
+# MILITARY — bases, airfields, depots
+# High-value weapons, combat gear. The premier loot pool.
+# ============================================================
+[POOL military]
+GUARANTEED
+  {FA5C25BF66A53DCF}Prefabs/Weapons/Rifles/AK74/Rifle_AK74.et                     weight:20  mags:2
+  {3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et                     weight:20  mags:2
+  {9C948630078D154D}Prefabs/Weapons/Rifles/VZ58/Rifle_VZ58P.et                    weight:15  mags:2
+  {BFEA719491610A45}Prefabs/Weapons/Rifles/AKS74U/Rifle_AKS74U.et                weight:15  mags:2
+  {C0F7DD85A86B2900}Prefabs/Weapons/Handguns/PM/Handgun_PM.et                     weight:15  mags:3
+  {1353C6EAD1DCFE43}Prefabs/Weapons/Handguns/M9/Handgun_M9.et                     weight:15  mags:3
+BONUS chance:15
+  {06B68C58B72EAAC6}Prefabs/Items/Equipment/Backpacks/Backpack_ALICE_Medium.et    weight:20
+  {FE5C49069C2499D9}Prefabs/Characters/HeadGear/Helmet_PASGT_01/Helmet_PASGT_01_cover.et weight:20
+  {A7E6D7ECD5F684D7}Prefabs/Characters/HeadGear/Helmet_SSh68_01/Helmet_SSh68_01.et weight:20
+  {0D9A5DCF89AE7AA9}Prefabs/Items/Medicine/MorphineInjection_01/MorphineInjection_01.et weight:15
+  {2835A0EA3B79E63E}Prefabs/Characters/Vests/Vest_ALICE/Variants/Vest_ALICE_rifleman.et weight:15
+  {E8F00BF730225B00}Prefabs/Weapons/Grenades/Grenade_M67.et                       weight:10
+
+# ============================================================
+# CIVILIAN — towns, villages, residential areas
+# Basic rifles + pistols + minimal medical. Enough to get geared.
+# Premium gear (optics, marksman rifles, LMGs, launchers) = missions + store.
+# ============================================================
+[POOL civilian]
+GUARANTEED
+  {9C948630078D154D}Prefabs/Weapons/Rifles/VZ58/Rifle_VZ58P.et                    weight:30  mags:2
+  {BFEA719491610A45}Prefabs/Weapons/Rifles/AKS74U/Rifle_AKS74U.et                weight:20  mags:2
+  {C0F7DD85A86B2900}Prefabs/Weapons/Handguns/PM/Handgun_PM.et                     weight:15  mags:3
+  {1353C6EAD1DCFE43}Prefabs/Weapons/Handguns/M9/Handgun_M9.et                     weight:15  mags:3
+  {A81F501D3EF6F38E}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et weight:10
+  {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et weight:10
+BONUS chance:15
+  {41A9C55B61F375F0}Prefabs/Items/Equipment/Backpacks/Backpack_Kolobok.et          weight:25
+  {FDA7B6630DB87991}Prefabs/Items/Equipment/Backpacks/Backpack_M70_Swiss.et        weight:25
+  {BBA08EC4EC40FA94}Prefabs/Characters/Uniforms/Jacket_M70.et                     weight:15
+  {D70216B1B2889129}Prefabs/Items/Medicine/Tourniquet_01/Tourniquet_US_01.et       weight:15
+  {0D9A5DCF89AE7AA9}Prefabs/Items/Medicine/MorphineInjection_01/MorphineInjection_01.et weight:20
+
+# ============================================================
+# INDUSTRIAL — factories, warehouses, ports
+# Grenades, smoke, tools, mixed utility gear.
+# ============================================================
+[POOL industrial]
+GUARANTEED
+  {E8F00BF730225B00}Prefabs/Weapons/Grenades/Grenade_M67.et                       weight:20
+  {645C73791ECA1698}Prefabs/Weapons/Grenades/Grenade_RGD5.et                      weight:20
+  {D41D22DD1B8E921E}Prefabs/Weapons/Grenades/M18/Smoke_M18_Green.et               weight:15
+  {77EAE5E07DC4678A}Prefabs/Weapons/Grenades/Smoke_RDG2.et                        weight:15
+  {D70216B1B2889129}Prefabs/Items/Medicine/Tourniquet_01/Tourniquet_US_01.et       weight:15
+  {80E75A71C29190DB}Prefabs/Items/Medicine/Tourniquet_01/Tourniquet_USSR_01.et     weight:15
+BONUS chance:15
+  {06B68C58B72EAAC6}Prefabs/Items/Equipment/Backpacks/Backpack_ALICE_Medium.et    weight:25
+  {00E36F41CA310E2A}Prefabs/Items/Medicine/SalineBag_01/SalineBag_US_01.et        weight:25
+  {527D7C5D2E476BDC}Prefabs/Items/Medicine/SalineBag_01/SalineBag_USSR_01.et      weight:25
+  {F1E29085C62F0D55}Prefabs/Characters/Uniforms/Jacket_KZS/Jacket_KZS.et         weight:25
+
+# ============================================================
+# SPECIAL — services, cultural, commercial (hospitals, gov,
+# shops, churches, etc). Mirrors military pool so these buildings
+# feel meaningful, plus a tier-3 framed backpack as signature find.
+# ============================================================
+[POOL special]
+GUARANTEED
+  {FA5C25BF66A53DCF}Prefabs/Weapons/Rifles/AK74/Rifle_AK74.et                     weight:20  mags:2
+  {3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et                     weight:20  mags:2
+  {9C948630078D154D}Prefabs/Weapons/Rifles/VZ58/Rifle_VZ58P.et                    weight:15  mags:2
+  {BFEA719491610A45}Prefabs/Weapons/Rifles/AKS74U/Rifle_AKS74U.et                weight:15  mags:2
+  {C0F7DD85A86B2900}Prefabs/Weapons/Handguns/PM/Handgun_PM.et                     weight:15  mags:3
+  {1353C6EAD1DCFE43}Prefabs/Weapons/Handguns/M9/Handgun_M9.et                     weight:15  mags:3
+BONUS chance:20
+  {5C5C6EE05EE2FF1A}Prefabs/Items/Equipment/Backpacks/Backpack_ALICE_Medium_assembled.et weight:20
+  {06B68C58B72EAAC6}Prefabs/Items/Equipment/Backpacks/Backpack_ALICE_Medium.et    weight:15
+  {FE5C49069C2499D9}Prefabs/Characters/HeadGear/Helmet_PASGT_01/Helmet_PASGT_01_cover.et weight:15
+  {A7E6D7ECD5F684D7}Prefabs/Characters/HeadGear/Helmet_SSh68_01/Helmet_SSh68_01.et weight:15
+  {0D9A5DCF89AE7AA9}Prefabs/Items/Medicine/MorphineInjection_01/MorphineInjection_01.et weight:15
+  {2835A0EA3B79E63E}Prefabs/Characters/Vests/Vest_ALICE/Variants/Vest_ALICE_rifleman.et weight:15
+  {E8F00BF730225B00}Prefabs/Weapons/Grenades/Grenade_M67.et                       weight:10
+
+# ============================================================
+# VEHICLE TRUNK — CIVILIAN
+# Applied to vehicles spawned in civilian sections of
+# HFWastelandZ_vehicle_spawn.conf (Cars, Vans, Civilian Jeeps,
+# Civilian Utility). Mirrors the civilian town pool weapons so
+# "a vehicle in a civilian town" trunk-loots something consistent
+# with "a crate in that same town". Duplicate of civilian GUARANTEED
+# weapons as a starting point — tune independently as desired.
+# No BONUS section — trunk loot is basic weapons only per design
+# doc Decision 10. 90% of town-spawned vehicles roll this pool
+# (VEHICLE_TRUNK_LOOT_CHANCE, server-configurable).
+# ============================================================
+[POOL vehicle_civilian_trunk]
+GUARANTEED
+  {9C948630078D154D}Prefabs/Weapons/Rifles/VZ58/Rifle_VZ58P.et                    weight:30  mags:2
+  {BFEA719491610A45}Prefabs/Weapons/Rifles/AKS74U/Rifle_AKS74U.et                weight:20  mags:2
+  {C0F7DD85A86B2900}Prefabs/Weapons/Handguns/PM/Handgun_PM.et                     weight:15  mags:3
+  {1353C6EAD1DCFE43}Prefabs/Weapons/Handguns/M9/Handgun_M9.et                     weight:15  mags:3
+  {A81F501D3EF6F38E}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et weight:10
+  {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et weight:10
+
+# ============================================================
+# VEHICLE TRUNK — MILITARY
+# Applied to vehicles in military sections of the spawn catalog
+# (Military Jeeps *, HMMWV, Trucks *, Specialized Trucks *,
+# Ambulances, Military Utility). Mirrors the military town pool
+# weapons. Duplicate of military GUARANTEED weapons.
+# ============================================================
+[POOL vehicle_military_trunk]
+GUARANTEED
+  {FA5C25BF66A53DCF}Prefabs/Weapons/Rifles/AK74/Rifle_AK74.et                     weight:20  mags:2
+  {3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et                     weight:20  mags:2
+  {9C948630078D154D}Prefabs/Weapons/Rifles/VZ58/Rifle_VZ58P.et                    weight:15  mags:2
+  {BFEA719491610A45}Prefabs/Weapons/Rifles/AKS74U/Rifle_AKS74U.et                weight:15  mags:2
+  {C0F7DD85A86B2900}Prefabs/Weapons/Handguns/PM/Handgun_PM.et                     weight:15  mags:3
+  {1353C6EAD1DCFE43}Prefabs/Weapons/Handguns/M9/Handgun_M9.et                     weight:15  mags:3
+
+# ============================================================
+# MISSION REWARD POOLS (Phase 6 — Mission System)
+# Used by mission reward crates. Pool name is referenced from
+# the mission template JSON via rewards[].loot_set, e.g.:
+#   "rewards": [
+#     { "type": "CRATE", "loot_set": "MEDIUM_WEAPON_CRATE", "count": 2 }
+#   ]
+# Pool name lookup is CASE-SENSITIVE — match the JSON exactly.
+# Phase 1 keeps these to weapons + bundled mags only. Add armor /
+# medical / optics in Phase 2 once mission tiers are tuned.
+# ============================================================
+
+# EASY tier — pistols + AKS-74U short carbine. Light loadout.
+[POOL EASY_CACHE]
+GUARANTEED
+  {C0F7DD85A86B2900}Prefabs/Weapons/Handguns/PM/Handgun_PM.et                     weight:30  mags:3
+  {1353C6EAD1DCFE43}Prefabs/Weapons/Handguns/M9/Handgun_M9.et                     weight:30  mags:3
+  {BFEA719491610A45}Prefabs/Weapons/Rifles/AKS74U/Rifle_AKS74U.et                 weight:40  mags:2
+
+# MEDIUM tier — standard service rifles. The bread-and-butter.
+[POOL MEDIUM_WEAPON_CRATE]
+GUARANTEED
+  {FA5C25BF66A53DCF}Prefabs/Weapons/Rifles/AK74/Rifle_AK74.et                     weight:35  mags:3
+  {3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et                     weight:35  mags:3
+  {9C948630078D154D}Prefabs/Weapons/Rifles/VZ58/Rifle_VZ58P.et                    weight:30  mags:3
+
+# HIGH tier — same rifles, more mags + grenades. Stronger pool
+# tier-distinct content (LMGs, marksman rifles) lands when those
+# prefabs are catalogued in Phase 2.
+[POOL HIGH_WEAPON_CRATE]
+GUARANTEED
+  {FA5C25BF66A53DCF}Prefabs/Weapons/Rifles/AK74/Rifle_AK74.et                     weight:30  mags:4
+  {3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et                     weight:30  mags:4
+  {9C948630078D154D}Prefabs/Weapons/Rifles/VZ58/Rifle_VZ58P.et                    weight:25  mags:4
+  {E8F00BF730225B00}Prefabs/Weapons/Grenades/Grenade_M67.et                       weight:8
+  {645C73791ECA1698}Prefabs/Weapons/Grenades/Grenade_RGD5.et                      weight:7
+
+# ============================================================
+# WORLD — building loot (World Loot Scanner)
+# Survival items ONLY — no weapons. Casual exploration finds.
+# ============================================================
+[POOL world]
+GUARANTEED
+  {A81F501D3EF6F38E}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_US_01.et weight:25
+  {C3F1FA1E2EC2B345}Prefabs/Items/Medicine/FieldDressing_01/FieldDressing_USSR_01.et weight:25
+  {CDCC313B2FB76FE7}Prefabs/Items/Medicine/FieldDressing_01/Gauze_01.et            weight:25
+  {BE19A15F1073E7BD}Prefabs/Characters/HeadGear/Hat_Knitted_01/Hat_Knitted_01_black.et weight:15
+  {7F1451790F3D75BD}Prefabs/Characters/Uniforms/Jacket_Raincoat_01/Jacket_Raincoat_01_green.et weight:10
+BONUS chance:8
+  {41A9C55B61F375F0}Prefabs/Items/Equipment/Backpacks/Backpack_Kolobok.et          weight:30
+  {FDA7B6630DB87991}Prefabs/Items/Equipment/Backpacks/Backpack_M70_Swiss.et        weight:30
+  {0D9A5DCF89AE7AA9}Prefabs/Items/Medicine/MorphineInjection_01/MorphineInjection_01.et weight:20
+  {D70216B1B2889129}Prefabs/Items/Medicine/Tourniquet_01/Tourniquet_US_01.et       weight:20

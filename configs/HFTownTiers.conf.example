@@ -1,0 +1,84 @@
+# ============================================================
+# HFWastelandZ — Town Tier Definitions
+# File: HFTownTiers.conf
+# Location: $profile: directory
+#
+# WHAT THIS IS
+# Town tiers control how many loot crates and vehicles spawn
+# per town, based on the town's radius. Bigger towns get more
+# slots AND better bonus loot odds.
+#
+# HOW IT WORKS
+# At server boot, each town's radius is checked against the
+# tier brackets below. The matching tier determines:
+#   - loot_slots:       Number of loot crates placed in the town
+#   - vehicle_slots:    Number of vehicles spawned
+#   - bonus_chance_mult: Multiplier on the loot pool's BONUS chance
+#
+# Example: A military town with radius 500 matches "large" tier.
+# It gets 10 loot crates, each with a 30% bonus chance (base 15%
+# from the military pool × 2.0 multiplier).
+#
+# MASTER SCALER INTERACTION
+# The LOOT_DENSITY_GLOBAL_MULT key in HFWastelandZ_server.conf
+# is applied ON TOP of the loot_slots count below. So if
+# loot_slots = 10 and the global mult is 1.5, the town gets
+# ceil(10 × 1.5) = 15 crates. Same for VEHICLE_DENSITY_GLOBAL_MULT.
+#
+# CUSTOMIZATION
+# - Change the radius brackets to redefine what "small" means
+# - Change slot counts for more/fewer crates per tier
+# - Change bonus_chance_mult for loot quality tuning
+# - Add custom tiers (e.g. [TIER tiny] for outposts)
+# - Tiers must NOT overlap in radius ranges
+# - Per-town vehicle count can override this via veh:N in
+#   HFTowns_<map>.conf (e.g. veh:0 = no vehicles at that town)
+#
+# GAMEPLAY IMPACT
+# This is a HIGH-IMPACT config. Doubling loot_slots doubles
+# the gear available in every town of that tier. Increasing
+# bonus_chance_mult makes rare items (SVD, backpacks, armor)
+# appear more frequently.
+#
+# PRESETS
+#   Hardcore:  loot_slots 2/4/7,   bonus_chance_mult 0.5/1.0/1.5
+#   Default:   loot_slots 3/6/10,  bonus_chance_mult 1.0/1.5/2.0
+#   Casual:    loot_slots 5/10/16, bonus_chance_mult 1.5/2.0/3.0
+#
+# ============================================================
+# FORMAT
+# ============================================================
+#
+#   [TIER name]
+#   radius_min       <min radius in meters>
+#   radius_max       <max radius in meters>
+#   loot_slots       <number of loot crates>
+#   vehicle_slots    <number of vehicles>
+#   bonus_chance_mult <multiplier on pool bonus chance>
+#   notes            "<documentation only, not used at runtime>"
+#
+# ============================================================
+
+[TIER small]
+radius_min            0
+radius_max            150
+loot_slots            3
+vehicle_slots         2
+bonus_chance_mult     1.0          # uses pool's base bonus chance unchanged
+notes                 "Outposts, fishing villages — basic survival loot"
+
+[TIER medium]
+radius_min            151
+radius_max            300
+loot_slots            6
+vehicle_slots         6
+bonus_chance_mult     1.5          # 50% better bonus odds
+notes                 "Towns and small bases — solid mid-tier loot"
+
+[TIER large]
+radius_min            301
+radius_max            9999
+loot_slots            10
+vehicle_slots         10
+bonus_chance_mult     2.0          # double bonus chance
+notes                 "Cities and military bases — top-tier loot"

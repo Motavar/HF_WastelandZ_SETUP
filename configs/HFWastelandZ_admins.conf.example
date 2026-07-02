@@ -1,0 +1,33 @@
+# ============================================================
+# HFWastelandZ — Admin Configuration
+# File: $profile:HFWastelandZ_admins.conf
+# ============================================================
+#
+# Defines server administrators by Steam64 ID.
+# Admins get elevated access: Game Master (Zeus) mode,
+# future in-game admin panel, dev tools visibility.
+#
+# FORMAT:
+#   ADMIN <Steam64ID>   — one admin per line
+#
+# Steam64 IDs are 17-digit numbers. Find yours at:
+#   https://steamid.io/ or in your Steam profile URL
+#
+# BEHAVIOR:
+#   No config file      → no admins, GM access denied for all
+#   Empty config        → no admins, GM access denied for all
+#   ADMIN entries       → listed players get GM/admin access
+#
+# PERMISSIONS (future — currently all admins are full access):
+#   ADMIN <Steam64ID>           — full admin (GM, kick, ban, teleport, etc.)
+#   MODERATOR <Steam64ID>       — limited (kick, mute — future feature)
+#
+# ============================================================
+
+# --- ADMINS ---
+# Add one ADMIN line per server administrator
+# Example:
+#   ADMIN 76561198012345678
+
+# ADMIN 76561198012345678
+# ADMIN 76561198087654321

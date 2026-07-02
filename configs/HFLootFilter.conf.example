@@ -1,0 +1,89 @@
+# ============================================================
+# HFLootFilter.conf — Loot crate building allowlist
+# File: $profile:HFLootFilter.conf (copy this .example, drop the suffix)
+#
+# Controls which buildings receive loot crates. Applied during the
+# town scan in HFSpawnUtils.FindBuildingInteriorPositions.
+#
+# Format: one rule per line.
+#   ALLOW <path-substring>
+#   DENY  <path-substring>
+# Comments: # or //
+#
+# RESOLUTION (firewall-style, FIRST-MATCH-WINS):
+#   1. Walk rules top-to-bottom.
+#   2. First rule whose <path-substring> is contained in the prefab
+#      path decides the result.
+#   3. If NO rule matches, the path is REJECTED (default-deny, safer
+#      for custom-map content).
+#
+# Admin convention: put SPECIFIC rules first, BROAD rules last.
+# Examples:
+#   DENY /Industrial/Cranes/    # block cranes
+#   ALLOW /Industrial/          # allow all other industrial
+# A prefab path containing both patterns hits DENY first → rejected.
+#
+# If this file is missing entirely, the server falls back to its
+# hardcoded defaults (identical to the rules below) so loot still
+# spawns. Edit this file to customise; remove it to restore defaults.
+# ============================================================
+
+# --- DENY non-building categories (debris, destruction variants, etc.) ---
+DENY /BuildingParts/
+DENY /Debris/
+DENY /Signs/
+DENY /Walls/
+DENY /Dst/
+
+# --- Specific ALLOWs inside Infrastructure ---
+# Infrastructure as a category is mostly poles, railings, lamps —
+# not lootable. But a few sub-trees contain real buildings with
+# doors and ladders. These must appear BEFORE any broader Infrastructure
+# deny rule an admin might add later.
+ALLOW /Infrastructure/Naval/Lighthouse/
+ALLOW /Infrastructure/Waterworks/
+ALLOW /Infrastructure/Power/
+
+# --- Broad ALLOW categories (actual buildings) ---
+ALLOW /Houses/
+ALLOW /Commercial/
+ALLOW /Services/
+ALLOW /Cultural/
+ALLOW /Ruins/
+
+# Agriculture — specific sub-dirs only (skip Gates, Hopper, Manure, etc.)
+# Note: "Barn" singular — the directory is not "Barns".
+ALLOW /Agriculture/Barn
+ALLOW /Agriculture/CowShed/
+ALLOW /Agriculture/Hayloft/
+ALLOW /Agriculture/Greenhouse/
+
+# Industrial — specific sub-dirs (skip Cableways, Cranes, Pipelines, etc.)
+ALLOW /Industrial/Houses/
+ALLOW /Industrial/Garages/
+ALLOW /Industrial/Silos/
+
+# Military — houses, barracks, depots, bunkers, training facilities.
+# Military/Airport is covered by the /Airport/ rule below.
+ALLOW /Military/Houses/
+ALLOW /Military/Barracks
+ALLOW /Military/Depots/
+ALLOW /Military/Bunkers/
+ALLOW /Military/Training/
+ALLOW /Military/Fortifications/
+
+# Airport — ControlTower, Hangar (top-level Airport/ AND Military/Airport/)
+ALLOW /Airport/
+
+# Recreation — cottage, gym, rec center, beach structures
+ALLOW /Recreation/
+
+# Forest — hunter deer stands (climbable platforms via ladder)
+ALLOW /Forest/DeerStands/
+
+# ============================================================
+# Everything else is REJECTED by default (no rule matches).
+# Add more ALLOW rules above to accept custom prefabs from your
+# map. Add DENY rules at the TOP to block specific prefabs even
+# if a broader ALLOW rule below would accept them.
+# ============================================================
