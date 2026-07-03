@@ -201,7 +201,7 @@
     <dt>gateway/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
     <dt>gateway/start_gateway.bat</dt><dd>Windows one-click start.</dd>
     <dt>configs/</dt><dd>Example server settings (loot, vehicles, towns, admins&hellip;). Rename off <code class="inline">.example</code> and drop into your server profile.</dd>
-    <dt>missions/</dt><dd>A small set of ready-to-run starter missions.</dd>
+    <dt>missions/</dt><dd>Reward templates for the mission system, plus a guide to authoring missions in-game.</dd>
   </dl></div>
 
   <div class="note tip">
@@ -295,7 +295,7 @@ FLUSH PRIVILEGES;</pre></div>
       <li>In your server profile, set <code class="inline">GATEWAY_URL</code> to <code class="inline">http://127.0.0.1:5000/</code>.</li>
       <li>Put the <b>same</b> <code class="inline">api_key</code> from Step 5 into <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
       <li>Take the files in <code class="inline">configs\</code>, remove <code class="inline">.example</code> from each name, and copy them into your server profile folder.</li>
-      <li>Copy the <code class="inline">missions</code> folder into your profile&rsquo;s <code class="inline">missions</code> folder.</li>
+      <li>Copy <code class="inline">missions\rewards\</code> into <code class="inline">&lt;profile&gt;\hf_wastelandz\missions\rewards\</code> — these are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</li>
     </ul>
     <p class="muted">Restart your game server. Player data now saves to the database. You&rsquo;re live.</p>
   </div>
@@ -404,7 +404,7 @@ FLUSH PRIVILEGES;</pre></div>
       <li>Set <code class="inline">GATEWAY_URL</code> to <code class="inline">http://127.0.0.1:5000/</code> in your server profile.</li>
       <li>Put the <b>same</b> <code class="inline">api_key</code> from Step 5 into <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
       <li>Rename the <code class="inline">configs/</code> files off <code class="inline">.example</code> and copy them into your server profile.</li>
-      <li>Copy the <code class="inline">missions</code> folder into your profile&rsquo;s <code class="inline">missions</code> folder.</li>
+      <li>Copy <code class="inline">missions/rewards/</code> into <code class="inline">&lt;profile&gt;/hf_wastelandz/missions/rewards/</code> — these are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</li>
     </ul>
     <p class="muted">Restart the game server. Player data now persists. You&rsquo;re live.</p>
   </div>

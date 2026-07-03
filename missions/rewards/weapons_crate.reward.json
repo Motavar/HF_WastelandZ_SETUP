@@ -1,0 +1,27 @@
+{
+ "schema_version": 1,
+ "name": "weapons_crate",
+ "display": "Weapons Crate — Sniper Loadout",
+ "kind": "LOOT_CRATE",
+ "preview_prefab": "",
+ "reward_prefab": "",
+ "lock_flags": 0,
+ "crate_prefab": "{91737DF9D49B5228}HFWastelandZ/Prefabs/Props/HFLootCrate.et",
+ "loot_pool_name": "",
+ "explicit_items": [
+  "{6415B7923DE28C1B}Prefabs/Weapons/Rifles/SVD/Rifle_SVD_PSO.et",
+  "{9CCB46C6EE632C1A}Prefabs/Weapons/Magazines/Magazine_762x54_SVD_10rnd_Sniper.et",
+  "{81EB948E6414BD6F}Prefabs/Weapons/Rifles/M14/Rifle_M21_ARTII.et",
+  "{627255315038152A}Prefabs/Weapons/Magazines/Magazine_762x51_M14_20rnd_SpecialBall.et",
+  "{1B332B99C72DAF8B}Prefabs/Weapons/Rifles/AK74/Variants/Rifle_AK74N_PBS4_1P29.et",
+  "{0A84AA5A3884176F}Prefabs/Weapons/Magazines/Magazine_545x39_AK_30rnd_Last_5Tracer.et"
+ ],
+ "explicit_item_counts": [
+  2,
+  12,
+  2,
+  12,
+  2,
+  12
+ ]
+}

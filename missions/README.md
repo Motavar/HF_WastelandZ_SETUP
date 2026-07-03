@@ -1,52 +1,77 @@
-# Starter Missions
+# Missions — how they work on your server
 
-A small, working set of example missions you can drop onto your server to see
-the mission system run. Copy them in, restart, and the server will load them.
+Missions in Wasteland-Z are built **in-game** with the admin tools — you never
+hand-write mission files. You author a scene once, chain it into a mission
+flow, and the server's mission pool spawns it automatically on a schedule you
+control.
 
-## How to enable them
+This folder ships the one thing that DOES need to be installed by hand: the
+five **seed reward templates** that missions hand out (loot crates and a
+flyable helicopter).
 
-Copy the contents of this `missions/` folder into your server profile's
-`missions/` tree (`$profile:missions/`):
+## One-time setup: install the reward templates
 
-```
-cp -r missions/templates/*  <profile>/missions/templates/
-cp -r missions/triggers/*   <profile>/missions/triggers/
-```
-
-Then restart the server. The boot log should show lines like:
+Copy the `rewards/` folder into your server profile:
 
 ```
-[HF][ADMIN] MissionRegistry: loaded N templates ...
-[HF][ADMIN] TriggerEngine:  loaded N triggers ...
+missions/rewards/   →   <profile>/hf_wastelandz/missions/rewards/
 ```
 
-## What's here
+`<profile>` is wherever your dedicated server's `-profile=` flag points.
+Restart the server (or, in-game: F8 → MISSIONS → REWARDS → RELOAD).
+
+| Template | What players get |
+|---|---|
+| `weapons_crate` | Sniper rifles + suppressed AKs with magazines. |
+| `rockets_crate` | RPG-7s and LAWs with rockets. |
+| `explosives_crate` | Grenades, smoke, C-4, mines. |
+| `huey_gunship` | A UH-1H gunship — spawns locked, damaged and out of fuel; players fight for it, repair it, and fly it home. |
+| `heli_repair_kit` | Wrench + medical supplies to fix up the Huey. |
+
+You can adjust the contents by editing the JSON files, then RELOAD.
+
+## How the pieces fit together
+
+- A **reward** is what players get — a crate of loot or a vehicle.
+- An **event** is a scene placed in the world — enemies, props, and markers
+  showing where vehicles, loot, and reinforcements appear.
+- A **mission** is a flow that strings events and logic together —
+  e.g. *spawn the outpost → wait until all AI are dead → spawn the
+  weapons crate → mission complete*.
+- The **mission pool** is the auto-spawner. Put missions into its
+  SMALL / MEDIUM / LARGE rotations and it keeps them cycling on a
+  per-size schedule, away from players, with cooldowns.
+
+## Authoring your first mission (in-game, ~10 minutes)
+
+Everything happens in the admin menu: **F8 → MISSIONS**.
+
+1. **Build the scene.** EVENTS panel: type a name, NEW EVENT. Walk to the
+   location, open Zeus, and place your enemies, cover, and props — the first
+   thing you place becomes the scene's anchor. Use the DROP buttons
+   (VEH / LOOT / PATROL / WAVE) to mark where the vehicle, loot crate,
+   patrols, and reinforcements go — each marker points the way YOU are
+   facing when you drop it. SAVE EVENT.
+2. **Build the flow.** MISSION EDITOR panel: add your event from the library,
+   then add logic steps — `WAIT_UNTIL_AI_DEAD`, `SPAWN_REWARD` with a reward
+   name (e.g. `weapons_crate`), `MISSION_COMPLETE`. SAVE MISSION.
+3. **Test it.** RUNTIME panel: spawn the mission by name, play it through.
+4. **Put it on rotation.** MISSION POOL panel: select the mission and
+   ADD → POOL under the size you want. PAUSE / RESUME per size or all at
+   once, whenever you like.
+
+## Where mission files live on your server
 
 ```
-missions/
-  templates/
-    _index.json                    manifest of templates the server loads
-    cache/easy_cache_starter.json  a simple loot-cache mission
-    outpost/medium_outpost_starter.json  a small outpost mission
-  triggers/
-    _index.json                    manifest of triggers the server evaluates
-    server_uptime_warmup.json      no missions spawn in the first 5 minutes after boot
-    cache_cadence.json             keeps 1 cache mission active, min 10 min gap
+<profile>/hf_wastelandz/missions/
+├── rewards/            ← the templates from this folder (+ any you add)
+├── events/             ← saved scenes        (*.event.json)
+├── templates/          ← saved missions      (*.mission.json)
+├── <MapName>/spots/    ← per-map spawn points
+└── active_pool.json    ← auto-spawner settings (created on first boot)
 ```
 
-## Customizing
-
-The two starter templates ship with empty `ai_prefabs` (an empty string means
-"skip — don't spawn AI"). To make them spawn enemies, edit those entries to point
-at a real group prefab from your map — for example a
-`Prefabs/Groups/<faction>/Group_<faction>_RifleSquad.et` resource path.
-
-The easiest way to build missions is the in-game editor:
-
-1. Enter Game Master as an admin.
-2. `/mission new CACHE`
-3. Place your AI groups and props.
-4. `/mission save`
-
-The template is written to `<profile>/missions/templates/cache/<name>.json` with
-the prefab paths filled in from what you placed.
+Everything except `rewards/` is created and managed by the in-game tools —
+you don't need to touch these files. If you want to fine-tune the spawn
+cadence, `active_pool.json` can be edited by hand (per-size intervals in
+seconds, plus a master `enabled` switch); the server re-reads it on restart.

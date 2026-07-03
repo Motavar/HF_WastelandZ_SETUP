@@ -1,8 +1,9 @@
 # Wasteland-Z — Server Setup
 
 Everything an admin needs to stand up a **Wasteland-Z** dedicated server: the
-gateway program, the database schema, example configs, and starter missions —
-with a plain-English, step-by-step setup guide for **Windows and Linux**.
+gateway program, the database schema, example configs, and the mission reward
+templates — with a plain-English, step-by-step setup guide for **Windows and
+Linux**.
 
 ## Start here
 
@@ -24,7 +25,7 @@ Linux, follow the numbered steps). It covers:
 | `gateway/config.example.py` | Settings template — copy to `config.py` and fill in. |
 | `gateway/start_gateway.bat` | Windows one-click start. |
 | `configs/` | Example server settings (loot, vehicles, towns, admins, loadouts…). |
-| `missions/` | A small set of ready-to-run starter missions. |
+| `missions/` | Reward templates for the mission system + a guide to authoring missions in-game. |
 
 ## Requirements
 

@@ -1,0 +1,39 @@
+{
+ "schema_version": 1,
+ "name": "explosives_crate",
+ "display": "Explosives Crate — Frag/Smoke/Demo/Mines",
+ "kind": "LOOT_CRATE",
+ "preview_prefab": "",
+ "reward_prefab": "",
+ "lock_flags": 0,
+ "crate_prefab": "{91737DF9D49B5228}HFWastelandZ/Prefabs/Props/HFLootCrate.et",
+ "loot_pool_name": "",
+ "explicit_items": [
+  "{E8F00BF730225B00}Prefabs/Weapons/Grenades/Grenade_M67.et",
+  "{645C73791ECA1698}Prefabs/Weapons/Grenades/Grenade_RGD5.et",
+  "{D41D22DD1B8E921E}Prefabs/Weapons/Grenades/M18/Smoke_M18_Green.et",
+  "{3343A055A83CB30D}Prefabs/Weapons/Grenades/M18/Smoke_M18_Red.et",
+  "{9BBDEE253A16CC66}Prefabs/Weapons/Grenades/M18/Smoke_M18_Yellow.et",
+  "{14C1A0F061D9DDEE}Prefabs/Weapons/Grenades/M18/Smoke_M18_Violet.et",
+  "{77EAE5E07DC4678A}Prefabs/Weapons/Grenades/Smoke_RDG2.et",
+  "{9DB69176CEF0EE97}Prefabs/Weapons/Grenades/Smoke_ANM8HC.et",
+  "{33CBDE73AB48172A}Prefabs/Weapons/Explosives/DemoBlock_M112/DemoBlock_M112.et",
+  "{97064F8597F2D7BF}Prefabs/Weapons/Explosives/DemoBlock_TSh400g/DemoBlock_TSh400g.et",
+  "{E4C9F0A4090CFE4D}Prefabs/Weapons/Explosives/Mine_M14/Mine_M14.et",
+  "{D6EF54367CECE1D9}Prefabs/Weapons/Explosives/Mine_TM62M/Mine_TM62M.et"
+ ],
+ "explicit_item_counts": [
+  8,
+  8,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4,
+  4
+ ]
+}
