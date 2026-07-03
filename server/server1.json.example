@@ -1,0 +1,39 @@
+{
+    "bindAddress": "0.0.0.0",
+    "bindPort": 2001,
+    "publicAddress": "",
+    "publicPort": 2001,
+    "a2s": {
+        "address": "0.0.0.0",
+        "port": 17777
+    },
+    "game": {
+        "name": "My Wasteland-Z Server",
+        "password": "",
+        "passwordAdmin": "PICK_AN_ADMIN_PASSWORD",
+        "admins": [],
+        "scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf",
+        "maxPlayers": 64,
+        "visible": true,
+        "crossPlatform": true,
+        "supportedPlatforms": ["PLATFORM_PC", "PLATFORM_XBL"],
+        "gameProperties": {
+            "battlEye": true,
+            "disableThirdPerson": false,
+            "VONDisableUI": false,
+            "VONDisableDirectSpeechUI": false
+        },
+        "mods": [
+            {
+                "modId": "68A616565DECAB19",
+                "name": "Wasteland-Z"
+            }
+        ]
+    },
+    "operating": {
+        "lobbyPlayerSynchronise": true,
+        "playerSaveTime": 120,
+        "aiLimit": -1,
+        "disableCrashReporter": false
+    }
+}

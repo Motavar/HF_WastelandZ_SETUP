@@ -1,19 +1,26 @@
 # Wasteland-Z — Server Setup
 
 Everything an admin needs to stand up a **Wasteland-Z** dedicated server: the
-gateway program, the database schema, example configs, and the mission reward
-templates — with a plain-English, step-by-step setup guide for **Windows and
-Linux**.
+game-server install kit with start/stop scripts, the gateway program, the
+database schema, example configs, and the mission reward templates — with a
+plain-English, step-by-step setup guide for **Windows and Linux**.
 
 ## Start here
 
 Open **[`index.html`](index.html)** — the full setup guide (pick Windows or
 Linux, follow the numbered steps). It covers:
 
-- **Part 1 — Set it up once:** install MySQL + Python, create the database,
-  configure and start the gateway, open the firewall, connect your game server.
-- **Part 2 — Run, monitor & restart:** start/stop, check health, read logs,
-  auto-start on boot, and back up your data.
+- **Part 1 — Install the game server:** SteamCMD, downloading the Arma
+  Reforger dedicated server, and the ready-made `server1.json` (Wasteland-Z
+  pre-listed in `mods`).
+- **Part 2 — Database & gateway:** install MySQL + Python, create the
+  database, configure and start the gateway, firewall, connect your game
+  server.
+- **Part 3 — Run, monitor & stop:** one `start_all.bat` starts everything,
+  each piece in its own labeled window — close a window to stop just that
+  piece. Auto-restart loop, start-on-boot, health checks, backups.
+- **Part 4 — Multi-server:** run 2–3 game servers on one machine against one
+  database (shared money/gear hive), with the ports table and per-server keys.
 
 ## What's in this repo
 
@@ -26,12 +33,15 @@ Linux, follow the numbered steps). It covers:
 | `gateway/start_gateway.bat` | Windows one-click start. |
 | `configs/` | Example server settings (loot, vehicles, towns, admins, loadouts…). |
 | `missions/` | Reward templates for the mission system + a guide to authoring missions in-game. |
+| `server/` | Game-server kit: SteamCMD install script, example `server1.json`, start/stop batch files with auto-restart loop. |
 
 ## Requirements
 
-- Arma Reforger **dedicated server** installed, subscribed to the **Wasteland-Z**
-  mod in the Reforger Workshop.
-- **Python 3.12+** and **MySQL 8**.
+- A Windows or Linux machine that stays on. The guide installs everything
+  else: the Reforger dedicated server downloads via SteamCMD (no Steam
+  account needed), the **Wasteland-Z** mod auto-downloads from the Reforger
+  Workshop on first server start, and Part 2 walks through **Python 3.12+**
+  and **MySQL 8**.
 
 ## Show the guide as a web page (optional)
 
