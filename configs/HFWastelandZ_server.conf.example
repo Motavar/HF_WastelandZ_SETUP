@@ -7,7 +7,9 @@
 # Format: KEY VALUE (one per line)
 # Comments: lines starting with # or //
 #
-# For API keys and passwords, use secrets.conf instead.
+# For API keys and passwords, use HFWastelandZ_secrets.conf instead
+# (template + key-generation instructions: HFWastelandZ_secrets.conf.example
+# in this folder).
 # ============================================================
 
 # ============================================================

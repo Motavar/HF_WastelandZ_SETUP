@@ -36,6 +36,10 @@ FLASK_DEBUG = False
 #  * Replace EVERY CHANGE_ME with a UNIQUE strong key. Never run on a default
 #    or example key — example keys are public and WILL be exploited.
 #        generate one per server:  python -c "import secrets; print(secrets.token_hex(32))"
+#    A generated key is 64 hex characters and looks like:
+#        74eda400e341b42edcaba2c1968811603b248641e50295dbf82dcd5d40e076f0
+#    (that one is a PUBLIC example — never use it). The same key also goes in
+#    that game server's HFWastelandZ_secrets.conf (API_KEY line).
 #  * host "127.0.0.1" = same-box game server only. Safe; no firewall needed.
 #  * host "0.0.0.0"   = reachable from the INTERNET. You MUST firewall-allowlist
 #    the SOURCE IP of that game server (e.g. ufw allow from <ip> to any port N).
