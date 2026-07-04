@@ -1,18 +1,24 @@
 # Wasteland-Z — Server Setup
 
+> ### 📖 [Read the setup guide](https://motavar.github.io/HF_WastelandZ_SETUP/)
+> The full step-by-step as a web page — Windows and Linux, pick your tab.
+>
+> ### ⬇ [Download the kit (ZIP)](https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip)
+> Everything in this repo in one file. No git or GitHub account needed.
+
+**(EXPERIMENTAL DOCUMENTATION - UNTESTED)** — written with AI assistance; the
+information may not be correct. As a server admin you use this kit at your own
+risk. The full disclaimer is shown when you open the guide.
+
 Everything an admin needs to stand up a **Wasteland-Z** dedicated server: the
 game-server install kit with start/stop scripts, the gateway program, the
 database schema, example configs, and the mission reward templates — with a
 plain-English, step-by-step setup guide for **Windows and Linux**.
 
-## Start here
+## What the guide covers
 
-Get the kit: green **Code** button (top of this page) → **Download ZIP** →
-unzip. No git and no GitHub account needed. (Linux users: the guide's Step 1
-clones it straight onto the server instead.)
-
-Open **[`index.html`](index.html)** — the full setup guide (pick Windows or
-Linux, follow the numbered steps). It covers:
+(Linux users: the guide's Step 1 clones this repo straight onto the server —
+no ZIP needed.)
 
 - **Part 1 — Install the game server:** SteamCMD, downloading the Arma
   Reforger dedicated server, and the ready-made `server1.json` (Wasteland-Z
@@ -47,15 +53,13 @@ Linux, follow the numbered steps). It covers:
   Workshop on first server start, and Part 2 walks through **Python 3.12+**
   and **MySQL 8**.
 
-## Show the guide as a web page (optional)
+## The guide as a web page
 
-The guide already renders here on GitHub. To publish it at its own public URL:
-
-1. Push this repo to GitHub.
-2. Go to the repo's **Settings → Pages**.
-3. Under **Build and deployment → Source**, choose **Deploy from a branch**,
-   pick your branch and the `/ (root)` folder, and **Save**.
-4. After a minute it's live at `https://<your-username>.github.io/HF_WastelandZ_SETUP/`.
+The guide is published with GitHub Pages at
+**<https://motavar.github.io/HF_WastelandZ_SETUP/>**. Running a fork? Enable it
+on yours: **Settings → Pages → Deploy from a branch → `main` / `/ (root)`** —
+live at `https://<your-username>.github.io/HF_WastelandZ_SETUP/` after a
+minute.
 
 ---
 
