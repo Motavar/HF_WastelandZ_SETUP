@@ -187,6 +187,14 @@
 </div></div>
 
 <section><div class="wrap">
+  <span class="section-tag">What is this?</span>
+  <h2>The game, the mod, and this kit</h2>
+  <p class="muted"><b><a href="https://reforger.armaplatform.com/" target="_blank" rel="noopener">Arma Reforger</a></b> is Bohemia Interactive&rsquo;s military simulation game (PC and Xbox), built on the Enfusion engine — the platform that succeeds Arma 3. Anyone can host a dedicated server, and mods install themselves: when a player joins a modded server, the game downloads its mods automatically from the built-in Workshop.</p>
+  <p class="muted"><b><a href="https://wasteland-z.com/" target="_blank" rel="noopener">Wasteland-Z</a></b> is a hardcore PVP open-world mod for Arma Reforger, by <b>Heavy Forge, Inc.</b> The world after the Z — the outbreak ended, the cities emptied, and what survived now scavenges, fights, and trades for what&rsquo;s left. Town-based scarcity loot, missions, gun / general / vehicle stores, a server-authoritative money economy with ATM banking, three-faction PVP, and a cross-server hive: the same money, bank and gear on every server in a cluster. It runs on top of any Game Master scenario, on any map. The gameplay concept honors the A3 Wasteland lineage, rebuilt ground-up for Reforger.</p>
+  <p class="muted"><b>This kit is the server side</b> — for admins who want to host a Wasteland-Z server: the guide below, the gateway program, the database schema, example configs, and start/stop scripts. <b>Just want to play?</b> You need nothing from here — find a Wasteland-Z server in the Reforger server browser and join. The mod installs itself.</p>
+</div></section>
+
+<section><div class="wrap">
   <span class="section-tag">The three pieces</span>
   <h2>What you're building</h2>
   <p class="muted">A working server is three programs talking to each other. You install all three once, then they run on their own.</p>
@@ -401,7 +409,8 @@ and everything right of the players is local to the PC — nothing exposed.</spa
 
 <span class="c">Arland (the smaller southern island):</span>
 "scenarioId": "{2BBBE828037C6F4B}Missions/22_GM_Arland.conf"</pre></div>
-      e.g. server 1 on Everon, server 2 on Arland — same hive, so players keep their money, bank and gear when they switch.</li>
+      e.g. server 1 on Everon, server 2 on Arland — same hive, so players keep their money, bank and gear when they switch.
+      <p class="muted" style="margin-top:8px">Any other map — including community maps — works the same way. Find its ID on the Workshop website: open the map mod&rsquo;s page at <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a> and click its <b>Scenarios</b> tab — the ScenarioId shown there (it looks like <code class="inline">{GUID}Missions/Name.conf</code>) is what goes in <code class="inline">scenarioId</code>. Add that map mod to the same server&rsquo;s <code class="inline">mods</code> list too.</p></li>
     <li><b>Batch files:</b> copy <code class="inline">start_server1.bat</code> &rarr; <code class="inline">start_server2.bat</code> and <code class="inline">stop_server1.bat</code> &rarr; <code class="inline">stop_server2.bat</code>. Inside both, change every <code class="inline">server1</code> to <code class="inline">server2</code> and the title <code class="inline">WZ-Server-1</code> to <code class="inline">WZ-Server-2</code>. (The install folder and <code class="inline">workshop\</code> mods folder are <b>shared</b> — don&rsquo;t copy those.)</li>
     <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 5 command). Restart the gateway window — it now listens on 5000 <i>and</i> 5001.</li>
     <li><b>Wire it:</b> in <code class="inline">profiles\server2\hf_wastelandz\configs\</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
@@ -652,6 +661,7 @@ and everything right of the players is local to the box — nothing exposed.</sp
 
 <span class="c"># server2.json — Arland (the smaller southern island):</span>
 "scenarioId": "{2BBBE828037C6F4B}Missions/22_GM_Arland.conf"</pre></div>
+  <p class="muted">Any other map — including community maps — works the same way. Find its ID on the Workshop website: open the map mod&rsquo;s page at <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a> and click its <b>Scenarios</b> tab — the ScenarioId shown there (it looks like <code class="inline">{GUID}Missions/Name.conf</code>) is what goes in <code class="inline">scenarioId</code>. Add that map mod to the same server&rsquo;s <code class="inline">mods</code> list too.</p>
   <p>Each server starts with the same program, pointed at its own config + profile (the profile folder is created on first start):</p>
   <div class="code"><pre><span class="c"># server 1 — Everon</span>
 /opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60
