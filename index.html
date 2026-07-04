@@ -398,6 +398,20 @@ FLUSH PRIVILEGES;</pre></div>
   </ul>
   <div class="note warn"><div class="h">One key per server</div><p>Each server gets its <b>own</b> gateway port and its <b>own</b> random <code class="inline">api_key</code> — that&rsquo;s how the gateway tells them apart. Never reuse a key across servers.</p></div>
   <div class="note tip"><div class="h">Will my PC handle it?</div><p>Each Reforger server is heavy — roughly a few CPU cores and 4&ndash;8&nbsp;GB RAM per server under load. Two servers want a strong 8-core machine; three want more. The gateway and MySQL are lightweight by comparison.</p></div>
+
+  <h3>Big box? Give each server its own cores</h3>
+  <p><b>RAM needs no dividing</b> — Windows hands it out on demand, and a full 128-player server uses roughly 8&ndash;16&nbsp;GB. (Windows has no simple per-program RAM cap like Linux&rsquo;s — skip that part.) <b>CPU pinning</b> keeps two busy servers off each other&rsquo;s cores and caches: a Reforger server lives and dies by one hot thread, and on chiplet-based AMD CPUs (e.g. a Ryzen 7950X3D = two 8-core chiplets) one server per chiplet is the natural cut.</p>
+  <p>On Windows the tool is the <code class="inline">/affinity</code> flag. In <code class="inline">start_server1.bat</code>, change the server line:</p>
+  <div class="code"><pre><span class="c">rem before:</span>
+"%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60
+
+<span class="c">rem after — server 1 pinned to the first 16 logical processors (first chiplet):</span>
+start "" /affinity FFFF /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60
+
+<span class="c">rem and in start_server2.bat — the next 16 (second chiplet):</span>
+start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60</pre></div>
+  <p class="muted">The mask is hexadecimal — one bit per logical processor. <code class="inline">FFFF</code> = processors 0&ndash;15; Windows usually numbers each core&rsquo;s two SMT threads together, so that&rsquo;s the first 8 cores = the first chiplet (the V-Cache one on X3D chips — give it to your busiest server). <code class="inline">/wait</code> keeps the auto-restart loop working. Sanity-check anytime: Task Manager &rarr; Details &rarr; right-click <code class="inline">ArmaReforgerServer.exe</code> &rarr; <b>Set affinity</b> shows exactly which processors each server is allowed on.</p>
+  <p class="muted">Masks for the common splits on a 16-core chip — 2 servers: <code class="inline">FFFF</code> + <code class="inline">FFFF0000</code> (a chiplet each). 4 servers at 32&ndash;64 players: <code class="inline">FF</code>, <code class="inline">FF00</code>, <code class="inline">FF0000</code>, <code class="inline">FF000000</code> (half a chiplet — 4 cores — each). 3 servers: pin the two big ones as in the 2-server split and leave the third&rsquo;s line unchanged (unpinned). The same 1&ndash;4 server cheat-sheet table in the Linux tab applies here — only the notation differs.</p>
 </div></section>
 </div>
 
@@ -636,6 +650,40 @@ and everything right of the players is local to the box — nothing exposed.</sp
 <span class="p">journalctl</span> -u wz-server1 -f          <span class="c"># watch its live log — Ctrl+C stops watching, not the server</span></pre></div>
   <p class="muted">Swap the name for any other piece: bounce only server 2 = <code class="inline">sudo systemctl restart wz-server2</code>; stop the gateway = <code class="inline">sudo systemctl stop wz-gateway</code>; restart the database = <code class="inline">sudo systemctl restart mysql</code>. Each piece is independent — players on server 1 keep playing while you bounce server 2.</p>
   <p class="muted"><b>Order?</b> After a full stop (or a reboot where something didn&rsquo;t come up): <code class="inline">mysql</code> first, then <code class="inline">wz-gateway</code>, then the game servers. A briefly-down gateway doesn&rsquo;t crash the game servers — saves pause and Wasteland-Z resyncs every player automatically when it comes back — but don&rsquo;t leave it down long.</p>
+
+  <h3>Big box? Give each server its own cores</h3>
+  <p><b>RAM first — there&rsquo;s nothing to divide.</b> Linux hands out memory on demand: a full 128-player Reforger server uses roughly 8&ndash;16&nbsp;GB, MySQL + the gateway a few more. Even three servers fit comfortably in 64&nbsp;GB. The only setting worth adding is a per-server safety cap (below) so a memory leak can never take down the whole box.</p>
+  <p><b>CPU is where carving pays.</b> A Reforger server is limited by <i>one</i> hot simulation thread plus a few workers — it can&rsquo;t use 16 cores, but it hates sharing its CPU cache with a second server. On a many-core machine, pin each server to its own block of cores. Many AMD chips (e.g. a Ryzen 7950X3D) are physically <b>two 8-core chiplets</b> — one server per chiplet is the natural cut: each keeps a whole cache to itself. (On X3D chips the <i>first</i> chiplet carries the big 3D V-Cache — give it to your busiest server.)</p>
+  <p><b>Step 1 — see your core numbering</b> (read-only):</p>
+  <div class="code"><pre><span class="p">lscpu</span> -e</pre></div>
+  <p class="muted">Each core appears twice in the CORE column (its two SMT threads). On a 16-core AMD chip the usual layout: cores 0&ndash;7 = first chiplet (CPU numbers 0&ndash;7 + 16&ndash;23), cores 8&ndash;15 = second (8&ndash;15 + 24&ndash;31). Trust what <code class="inline">lscpu</code> shows over this example.</p>
+  <p><b>Step 2 — two lines per server</b> in <code class="inline">/etc/systemd/system/wz-serverN.service</code>, <code class="inline">[Service]</code> section. The kit&rsquo;s <code class="inline">.service.example</code> files already carry them commented out — remove the <code class="inline">#</code>:</p>
+  <div class="code"><pre><span class="c"># wz-server1 — first chiplet (the V-Cache one on X3D)</span>
+CPUAffinity=0-7 16-23
+MemoryMax=32G
+
+<span class="c"># wz-server2 — second chiplet</span>
+CPUAffinity=8-15 24-31
+MemoryMax=32G</pre></div>
+  <p><b>Step 3 — apply:</b></p>
+  <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
+<span class="p">sudo</span> systemctl restart wz-server1 wz-server2</pre></div>
+  <p class="muted"><code class="inline">CPUAffinity</code> = &ldquo;this service may only run on these cores.&rdquo; <code class="inline">MemoryMax</code> = if the server ever leaks past the cap, systemd kills <i>it</i> (and <code class="inline">Restart=on-failure</code> brings it right back) instead of the box dying. Leave the gateway and <code class="inline">mysql</code> <b>unpinned</b> — they&rsquo;re lightweight and slot into whatever&rsquo;s idle. Verify with <code class="inline">htop</code>: each server&rsquo;s load stays inside its own core block. One core pegged at 100% while its neighbours idle is the engine&rsquo;s normal single-thread ceiling, not a problem to fix — the levers for a struggling full server are <code class="inline">aiLimit</code> in <code class="inline">serverN.json</code> and Wasteland-Z&rsquo;s mission/AI density settings.</p>
+  <p><b>Cheat-sheet: 1&ndash;4 servers on a 16-core box</b> (two 8-core chiplets; CPU numbers per the usual AMD layout — verify yours with <code class="inline">lscpu -e</code>):</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setup</th><th>Server &amp; players</th><th>CPUAffinity=</th><th>MemoryMax=</th></tr>
+    <tr><td rowspan="1">1 server (up to 128)</td><td><span class="role">wz-server1</span> · 128</td><td><span class="role">none needed</span> (whole chip; or <span class="role">0-7 16-23</span> for the V-Cache chiplet)</td><td><span class="role">32G</span></td></tr>
+    <tr><td rowspan="2">2 servers (2&times;128)</td><td><span class="role">wz-server1</span> · 128</td><td><span class="role">0-7 16-23</span></td><td><span class="role">32G</span></td></tr>
+    <tr><td><span class="role">wz-server2</span> · 128</td><td><span class="role">8-15 24-31</span></td><td><span class="role">32G</span></td></tr>
+    <tr><td rowspan="3">3 servers (2&times;128 + 1&times;64)</td><td><span class="role">wz-server1</span> · 128</td><td><span class="role">0-7 16-23</span></td><td><span class="role">32G</span></td></tr>
+    <tr><td><span class="role">wz-server2</span> · 128</td><td><span class="role">8-15 24-31</span></td><td><span class="role">32G</span></td></tr>
+    <tr><td><span class="role">wz-server3</span> · 64</td><td><span class="role">unpinned</span> (scheduler fills the gaps)</td><td><span class="role">24G</span></td></tr>
+    <tr><td rowspan="4">4 servers (4&times;64 or 4&times;32)</td><td><span class="role">wz-server1</span> · 64</td><td><span class="role">0-3 16-19</span></td><td><span class="role">24G</span></td></tr>
+    <tr><td><span class="role">wz-server2</span> · 64</td><td><span class="role">4-7 20-23</span></td><td><span class="role">24G</span></td></tr>
+    <tr><td><span class="role">wz-server3</span> · 64</td><td><span class="role">8-11 24-27</span></td><td><span class="role">24G</span></td></tr>
+    <tr><td><span class="role">wz-server4</span> · 64</td><td><span class="role">12-15 28-31</span></td><td><span class="role">24G</span></td></tr>
+  </table></div>
+  <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole chiplet each (max cache per server). 4 servers &rarr; half a chiplet (4 cores) each — plenty at 32&ndash;64 players, and no server ever straddles the chiplet boundary. 3 servers is the awkward count: keep the two big ones on their own chiplets and let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch <code class="inline">htop</code> on busy nights and adjust <code class="inline">aiLimit</code> before touching the core map. RAM: even the 4-server row uses under half of a 128&nbsp;GB box.</p>
 
   <h3>If something&rsquo;s wrong</h3>
   <ul class="clean muted">

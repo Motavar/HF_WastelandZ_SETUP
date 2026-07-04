@@ -13,6 +13,11 @@ WorkingDirectory=/opt/reforger/server
 ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server2.json -profile /opt/reforger/profiles/server2 -addonsDir /opt/reforger/workshop -maxFPS 60
 Restart=on-failure
 User=youruser
+# Big box running 2+ servers? Uncomment to give this server its own cores
+# and a RAM safety cap. Core numbers differ per CPU — check with: lscpu -e
+# (full walkthrough: the guide's "Big box" section in Part 3)
+#CPUAffinity=8-15 24-31
+#MemoryMax=32G
 
 [Install]
 WantedBy=multi-user.target
