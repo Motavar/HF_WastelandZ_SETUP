@@ -646,6 +646,16 @@ WantedBy=multi-user.target</pre></div>
   <h3>Remove a mod — including a problem mod</h3>
   <p>Delete its block from the list, restart. That&rsquo;s the whole procedure — the server only loads what&rsquo;s listed. The mod&rsquo;s downloaded files stay in the <code class="inline">workshop</code> folder but are completely inert; if you want the disk space back, delete the folder named with that mod&rsquo;s ID inside the workshop folder.</p>
 
+  <h3>Can&rsquo;t I just comment a mod out?</h3>
+  <p>Not in this file. <code class="inline">server1.json</code> is JSON, and <b>JSON forbids comments</b> — one <code class="inline">//</code> line and the server refuses the whole config. So in the json, deleting the block is the only off switch. The convenient middle ground is a <b>parking file</b>: keep a plain text file next to your configs that nothing reads, and move benched mod blocks there instead of losing them:</p>
+  <div class="code"><pre><span class="c">mods-parked.txt — your parking lot; the server never reads this file.
+Copy a block back into server1.json's "mods" list to re-enable it.</span>
+
+{ "modId": "ABCDEF1234567890", "name": "Cool Helmet Pack" },     broke after 1.7 update, retry later
+{ "modId": "0123456789ABCDEF", "name": "Winter Uniforms" },      summer season — bring back in December
+{ "modId": "FEDCBA9876543210", "name": "Extra Car Pack" },       testing caused rubber-banding</pre></div>
+  <p class="muted">(Wasteland-Z&rsquo;s own <code class="inline">.conf</code> files are different — those are <code class="inline">KEY VALUE</code> format and take <code class="inline">#</code> comments freely. Only the game server&rsquo;s <code class="inline">.json</code> is strict.)</p>
+
   <h3>Track your mods</h3>
   <p>The <code class="inline">mods</code> list is the single source of truth — one block per mod, nothing can load that isn&rsquo;t in it. Running several servers? Each <code class="inline">serverN.json</code> has its <b>own</b> list, so server 1 and server 2 can run different mod sets. To see what a server actually loaded, its boot log prints every addon as it starts.</p>
 
