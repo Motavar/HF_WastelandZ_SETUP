@@ -7,9 +7,7 @@
 # Format: KEY VALUE (one per line)
 # Comments: lines starting with # or //
 #
-# For API keys and passwords, use HFWastelandZ_secrets.conf instead
-# (template + key-generation instructions: HFWastelandZ_secrets.conf.example
-# in this folder).
+# For API keys and passwords, use secrets.conf instead.
 # ============================================================
 
 # ============================================================
@@ -23,6 +21,8 @@
 # For granular control (per-tier slot counts, per-pool weights),
 # edit HFTownTiers.conf and HFLootPools_<map>.conf instead.
 #
+# See ADMIN_GUIDE.md "Spawn — Master Scalers" for tuning recipes.
+# Session #112 — Spawn Implementation Session A.
 # ============================================================
 
 # MAP_NAME (DEPRECATED — legacy fallback only; normally leave UNSET)
@@ -42,16 +42,17 @@
 
 # LOOT_DENSITY_GLOBAL_MULT
 # Multiplies all per-tier loot_slots counts at server boot.
-# Default: 1.0 (use tier counts as-defined).
+# Default: 0.8 (the play-tested balance).
 # Range: 0.1 to 10.0 (clamped). Below 0.1 effectively disables loot.
 # Examples:
 #   0.5 = halve all loot slots (hardcore scarcity)
-#   1.0 = default
+#   0.8 = default (play-tested)
+#   1.0 = use tier counts as-defined
 #   2.0 = double all loot slots (casual / weekend event mode)
 # Gameplay impact: VERY HIGH. Directly controls how much gear
 #   spawns per town at server init. PvP tempo is sensitive to this.
 # Performance impact: low — only affects entity count at boot.
-LOOT_DENSITY_GLOBAL_MULT 1.0
+LOOT_DENSITY_GLOBAL_MULT 0.8
 
 # VEHICLE_DENSITY_GLOBAL_MULT
 # Multiplies all per-tier vehicle_slots counts at server boot.
@@ -67,7 +68,7 @@ LOOT_DENSITY_GLOBAL_MULT 1.0
 VEHICLE_DENSITY_GLOBAL_MULT 1.0
 
 # WORLD_LOOT_CHANCE
-# Master scaler for the World Loot Scanner. Every
+# Master scaler for the World Loot Scanner (Session D). Every
 # candidate interior position inside a building OUTSIDE any town
 # radius rolls against this percentage. A HIT spawns a loot crate;
 # a MISS spawns nothing. Building then enters cooldown (see
@@ -127,7 +128,39 @@ LOOT_UPPER_FLOOR_WEIGHT 0.6
 # after the per-map config exists.
 #
 # Default: 0 (off). Range: 0 or 1.
+# See ADMIN_GUIDE.md "Spawn — Adding a New Map".
 TOWN_EXTRACT_ON_BOOT 0
+
+# TOWN_EXTRACT_INCLUDE_TYPES
+# POI allow-list for the extractor above: which EMapDescriptorType
+# integers count as "towns" when walking the world's named locations.
+# The default keeps real POIs (settlements, bunkers/fortresses,
+# bases/ports/airports) and drops noise (water/sea/ridge/hill labels).
+# Comma-separated integers. Empty value disables the filter entirely
+# (everything with a name passes through).
+#   14 MDT_BUNKER             58 MDT_NAME_GENERIC
+#   15 MDT_FORTRESS           59 MDT_NAME_CITY
+#   25 MDT_FUELSTATION        60 MDT_NAME_VILLAGE
+#   26 MDT_HOSPITAL           61 MDT_NAME_TOWN
+#   54 MDT_STORE              62 MDT_NAME_SETTLEMENT
+#   79 MDT_BASE               63 MDT_NAME_HILL    (noise)
+#   80 MDT_PORT               64 MDT_NAME_LOCAL
+#   81 MDT_AIRPORT            65 MDT_NAME_ISLAND  (noise)
+#   82 MDT_LANDMARK           66-69 MDT_NAME_WATER/SEA (noise)
+#                             70 MDT_NAME_RIDGE   (noise)
+# When this key is non-empty the legacy knobs below are IGNORED.
+# Default: 14,15,58,59,60,61,62,64,79,80,81
+TOWN_EXTRACT_INCLUDE_TYPES 14,15,58,59,60,61,62,64,79,80,81
+
+# Legacy extractor filters — superseded by TOWN_EXTRACT_INCLUDE_TYPES
+# (only consulted when the allow-list above is EMPTY). Kept for
+# admins who want a raw numeric range instead of a curated list.
+# TOWN_EXTRACT_FILTER_TO_NAMES: 1 = only descriptors in the MIN/MAX
+# base-type range below; 0 = every named descriptor.
+# Defaults: 1 / 58 / 70. Ranges: 0 or 1; 0-100; 0-100.
+TOWN_EXTRACT_FILTER_TO_NAMES 1
+TOWN_EXTRACT_MIN_BASE_TYPE 58
+TOWN_EXTRACT_MAX_BASE_TYPE 70
 
 # TOWN_DEDUPE_MAP_NAMES
 # When enabled (1), hides duplicate BI town labels on the map
@@ -168,29 +201,30 @@ TOWN_ENTRY_BANNER_ENABLED 1
 # turns RED for ALL players — deters camping high-value transit
 # points. ATMs NEVER get radar (low-traffic, not worth deterring).
 #
-# STORE_RADAR_ENABLED      — gun-store radar on/off (master / anti-camp default)
-# STORE_RADAR_GENERAL_ENABLED — also light up general stores (opt-in)
-# STORE_RADAR_VEHICLE_ENABLED — also light up vehicle stores (opt-in)
+# STORE_RADAR_ENABLED      — gun-store radar on/off (master)
+# STORE_RADAR_GENERAL_ENABLED — also light up general stores
+# STORE_RADAR_VEHICLE_ENABLED — also light up vehicle stores
 # STORE_RADAR_RADIUS_M     — player-presence radius in meters (shared)
 #
 # Gameplay impact: MEDIUM. Turning a type on broadcasts when players
-# are shopping there. Default: gun on, general/vehicle off, 125 m.
+# are shopping there. Default: all three ON, 125 m (play-tested).
+# Set general/vehicle to 0 for gun-store-only anti-camp radar.
 # STORE_RADAR_RADIUS_M is BOTH the on-map ring size and the proximity
 # detection distance (they're the same zone). Raise/lower to taste.
 STORE_RADAR_ENABLED 1
-STORE_RADAR_GENERAL_ENABLED 0
-STORE_RADAR_VEHICLE_ENABLED 0
+STORE_RADAR_GENERAL_ENABLED 1
+STORE_RADAR_VEHICLE_ENABLED 1
 STORE_RADAR_RADIUS_M 125
 #
 # STORE_CIRCLES_ON_DETECTION_ONLY — store radar circles only on detection.
-# 0 (default) = the store circle is always shown and recolors RED while a player
-#   is in radar range, back to white when clear (today's behavior).
-# 1 = the store circle is HIDDEN until a player enters the radar range; the RED
-#   circle appears only while occupied, then disappears on leave — a transient
-#   "someone's here" alert rather than an always-on ring.
+# 1 (default) = the store circle is HIDDEN until a player enters the radar
+#   range; the RED circle appears only while occupied, then disappears on
+#   leave — a transient "someone's here" alert rather than an always-on ring.
+# 0 = the store circle is always shown and recolors RED while a player is in
+#   radar range, back to white when clear.
 # NOTE: requires STORE_RADAR_* enabled (no radar = no detection = never appears).
 # (Towns use their own per-town circle flags; there is no town equivalent.)
-STORE_CIRCLES_ON_DETECTION_ONLY 0
+STORE_CIRCLES_ON_DETECTION_ONLY 1
 #
 # STORE_CIRCLES_ENABLED — draw the store proximity CIRCLE on the map at all.
 # 1 (default) = draw the circle. 0 = NO store circle even when radar is on;
@@ -214,7 +248,7 @@ STORE_CIRCLES_ENABLED 1
 # LOOT_RESPAWN_BASE_TIME_SEC
 # Base respawn time for loot slots, in seconds. When a crate is
 # emptied or destroyed, the slot waits this long before spawning
-# a new crate.
+# a new crate (Session E implements the actual timer).
 # Actual respawn time is scaled by town radius:
 #   respawn = base × (town.radius / 300)
 # So a small town (250m) refreshes in ~25 min, while a large
@@ -229,16 +263,16 @@ LOOT_RESPAWN_BASE_TIME_SEC 1800
 # Filename of the town tier config in $profile:.
 # Defines small/medium/large tier brackets and per-tier
 # loot/vehicle slot counts.
-# Default: HFTownTiers.conf
-TOWN_TIERS_FILE HFTownTiers.conf
+# Default: HFWastelandZ_town_tiers.conf
+TOWN_TIERS_FILE HFWastelandZ_town_tiers.conf
 
 # LOOT_POOL_FILE
 # Filename of the loot pool config in $profile:.
 # Defines what items spawn in town crates per town type.
-# The server also tries HFLootPools_<MAP_NAME>.conf first
-# for map-specific pools.
-# Default: HFLootPools_Arland.conf
-LOOT_POOL_FILE HFLootPools_Arland.conf
+# DEFAULT: unset — the server auto-detects HFLootPools_<MapName>.conf
+# for the loaded map (map-agnostic). Uncomment and set a filename ONLY
+# to force one specific pool file regardless of which map is loaded.
+# LOOT_POOL_FILE HFLootPools_MyMap.conf
 
 # Note: the loot crate BUILDING ALLOWLIST (which prefab paths
 # can receive crates) lives in its own file for readability:
@@ -259,6 +293,7 @@ LOOT_POOL_FILE HFLootPools_Arland.conf
 # defined above in the master-scalers section.
 #
 # The catalog of eligible vehicles lives in HFWastelandZ_vehicle_spawn.conf.
+# See ADMIN_GUIDE.md "Vehicles" for presets and troubleshooting.
 # ============================================================
 
 # VEHICLE_SPAWN_CATALOG_FILE
@@ -432,13 +467,36 @@ VEHICLE_RESPAWN_MAX_PER_TICK 1
 # Set 0 to disable the cap entirely and trust per-town targets.
 VEHICLE_MAX_GLOBAL 0
 
+# --- Vehicle STORE delivery-slot clearance (per vehicle type) ---
+# When a player buys a vehicle, the server traces a clearance
+# cylinder at the store's VEHSPAWN_<TYPE> delivery slot BEFORE
+# charging money. If anything blocks the cylinder the buy is denied
+# (ALL_SLOTS_BLOCKED) and the diagnostic names the obstruction.
+# RADIUS/HEIGHT are the cylinder dimensions in meters.
+# Defaults sized for typical wasteland fleets:
+#   GROUND  2.5 / 2.5 — covers UAZ / Jeep / pickup. Raise to ~4 for
+#                        M923-class trucks; ~1.5 for moped servers.
+#   HELI    8.0 / 5.5 — main rotor + tail clearance (Mi-8 fits).
+#   PLANE  10.0 / 4.0 — wingspan-aware (bush planes).
+#   BOAT    4.0 / 2.5 — small craft on the waterline.
+# Range per axis: 0.5-30 radius, 0.5-20 height (float, meters).
+# Gameplay impact: LOW — purchase-time safety check only.
+VEHSPAWN_GROUND_RADIUS_M 2.5
+VEHSPAWN_GROUND_HEIGHT_M 2.5
+VEHSPAWN_HELI_RADIUS_M 8.0
+VEHSPAWN_HELI_HEIGHT_M 5.5
+VEHSPAWN_PLANE_RADIUS_M 10.0
+VEHSPAWN_PLANE_HEIGHT_M 4.0
+VEHSPAWN_BOAT_RADIUS_M 4.0
+VEHSPAWN_BOAT_HEIGHT_M 2.5
+
 # === END VEHICLE SYSTEM =====================================
 
-# === WORLD LOOT SYSTEM ==========================
+# === WORLD LOOT SYSTEM (Session D) ==========================
 # Procedural loot CRATES placed lazily in buildings OUTSIDE town
 # radii when a player approaches. Uses the same door-based
 # placement algorithm as town loot (one tested placement system,
-# two callers).
+# two callers) — see SPAWN_DESIGN.md Subsystem 5.
 #
 # The WORLD_LOOT_CHANCE master scaler is at the TOP of this file
 # alongside LOOT_DENSITY_GLOBAL_MULT and VEHICLE_DENSITY_GLOBAL_MULT.
@@ -505,13 +563,15 @@ WORLD_LOOT_SCAN_RADIUS_M 80
 # $profile:<this_filename>. See HFWorldLoot_Arland.conf.example
 # for the format (flat weighted pool + ITEMS_PER_CRATE_MIN/MAX +
 # CRATE_PREFAB).
-# Default: HFWorldLoot_Arland.conf.
-WORLD_LOOT_POOL_FILE HFWorldLoot_Arland.conf
+# DEFAULT: unset — the server auto-detects HFWorldLoot_<MapName>.conf
+# for the loaded map (map-agnostic). Uncomment and set a filename ONLY
+# to force one specific world-loot pool regardless of which map is loaded.
+# WORLD_LOOT_POOL_FILE HFWorldLoot_MyMap.conf
 
 # === END WORLD LOOT SYSTEM ==================================
 
 # ============================================================
-# === LOOT RESPAWN + CRATE LIFECYCLE =============
+# === LOOT RESPAWN + CRATE LIFECYCLE (Session E) =============
 # Controls how emptied / carried-off / destroyed loot crates
 # are replaced, and how moved crates despawn when abandoned.
 #
@@ -529,6 +589,7 @@ WORLD_LOOT_POOL_FILE HFWorldLoot_Arland.conf
 #   is inside the town. Spawns land inside buildings, so the
 #   pop-in is rarely visible.
 #
+# See ADMIN_GUIDE.md "Respawn + Crate Lifecycle" for presets.
 # ============================================================
 
 # LOOT_RESPAWN_ENABLED
@@ -622,9 +683,9 @@ LOOT_CRATE_VEHICLE_EXEMPT 1
 # === END LOOT RESPAWN + CRATE LIFECYCLE =====================
 
 # ============================================================
-# === SPAWN SOFT MITIGATIONS ==
+# === SPAWN SOFT MITIGATIONS (Session E — Session F consumers)
 # Server-side guardrails against spawn-camping and zerg
-# stacking. Wired into the future spawn menu; no
+# stacking. Wired into the future spawn menu (Session F); no
 # runtime gameplay effect on their own.
 # ============================================================
 
@@ -658,11 +719,13 @@ SPAWN_DISTRIBUTION_ENABLED 1
 # === END SPAWN SOFT MITIGATIONS =============================
 
 # ============================================================
-# === SPAWN MENU + DEATH FLOW ====================
+# === SPAWN MENU + DEATH FLOW (Session F) ====================
 # Custom HFSpawnMenu replaces the BI deploy screen for first
 # join AND post-death respawn. Player picks RANDOM / TOWN LIST
 # / BEACON LIST / LAST LOCATION; HFSpawnRouter validates and
-# teleports.
+# teleports. WB host caveat: the menu opens fine on WB but the
+# spawn pipeline (faction join, character placement) only
+# works on PeerPlugin1 / PeerPlugin2 — test full flow there.
 # ============================================================
 
 # RESPAWN_DELAY_SEC
@@ -713,7 +776,7 @@ HF_RESYNC_STAGGER_MS 250
 # SPAWN_WATER_SEA_LEVEL_Y
 # Terrain height (Y) below which HFSpawnRouter treats a candidate
 # spawn position as "underwater" and searches outward for dry land.
-# Used by RANDOM / TOWN / LAST LOCATION spawns (polish
+# Used by RANDOM / TOWN / LAST LOCATION spawns (Session F polish
 # 2026-04-30 — fixes "spawned in water" on coastal towns).
 #
 # Arland's ocean surface sits at Y=0; terrain mesh extends below
@@ -774,10 +837,21 @@ SPAWN_WATER_SEARCH_RADIUS_M 200.0
 SPAWN_TOWN_MIN_RADIUS_FRAC 0.0
 SPAWN_TOWN_MAX_RADIUS_FRAC 0.95
 
+# SPAWN_PLAYER_SPACING_M
+# Minimum 2D distance between a candidate spawn position and any live
+# player. If a candidate lands within this radius of someone, the
+# router jitters outward (1.4x radius per attempt, 8 attempts max)
+# until clear, or falls back to the original position. 0 disables the
+# jitter entirely (players may stack on the exact same vector).
+# Default: 8.0 — just outside punch/stab range while keeping spawns
+# visibly clustered. Range: 0 to 50 (float, meters).
+# Gameplay impact: LOW-MEDIUM. Anti-spawn-stack protection.
+SPAWN_PLAYER_SPACING_M 8.0
+
 # === END SPAWN MENU + DEATH FLOW ============================
 
 # ============================================================
-# === HVT SYSTEM =======================
+# === HVT SYSTEM (Session G — Layer 2) =======================
 # Players carrying HVT_THRESHOLD or more in their wallet
 # (NOT bank — bank is safe storage by design) become tracked
 # targets. Every HVT_BROADCAST_INTERVAL_SEC the server places
@@ -893,6 +967,8 @@ CLEANUP_DWELL_DURATION_SEC 300
 # (field-DIY path still requires a Jerry Can or Repair Kit from
 # inventory regardless of these knobs — items remain the gate).
 #
+# Full design: docs/design/VEHICLE_RESUPPLY_MARKER_DESIGN.md §7.3
+# Admin guide:  docs/reference/ADMIN_GUIDE.md "Vehicle Resupply Markers"
 
 # RESUPPLY_REFUEL_PCT_OF_STORE_PRICE
 # Catalog vehicles: full-tank-from-empty cost as a percentage of
@@ -949,6 +1025,19 @@ RESUPPLY_REPAIR_DURATION_MS 5000
 # HFResupplyService when the REARM service backend lands.
 RESUPPLY_REARM_DURATION_MS 5000
 
+# RESUPPLY_AUTO_MERGE_ENABLED / RESUPPLY_AUTO_MERGE_DIST_M
+# Auto-merge fuses a FUEL marker and a REPAIR marker placed close
+# together into ONE station + one NPC at the merged centroid.
+# Default OFF — one marker = one NPC; the admin authors exactly what
+# they want, no surprise fusions. Flip to 1 for the old "drop two
+# markers, get one mechanic" workflow and tune the distance below
+# (meters, XZ plane; only consulted when ENABLED = 1).
+# Note: RESUPPLY_COMBINED (single-marker combined service) works
+# independently of this knob — it is always a single station.
+# Defaults: 0 / 15.0. Ranges: 0 or 1; 1 to 200 (float, meters).
+RESUPPLY_AUTO_MERGE_ENABLED 0
+RESUPPLY_AUTO_MERGE_DIST_M 15.0
+
 # === END VEHICLE RESUPPLY ====================================
 
 # ============================================================
@@ -965,6 +1054,7 @@ RESUPPLY_REARM_DURATION_MS 5000
 # the down state is set up, which is what determines how long
 # they survive.
 #
+# Full design context: REVIVE_DESIGN.md (mod root).
 # ============================================================
 
 # DOWN_RESILIENCE_HP
@@ -1005,9 +1095,9 @@ DOWN_BLEED_HITZONE Chest
 # *** NEEDS VALIDATION *** exact time-to-death not yet pinned (death
 #   fires at the blood DESTROYED threshold, not 0). Measure your own
 #   bleed-out and tune; a seconds-based knob may replace this later.
-# Default: 0.68 (testing — fast). Range: -1.0 to 1.0.
+# Default: 0.84 (~8-9 min). Range: -1.0 to 1.0.
 # Gameplay impact: VERY HIGH — directly sets downed survival time.
-DOWN_BLEED_INTENSITY 0.68
+DOWN_BLEED_INTENSITY 0.84
 
 # INSTA_DEATH_HP
 # Placeholder for future damage-magnitude gating. v1 auto-down
@@ -1031,6 +1121,15 @@ REVIVE_CAST_TIME_S 30.0
 # revive (medkit kept). Also the max distance to start a revive.
 # Default: 3.0. Range: 1.0–10.0 (clamped).
 REVIVE_RANGE_M 3.0
+
+# REVIVE_HEAL_PCT
+# How much a revived player is healed when the medkit cast finishes.
+# The bleed is ALWAYS stopped. 100 = full heal (blood + resilience +
+# wounds). Below 100: blood + resilience are fully restored so the
+# player reliably wakes, and wounds are healed up to this percent
+# (0 = wake with existing wounds — limp / aim-sway persist).
+# Default: 100. Range: 0 to 100 (int, percent).
+REVIVE_HEAL_PCT 100
 
 # REVIVE_SYSTEM_ENABLED
 # Master toggle for HF's revive system. Set to 0 if you want to
@@ -1138,6 +1237,67 @@ STARTING_MONEY 1000
 # Player data is saved to the database on this interval
 AUTO_SAVE_INTERVAL 300
 
+# SELL_PERCENTAGE
+# What stores pay when a player SELLS an item, as a percent of the
+# item's catalog buy price. 75 = sell for three-quarters of what it
+# costs to buy. Applies at every store type.
+# Default: 75. Range: 0 to 100 (int).
+# Gameplay impact: HIGH — sets the money loop's loot-to-cash rate.
+SELL_PERCENTAGE 75
+
+# KILL_REWARD_AMOUNT
+# Flat money paid to a player for killing another player. 0 disables
+# kill rewards entirely (default — money comes from looting the
+# victim's death drop instead, see DEATH_MONEY_DROP_PERCENT).
+# Default: 0 (off). Range: 0 to 1000000 (int).
+# Gameplay impact: MEDIUM — a bounty on every head changes PvP tempo.
+KILL_REWARD_AMOUNT 0
+
+# === MONEY DROPS (death pickups + /drop chat command) ========
+# Lifecycle knobs for money pickup entities — both the pile dropped
+# on death (DEATH_MONEY_DROP_PERCENT above) and the /drop command
+# players use to hand money over voluntarily. All five are
+# server-authoritative. Full design: docs/design/MONEY_PIPELINE.md §3.
+
+# HF_MONEY_DROP_DESPAWN_SEC
+# Seconds before an unclaimed money pickup auto-despawns (world
+# entity + DB row both removed).
+# Legacy alias MONEY_PICKUP_DESPAWN_TIME still accepted; this key wins.
+# Default: 3600 (1 hour). Range: 60 to 86400 (int, seconds).
+HF_MONEY_DROP_DESPAWN_SEC 3600
+
+# HF_MONEY_DROP_MIN_AMOUNT
+# Minimum /drop amount AND the granularity step — drops must be
+# positive multiples of this value (100 -> 100, 200, 5100, ...).
+# Default: 100. Range: 1 to 100000 (int).
+HF_MONEY_DROP_MIN_AMOUNT 100
+
+# HF_MONEY_DROP_COOLDOWN_SEC
+# Cooldown between successful /drop invocations per player.
+# Prevents rapid-fire spam-spawn of pickup entities.
+# Default: 3. Range: 0 to 3600 (int, seconds).
+HF_MONEY_DROP_COOLDOWN_SEC 3
+
+# HF_MONEY_DROP_MAX_PER_PLAYER
+# Max simultaneously-active drops one player can have in the world.
+# Server rejects /drop and reports the cap when hit.
+# Default: 10. Range: 1 to 1000 (int).
+HF_MONEY_DROP_MAX_PER_PLAYER 10
+
+# HF_MONEY_DROP_MAX_PER_SERVER
+# Server-wide cap on active drops — protects against N griefers each
+# sitting at their per-player cap. Performance safety valve.
+# Default: 200. Range: 1 to 10000 (int).
+HF_MONEY_DROP_MAX_PER_SERVER 200
+
+# HF_VEHICLE_STORE_FUEL_PCT
+# Fuel level for vehicles bought at the vehicle store (0-100 %).
+# Town-spawned vehicles use VEHICLE_INITIAL_FUEL_PCT instead.
+# 100 = full tank on purchase. 0 = chassis-only economy that forces
+# a Resupply Station visit before driving off.
+# Default: 100. Range: 0 to 100 (int).
+HF_VEHICLE_STORE_FUEL_PCT 100
+
 # --- Server Identity ---
 # Server name (shown in admin tools and logs)
 SERVER_NAME WastelandZ Dev Server
@@ -1151,6 +1311,12 @@ SERVER_NAME WastelandZ Dev Server
 # money/inventory are shared hive-wide, world objects stay per-server.
 SERVER_ID dev-01
 
+# SERVER_IP
+# Public address shown to players on the HUD (IP:port or hostname).
+# DISPLAY ONLY — has no effect on networking or the gateway.
+# Default: empty (unset — nothing shown).
+SERVER_IP x.x.x.x
+
 # --- Dev Mode (GAME server) ---
 # This is the GAME server's dev switch — NOT the gateway's FLASK_DEBUG (that
 # is a separate Python service). For mod log verbosity see HF_DEBUG below.
@@ -1159,7 +1325,7 @@ SERVER_ID dev-01
 # Set to 0 for production servers
 DEV_MODE 1
 
-# --- Death Drops ---
+# --- Death Drops (Session #11) ---
 # What happens when a player dies
 
 # % of wallet dropped as a money pile near corpse (0-100)
@@ -1177,8 +1343,9 @@ DEATH_DROP_SCATTER_RADIUS 2
 # % chance each eligible inventory item drops loose (0-100)
 DEATH_DROP_ITEM_PERCENT 50
 
-# --- Inventory System ---
+# --- Inventory System (Session #91 — approved 2/1/1 design) ---
 # Backpack 2x = 80kg capacity. Clothing/weapon 1x = vanilla.
+# Full design rationale in STORAGE_DESIGN.md Section 11.
 WEIGHT_MULTIPLIER 1
 WEIGHT_MULT_BACKPACK 1
 WEIGHT_MULT_CLOTHING 1
@@ -1196,7 +1363,32 @@ FOLIAGE_SLOWDOWN_ENABLED 0
 ALLOW_WEAPONS_IN_CLOTHING 1
 MAX_NESTING_DEPTH 3
 
-# --- Debug Logging (syslog-style tiers + 8 channels) ---
+# WEIGHT_MULT_VEHICLE
+# Vehicle cargo weight capacity multiplier (1 = vanilla). Raise so
+# heavy loot crates fit when stored in a vehicle trunk.
+# Default: 1. Range: 1 to 100 (int).
+WEIGHT_MULT_VEHICLE 1
+
+# WEIGHT_MAX_VEST
+# Weight cap (kg) for vest storage. Vests use ClothNodeStorageComponent,
+# which has NO native weight limit (volume only) and cannot be modded —
+# HF enforces this cap at item-insert time instead.
+# Default: 15.0. Range: 1 to 200 (float, kg).
+WEIGHT_MAX_VEST 15.0
+
+# === PER-ITEM-TYPE INVENTORY CAPS (Session #40 DD#53) ========
+# Hard max a player can carry of each item class, enforced by the
+# inventory validator on every insert. 0 = unlimited for that type.
+# Gameplay impact: HIGH — caps explosive/med stockpiling per player.
+MAX_ROCKETS 10
+MAX_GRENADES 8
+MAX_MEDICAL 20
+MAX_AMMO_MAGS 30
+MAX_BUILDING_PARTS 3
+MAX_FOOD 10
+MAX_REPAIR_KITS 5
+
+# --- Debug Logging (Session H+1 — syslog-style tiers + 8 channels) ---
 #
 # CRIT and WARN logs ALWAYS print regardless of any flag below — they are
 # the syslog you grep for problems:
@@ -1242,9 +1434,13 @@ HF_DEBUG_MAP 0
 HF_DEBUG_PLAYER 0
 HF_DEBUG_GATEWAY 0
 HF_DEBUG_ADMIN 0
+# Legacy channel aliases (accepted, mapped onto the 8 channels above):
+#   HF_DEBUG_STORE -> ECONOMY   HF_DEBUG_GEAR / HF_DEBUG_WEIGHT -> INVENTORY
+#   HF_DEBUG_UI -> PLAYER
+# Prefer the canonical channel keys; aliases exist for older confs.
 
 # ============================================================
-# === RESERVED ADMIN SLOTS ============================
+# === RESERVED ADMIN SLOTS (B.12) ============================
 # Lets owner/admins/mods always get on a full server WITHOUT
 # wasting slots: the reserved slots stay PLAYABLE by regular
 # players ("high-risk"), and a high-risk player is bumped only
@@ -1261,6 +1457,7 @@ HF_DEBUG_ADMIN 0
 # Example: 128 playable + 2 buffer -> config.json maxPlayers 130,
 #          RESERVED_TOTAL_SLOTS 130, RESERVED_BUFFER 2.
 #
+# Full design: docs/design/RESERVED_SLOTS_DESIGN.md
 # ============================================================
 
 # Master on/off (0 = off, default). Feature does nothing until 1.
