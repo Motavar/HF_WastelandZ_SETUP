@@ -39,7 +39,7 @@ in the Reforger server browser and join. The mod installs itself.
 
 ## What the guide covers
 
-**[Open the guide →](https://motavar.github.io/HF_WastelandZ_SETUP/)**
+# 🟢 [Open the guide → ( START HERE )](https://motavar.github.io/HF_WastelandZ_SETUP/)
 
 (Linux users: the guide's Step 1 clones this repo straight onto the server —
 no ZIP needed.)
