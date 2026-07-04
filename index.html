@@ -418,19 +418,16 @@ FLUSH PRIVILEGES;</pre></div>
   <div class="step"><span class="n">0</span>
     <h4>Make your user &mdash; never build as root</h4>
     <p>When you SSH in, look at the prompt. <code class="inline">root@myserver:~#</code> means you&rsquo;re <b>root</b> — the account that can do anything, and the one an attacker most wants. Valve&rsquo;s own SteamCMD docs warn: never run game servers as root. Everything in this guide runs as a <b>normal user</b> that borrows admin power with <code class="inline">sudo</code> only when a command needs it.</p>
-    <p><b>Already have one?</b> Check what accounts exist and who has admin power (on Ubuntu, &ldquo;admin&rdquo; = member of the <code class="inline">sudo</code> group):</p>
-    <div class="code"><pre><span class="p">whoami</span>                <span class="c"># who am I logged in as right now?</span>
-<span class="p">ls</span> /home              <span class="c"># the human accounts on this box</span>
-<span class="p">getent</span> group sudo     <span class="c"># the admins — every name after the last ':' can use sudo</span>
-<span class="p">id</span> somename           <span class="c"># one account's detail — 'sudo' in its groups = admin</span></pre></div>
-    <p><b>Need one?</b> Create it and make it an admin:</p>
-    <div class="code"><pre><span class="p">sudo</span> adduser wz           <span class="c"># pick any name; it asks you to set a password</span>
-<span class="p">sudo</span> usermod -aG sudo wz  <span class="c"># put it in the admin (sudo) group</span></pre></div>
-    <p class="muted">Log out, reconnect as <code class="inline">ssh wz@your-server-ip</code>, and do every step below as that user. All the commands already say <code class="inline">sudo</code> where root power is needed.</p>
-    <div class="note tip"><div class="h">Admins for your friends</div><p>Same two commands with their name: <code class="inline">sudo adduser dave</code>, then <code class="inline">sudo usermod -aG sudo dave</code>. Dave logs in with <code class="inline">ssh dave@your-server-ip</code>, changes his password with <code class="inline">passwd</code>, and can use every command in Part 2 — restart servers, read logs, all of it. Only hand this to people you trust with the <i>whole box</i>: <code class="inline">sudo</code> is full admin power. Remove an admin later with <code class="inline">sudo deluser dave sudo</code> (keeps the account, drops the power) or <code class="inline">sudo deluser --remove-home dave</code> (deletes the account).</p></div>
-    <div class="note warn"><div class="h">Friend who should ONLY start/stop?</div><p>Skip the sudo group. Give the account just the service commands: <code class="inline">sudo nano /etc/sudoers.d/wz-operators</code>, one line per person:</p>
-    <div class="code"><pre>dave ALL=(root) NOPASSWD: /usr/bin/systemctl start wz-server1, /usr/bin/systemctl stop wz-server1, /usr/bin/systemctl restart wz-server1, /usr/bin/systemctl restart wz-gateway</pre></div>
-    <p>And let him <i>read</i> logs without any admin power at all: <code class="inline">sudo usermod -aG systemd-journal dave</code>. Now Dave can bounce the servers and watch <code class="inline">journalctl</code>, but can&rsquo;t touch configs, the database, or anything else.</p></div>
+    <p><b>See your admins:</b></p>
+    <div class="code"><pre><span class="p">getent</span> group sudo     <span class="c"># the admins — every name after the last ':' is one</span></pre></div>
+    <p><b>Add an admin</b> (yourself, or a friend who&rsquo;ll help run the server — two commands, that&rsquo;s it):</p>
+    <div class="code"><pre><span class="p">sudo</span> adduser dave           <span class="c"># pick any name; it asks you to set a password</span>
+<span class="p">sudo</span> usermod -aG sudo dave  <span class="c"># make him an admin</span></pre></div>
+    <p class="muted">Dave logs in with <code class="inline">ssh dave@your-server-ip</code> and the password you set (he can change it with <code class="inline">passwd</code>). He must log out and back in once for admin power to kick in — then he can do everything in this guide: restart servers, edit configs, run updates. Only add people you trust with the <i>whole box</i>.</p>
+    <p><b>Remove an admin:</b></p>
+    <div class="code"><pre><span class="p">sudo</span> deluser dave sudo              <span class="c"># drops admin power, keeps his login</span>
+<span class="p">sudo</span> deluser --remove-home dave     <span class="c"># deletes the account completely</span></pre></div>
+    <p class="muted">If YOU are still on root: run the add-an-admin commands once with your own name, reconnect as that user, and do every step below as it. All the commands already say <code class="inline">sudo</code> where root power is needed.</p>
   </div>
 
   <div class="step"><span class="n">1</span>
