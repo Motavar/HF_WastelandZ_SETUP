@@ -63,4 +63,4 @@ minute.
 
 ---
 
-By **Motavar** · [wasteland-z.com](https://wasteland-z.com)
+By **Motavar** · [wasteland-z.com](https://wasteland-z.com) · [Motavar@Judgement.net](mailto:Motavar@Judgement.net)
