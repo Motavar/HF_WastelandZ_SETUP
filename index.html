@@ -592,6 +592,13 @@ WantedBy=multi-user.target</pre></div>
   <hr class="rule">
   <div class="part-head"><span class="part-badge">Part 3</span><h2>Two or three servers on one box</h2></div>
   <p class="muted">One database, one gateway, several game servers — a <b>hive</b>. Players keep the <b>same money, bank and gear</b> on every server; each server keeps its own world (positions, placed objects, map). The Windows tab&rsquo;s &ldquo;Part 4&rdquo; ports table applies here too: game <b>2001/2002/2003</b>, browser <b>17777/17778/17779</b>, gateway <b>5000/5001/5002</b>.</p>
+  <p>The finished two-server setup, and how the pieces talk:</p>
+  <div class="code"><pre><span class="c">players → UDP 2001/17777 →</span> wz-server1 (Everon)  <span class="c">→ http://127.0.0.1:5000 + key #1 ─┐</span>
+<span class="c">players → UDP 2002/17778 →</span> wz-server2 (Arland)  <span class="c">→ http://127.0.0.1:5001 + key #2 ─┤</span>
+<span class="c">                                                                              └→</span> wz-gateway <span class="c">→</span> mysql
+<span class="c">The gateway tells the servers apart by the PORT each one calls (5000 vs 5001)
+and proves it with that server's key. Both ports are ONE gateway process,
+and everything right of the players is local to the box — nothing exposed.</span></pre></div>
   <p><b>You install the game once.</b> <code class="inline">/opt/reforger/server/</code> and the shared <code class="inline">workshop/</code> mods folder serve every server. Each extra server is just a <b>config file + profile folder + systemd unit</b> with different numbers. To add server 2:</p>
   <div class="code"><pre><span class="c"># its own config — new ports, its own map, its own name.
 # The kit ships one pre-made (ports 2002/17778 + Arland already set):</span>
@@ -617,6 +624,16 @@ WantedBy=multi-user.target</pre></div>
   </ul>
   <div class="note warn"><div class="h">One key per server</div><p>Each server gets its <b>own</b> gateway port and its <b>own</b> random <code class="inline">api_key</code> — that&rsquo;s how the gateway tells them apart. Never reuse a key across servers.</p></div>
   <div class="note tip"><div class="h">Will the box handle it?</div><p>Each Reforger server is heavy — roughly a few CPU cores and 4&ndash;8&nbsp;GB RAM per server under load. Two servers want a strong 8-core machine; three want more. The gateway and MySQL are lightweight by comparison.</p></div>
+
+  <h3>Start / stop / restart anything — one pattern</h3>
+  <p>Every piece is a service with a name — <code class="inline">wz-server1</code>, <code class="inline">wz-server2</code>, <code class="inline">wz-gateway</code>, <code class="inline">mysql</code> — and one command pattern drives them all. Learn it once with server 1:</p>
+  <div class="code"><pre><span class="p">sudo</span> systemctl start   wz-server1    <span class="c"># start it</span>
+<span class="p">sudo</span> systemctl stop    wz-server1    <span class="c"># stop it (players get dropped)</span>
+<span class="p">sudo</span> systemctl restart wz-server1    <span class="c"># stop + start in one go</span>
+<span class="p">sudo</span> systemctl status  wz-server1    <span class="c"># running or not? (green "active" = good)</span>
+<span class="p">journalctl</span> -u wz-server1 -f          <span class="c"># watch its live log — Ctrl+C stops watching, not the server</span></pre></div>
+  <p class="muted">Swap the name for any other piece: bounce only server 2 = <code class="inline">sudo systemctl restart wz-server2</code>; stop the gateway = <code class="inline">sudo systemctl stop wz-gateway</code>; restart the database = <code class="inline">sudo systemctl restart mysql</code>. Each piece is independent — players on server 1 keep playing while you bounce server 2.</p>
+  <p class="muted"><b>Order?</b> After a full stop (or a reboot where something didn&rsquo;t come up): <code class="inline">mysql</code> first, then <code class="inline">wz-gateway</code>, then the game servers. A briefly-down gateway doesn&rsquo;t crash the game servers — saves pause and Wasteland-Z resyncs every player automatically when it comes back — but don&rsquo;t leave it down long.</p>
 
   <h3>If something&rsquo;s wrong</h3>
   <ul class="clean muted">
