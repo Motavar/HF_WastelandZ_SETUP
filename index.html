@@ -637,10 +637,20 @@ WantedBy=multi-user.target</pre></div>
   <h3>Add a mod</h3>
   <p>Find it on the official Workshop site: <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a>. The mod&rsquo;s ID is right in its page URL — the 16 characters before the name, e.g. <code class="inline">&hellip;/workshop/<b>68A616565DECAB19</b>-wasteland-z</code>. Add one block to the <code class="inline">mods</code> list and restart the server:</p>
   <div class="code"><pre>"mods": [
-    { "modId": "68A616565DECAB19", "name": "Wasteland-Z" },
-    { "modId": "ABCDEF1234567890", "name": "Cool Helmet Pack" }
+    {
+        "modId": "68A616565DECAB19",
+        "name": "Wasteland-Z"
+    },
+    {
+        "modId": "ABCDEF1234567890",
+        "name": "Cool Helmet Pack"
+    },
+    {
+        "modId": "0123456789ABCDEF",
+        "name": "Winter Uniforms"
+    }
 ]</pre></div>
-  <p class="muted">The <code class="inline">name</code> is your own label — write whatever helps you remember what it is. Mind the comma between blocks (JSON&rsquo;s one gotcha: every block except the last needs one).</p>
+  <p class="muted">The <code class="inline">name</code> is your own label — write whatever helps you remember what it is. <b>The commas are the one gotcha:</b> every mod&rsquo;s closing <code class="inline">}</code> gets a comma <i>except the last one</i> — and never a semicolon, JSON doesn&rsquo;t use them. So when you add a mod at the end: the block that <i>used to be</i> last gains a comma, the new last block has none.</p>
 
   <h3>Remove a mod — including a problem mod</h3>
   <p>Delete its block from the list, restart. That&rsquo;s the whole procedure — the server only loads what&rsquo;s listed. The mod&rsquo;s downloaded files stay in the <code class="inline">workshop</code> folder but are completely inert; if you want the disk space back, delete the folder named with that mod&rsquo;s ID inside the workshop folder.</p>
