@@ -7,6 +7,10 @@ plain-English, step-by-step setup guide for **Windows and Linux**.
 
 ## Start here
 
+Get the kit: green **Code** button (top of this page) → **Download ZIP** →
+unzip. No git and no GitHub account needed. (Linux users: the guide's Step 1
+clones it straight onto the server instead.)
+
 Open **[`index.html`](index.html)** — the full setup guide (pick Windows or
 Linux, follow the numbered steps). It covers:
 

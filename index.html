@@ -208,6 +208,7 @@
   <div class="note tip">
     <div class="h">Before you begin</div>
     <p>You need a PC (or rented machine) that stays on, and this download. That&rsquo;s it — the guide covers installing the game server itself, and the server downloads from Steam <b>anonymously</b> (no Steam account needed). The <b>Wasteland-Z</b> mod downloads automatically from the Reforger Workshop the first time the server starts.</p>
+    <p><b>&ldquo;This download&rdquo;</b> = the setup kit&rsquo;s GitHub repo. To grab it: open the repo page &rarr; green <b>Code</b> button &rarr; <b>Download ZIP</b> &rarr; unzip anywhere on your PC. No git and no GitHub account needed. (Linux users can skip the ZIP — the Linux tab&rsquo;s Step 1 pulls it straight onto the server.)</p>
   </div>
 </div></section>
 
@@ -235,7 +236,7 @@
   configs\     <span class="c">&larr; your server settings (server1.json)</span>
   profiles\    <span class="c">&larr; each server's save data + Wasteland-Z configs</span>
   workshop\    <span class="c">&larr; downloaded mods (shared by all your servers)</span></pre></div>
-    <p>Download <a href="https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" target="_blank" rel="noopener">steamcmd.zip</a> (official Valve link) and unzip it into <code class="inline">C:\reforger\steamcmd\</code>. No Steam account is needed — the dedicated server downloads anonymously.</p>
+    <p>Get SteamCMD from Valve&rsquo;s official page: <a href="https://developer.valvesoftware.com/wiki/SteamCMD" target="_blank" rel="noopener">developer.valvesoftware.com/wiki/SteamCMD</a> — under <b>Windows</b> it links the <code class="inline">steamcmd.zip</code> download. Unzip it into <code class="inline">C:\reforger\steamcmd\</code>. No Steam account is needed — the dedicated server downloads anonymously.</p>
   </div>
 
   <div class="step"><span class="n">2</span>
@@ -382,7 +383,13 @@ FLUSH PRIVILEGES;</pre></div>
 
   <p>To add <b>server 2</b> (server 3 is the same pattern):</p>
   <ul class="clean">
-    <li><b>Config:</b> copy <code class="inline">server1.json</code> &rarr; <code class="inline">server2.json</code>. Change <code class="inline">name</code>, set <code class="inline">bindPort</code>/<code class="inline">publicPort</code> to <b>2002</b> and the <code class="inline">a2s</code> port to <b>17778</b>. Different map? Just point <code class="inline">scenarioId</code> at it.</li>
+    <li><b>Config:</b> copy <code class="inline">server1.json</code> &rarr; <code class="inline">server2.json</code>. Change <code class="inline">name</code>, set <code class="inline">bindPort</code>/<code class="inline">publicPort</code> to <b>2002</b> and the <code class="inline">a2s</code> port to <b>17778</b>. Want a different map on this server? Point <code class="inline">scenarioId</code> at that map&rsquo;s Game Master scenario — Wasteland-Z runs on top of any GM scenario:
+      <div class="code"><pre><span class="c">Everon (the big island):</span>
+"scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf"
+
+<span class="c">Arland (the smaller southern island):</span>
+"scenarioId": "{2BBBE828037C6F4B}Missions/22_GM_Arland.conf"</pre></div>
+      e.g. server 1 on Everon, server 2 on Arland — same hive, so players keep their money, bank and gear when they switch.</li>
     <li><b>Batch files:</b> copy <code class="inline">start_server1.bat</code> &rarr; <code class="inline">start_server2.bat</code> and <code class="inline">stop_server1.bat</code> &rarr; <code class="inline">stop_server2.bat</code>. Inside both, change every <code class="inline">server1</code> to <code class="inline">server2</code> and the title <code class="inline">WZ-Server-1</code> to <code class="inline">WZ-Server-2</code>. (The install folder and <code class="inline">workshop\</code> mods folder are <b>shared</b> — don&rsquo;t copy those.)</li>
     <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 5 command). Restart the gateway window — it now listens on 5000 <i>and</i> 5001.</li>
     <li><b>Wire it:</b> in <code class="inline">profiles\server2\hf_wastelandz\configs\</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
@@ -400,11 +407,48 @@ FLUSH PRIVILEGES;</pre></div>
   <p class="muted">These are Ubuntu commands. Type them into the server&rsquo;s terminal (connect with SSH). Every command is explained.</p>
 
   <div class="note tip">
-    <div class="h">The game server itself</div>
-    <p>Same SteamCMD flow as Windows: <code class="inline">sudo apt install steamcmd</code>, then <code class="inline">steamcmd +force_install_dir ~/reforger/server +login anonymous +app_update 1874900 validate +quit</code>, and launch <code class="inline">ArmaReforgerServer</code> with <code class="inline">-config</code> + <code class="inline">-profile</code> pointing at your <code class="inline">server1.json</code> and profile folder (the <code class="inline">server/server1.json.example</code> in this download works as-is — Wasteland-Z is pre-listed in <code class="inline">mods</code>). Run it under systemd like the gateway in Part 2. Multiple servers work exactly like the Windows &ldquo;Part 4&rdquo; section: unique game ports, one gateway entry + unique key per server in <code class="inline">config.py</code>, one systemd unit each.</p>
+    <div class="h">New to Linux? The 60-second picture</div>
+    <p>Your Windows PC is the <b>remote control</b>; the Linux box is the machine that runs everything. You type commands into it over <b>SSH</b> — open PowerShell on your PC and run <code class="inline">ssh youruser@your-server-ip</code> (SSH is built into Windows, nothing to install). Every command below is typed into that window.</p>
+    <p>Linux has no <code class="inline">C:\</code>. Your personal folder is <code class="inline">/home/youruser</code> — written <code class="inline">~</code> for short, so <code class="inline">~/reforger</code> would mean <code class="inline">/home/youruser/reforger</code>. Software you install yourself goes in <code class="inline">/opt/</code> by convention — that&rsquo;s this guide&rsquo;s equivalent of making <code class="inline">C:\reforger\</code>, and everything lives there:</p>
+    <div class="code"><pre>/opt/wastelandz            <span class="c">&larr; this setup kit, straight from GitHub (Step 1)</span>
+/opt/reforger              <span class="c">&larr; the game server (Step 2)</span>
+/opt/wastelandz-gateway    <span class="c">&larr; the running gateway (Step 5)</span></pre></div>
   </div>
 
   <div class="step"><span class="n">1</span>
+    <h4>Get the files onto the server</h4>
+    <p>Everything in this kit is one GitHub repo. Two ways to get it onto the Linux box — pick one:</p>
+    <p><b>Option A — git (recommended).</b> One command pulls the whole kit straight onto the server; updating later is one more command. On the server:</p>
+    <div class="code"><pre><span class="p">sudo</span> apt install -y git
+<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz
+<span class="p">sudo</span> chown -R $USER /opt/wastelandz</pre></div>
+    <p class="muted">Get updates later with: <code class="inline">cd /opt/wastelandz</code> then <code class="inline">git pull</code></p>
+    <p><b>Option B — WinSCP (drag &amp; drop).</b> On your PC: open the repo page on GitHub &rarr; green <b>Code</b> button &rarr; <b>Download ZIP</b> &rarr; unzip it. Make the target folder on the server first:</p>
+    <div class="code"><pre><span class="p">sudo</span> mkdir -p /opt/wastelandz
+<span class="p">sudo</span> chown $USER /opt/wastelandz</pre></div>
+    <p class="muted">Then connect <b>WinSCP</b> (a free tool) to the server and drag the unzipped folder&rsquo;s <i>contents</i> into <code class="inline">/opt/wastelandz</code> — it works like copying between two Explorer windows.</p>
+  </div>
+
+  <div class="step"><span class="n">2</span>
+    <h4>Install the game server</h4>
+    <p>SteamCMD is Valve&rsquo;s little downloader — it fetches and updates the dedicated server. On Ubuntu it lives in the &ldquo;multiverse&rdquo; package section, so enable that first:</p>
+    <div class="code"><pre><span class="p">sudo</span> add-apt-repository multiverse
+<span class="p">sudo</span> dpkg --add-architecture i386
+<span class="p">sudo</span> apt update
+<span class="p">sudo</span> apt install -y steamcmd</pre></div>
+    <p class="muted">A license screen appears during install — accept it. No Steam account is needed; dedicated servers download anonymously.</p>
+    <p>Make the game server&rsquo;s folder layout (same idea as <code class="inline">C:\reforger\</code> on Windows), then download the server into it — a few GB:</p>
+    <div class="code"><pre><span class="p">sudo</span> mkdir -p /opt/reforger/server /opt/reforger/configs /opt/reforger/profiles /opt/reforger/workshop
+<span class="p">sudo</span> chown -R $USER /opt/reforger
+
+<span class="p">steamcmd</span> +force_install_dir /opt/reforger/server +login anonymous +app_update 1874900 validate +quit</pre></div>
+    <div class="note tip"><div class="h">Game updated?</div><p>Whenever Reforger gets an official update, stop your servers and re-run that same <code class="inline">steamcmd</code> line. It only downloads what changed.</p></div>
+    <p>Drop in the ready-made config from the kit (Wasteland-Z is pre-listed in <code class="inline">mods</code> — it works as-is; open it in <code class="inline">nano</code> later to rename your server):</p>
+    <div class="code"><pre><span class="p">cp</span> /opt/wastelandz/server/server1.json.example /opt/reforger/configs/server1.json</pre></div>
+    <p class="muted">Don&rsquo;t start it yet — it needs the database and gateway first (Steps 3&ndash;8). Step 9 does the first start.</p>
+  </div>
+
+  <div class="step"><span class="n">3</span>
     <h4>Install MySQL and Python</h4>
     <p>Update the package list, then install both:</p>
     <div class="code"><pre><span class="p">sudo</span> apt update
@@ -413,7 +457,7 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="p">sudo</span> mysql_secure_installation</pre></div>
   </div>
 
-  <div class="step"><span class="n">2</span>
+  <div class="step"><span class="n">4</span>
     <h4>Create the database</h4>
     <p>Open MySQL as admin:</p>
     <div class="code"><pre><span class="p">sudo</span> mysql</pre></div>
@@ -422,65 +466,69 @@ FLUSH PRIVILEGES;</pre></div>
 CREATE USER 'wastelandz'@'localhost' IDENTIFIED BY '<span class="p">your_password_here</span>';
 GRANT ALL PRIVILEGES ON wastelandz.* TO 'wastelandz'@'localhost';
 FLUSH PRIVILEGES;</pre></div>
-    <div class="note warn"><div class="h">Pick a password</div><p>Replace <code class="inline">your_password_here</code> with one you choose and <b>write it down</b> — you need it in Step 5.</p></div>
-  </div>
-
-  <div class="step"><span class="n">3</span>
-    <h4>Get the files onto the server</h4>
-    <p>Copy the <code class="inline">gateway</code> folder from your Windows PC up to the Linux box. Easiest way: <b>WinSCP</b> (a free drag-and-drop tool) — drop the folder into <code class="inline">/opt/wastelandz-gateway</code>. Or, from a terminal:</p>
-    <div class="code"><pre><span class="c"># make the folder and let your user own it</span>
-<span class="p">sudo</span> mkdir -p /opt/wastelandz-gateway
-<span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
-
-<span class="c"># copy it up (run this on your PC)</span>
-<span class="p">scp</span> -r gateway/* youruser@your-server:/opt/wastelandz-gateway/</pre></div>
-  </div>
-
-  <div class="step"><span class="n">4</span>
-    <h4>Build the tables and install the parts</h4>
-    <p>Go into the folder, load the schema, and install the gateway&rsquo;s requirements:</p>
-    <div class="code"><pre><span class="p">cd</span> /opt/wastelandz-gateway
-<span class="p">sudo</span> mysql wastelandz &lt; setup_database.sql
-<span class="p">pip3</span> install -r requirements.txt</pre></div>
-    <p class="muted">No error from the middle line means the tables were created.</p>
+    <div class="note warn"><div class="h">Pick a password</div><p>Replace <code class="inline">your_password_here</code> with one you choose and <b>write it down</b> — you need it in Step 6.</p></div>
   </div>
 
   <div class="step"><span class="n">5</span>
+    <h4>Set up the gateway</h4>
+    <p>Copy the gateway out of the kit into its own folder (the running copy stays separate, so kit updates never touch your live settings), then build the database tables and install its Python parts:</p>
+    <div class="code"><pre><span class="c"># the running copy gets its own folder</span>
+<span class="p">sudo</span> mkdir -p /opt/wastelandz-gateway
+<span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
+<span class="p">cp</span> -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
+
+<span class="c"># build the tables and install requirements</span>
+<span class="p">cd</span> /opt/wastelandz-gateway
+<span class="p">sudo</span> mysql wastelandz &lt; setup_database.sql
+<span class="p">pip3</span> install -r requirements.txt</pre></div>
+    <p class="muted">No error from the <code class="inline">mysql</code> line means the tables were created.</p>
+  </div>
+
+  <div class="step"><span class="n">6</span>
     <h4>Enter your settings</h4>
     <p>Copy the template to the real settings file and open it in <b>nano</b>, a simple editor:</p>
     <div class="code"><pre><span class="p">cp</span> config.example.py config.py
 <span class="p">nano</span> config.py</pre></div>
-    <p class="muted">Set <code class="inline">DB_PASSWORD</code> to your Step 2 password. In <code class="inline">SERVERS</code>, set <code class="inline">api_key</code> to a random key from:</p>
+    <p class="muted">Set <code class="inline">DB_PASSWORD</code> to your Step 4 password. In <code class="inline">SERVERS</code>, set <code class="inline">api_key</code> to a random key from:</p>
     <div class="code"><pre><span class="p">python3</span> -c "import secrets; print(secrets.token_hex(32))"</pre></div>
     <p class="muted">Leave <code class="inline">host</code> as <code class="inline">127.0.0.1</code> and <code class="inline">port</code> as <code class="inline">5000</code>. In nano: <span class="kbd">Ctrl</span>+<span class="kbd">O</span> then <span class="kbd">Enter</span> to save, <span class="kbd">Ctrl</span>+<span class="kbd">X</span> to exit.</p>
     <div class="note danger"><div class="h">Keep it private</div><p><code class="inline">config.py</code> holds your password and key. Never share it or upload it anywhere public.</p></div>
   </div>
 
-  <div class="step"><span class="n">6</span>
+  <div class="step"><span class="n">7</span>
     <h4>Test that it runs</h4>
     <div class="code"><pre><span class="p">python3</span> gateway.py</pre></div>
-    <p class="muted">Look for <code class="inline">Database connection: OK</code>. Then press <span class="kbd">Ctrl</span>+<span class="kbd">C</span> to stop it — Step 7 (Part 2) makes it run properly on its own. Check its health from another terminal:</p>
+    <p class="muted">Look for <code class="inline">Database connection: OK</code>. Then press <span class="kbd">Ctrl</span>+<span class="kbd">C</span> to stop it — Part 2 below makes it run properly on its own. Check its health from another terminal:</p>
     <div class="code"><pre><span class="p">curl</span> http://localhost:5000/api/ping</pre></div>
   </div>
 
-  <div class="step"><span class="n">7</span>
+  <div class="step"><span class="n">8</span>
     <h4>Firewall</h4>
     <p>Gateway on the <b>same box</b> as the game server (normal) — <b>nothing to do</b>. Local traffic is already allowed.</p>
     <p>Only for a <b>remote</b> server or bot, open port 5000 to <b>that one address</b>:</p>
     <div class="code"><pre><span class="p">sudo</span> ufw allow from <span class="p">THE.OTHER.IP.ADDRESS</span> to any port 5000 proto tcp</pre></div>
     <div class="note danger"><div class="h">Two hard rules</div><p>Never run <code class="inline">ufw allow 5000</code> on its own — that opens it to the whole internet. And leave MySQL&rsquo;s port <b>3306</b> closed; it only needs to be reached locally.</p></div>
+    <p class="muted">If you turned <code class="inline">ufw</code> on, also open the game&rsquo;s own ports so players can join: <code class="inline">sudo ufw allow 2001/udp</code> and <code class="inline">sudo ufw allow 17777/udp</code>. (Ubuntu ships with <code class="inline">ufw</code> off — then there&rsquo;s nothing to do.)</p>
   </div>
 
-  <div class="step"><span class="n">8</span>
-    <h4>Connect your game server</h4>
-    <p class="muted">Start the game server once so Wasteland-Z creates <code class="inline">&lt;profile&gt;/hf_wastelandz/configs/</code>, then:</p>
+  <div class="step"><span class="n">9</span>
+    <h4>Connect your game server &mdash; then first start</h4>
+    <p>Start the game server once and let it boot — it downloads the Wasteland-Z mod from the Workshop and writes its starter config files. This is the command (one long line — same program, its config, its profile folder, the shared mods folder):</p>
+    <div class="code"><pre><span class="p">cd</span> /opt/reforger/server
+<span class="p">./ArmaReforgerServer</span> -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60</pre></div>
+    <p class="muted">When it settles, press <span class="kbd">Ctrl</span>+<span class="kbd">C</span> to stop it. Wasteland-Z has now written starter configs into <code class="inline">/opt/reforger/profiles/server1/hf_wastelandz/configs/</code>. Wire it up:</p>
     <ul class="clean">
       <li>In <code class="inline">&hellip;/hf_wastelandz/configs/HFWastelandZ_server.conf</code>, set <code class="inline">GATEWAY_URL http://127.0.0.1:5000/</code>.</li>
-      <li>In <code class="inline">&hellip;/hf_wastelandz/configs/HFWastelandZ_secrets.conf</code>, add a line: <code class="inline">API_KEY</code> followed by the <b>same</b> key from Step 5. (A ready-made template with key-generation instructions ships in this download: <code class="inline">configs/HFWastelandZ_secrets.conf.example</code>.)</li>
-      <li>Optionally rename this download&rsquo;s <code class="inline">configs/</code> files off <code class="inline">.example</code> and copy them into that same folder to pre-tune settings.</li>
-      <li>Copy <code class="inline">missions/rewards/</code> into <code class="inline">&lt;profile&gt;/hf_wastelandz/missions/rewards/</code> — these are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</li>
+      <li>In <code class="inline">&hellip;/hf_wastelandz/configs/HFWastelandZ_secrets.conf</code>, add a line: <code class="inline">API_KEY</code> followed by the <b>same</b> key from Step 6. (A ready-made template with key-generation instructions ships in the kit: <code class="inline">/opt/wastelandz/configs/HFWastelandZ_secrets.conf.example</code>.)</li>
+      <li>Optionally rename the kit&rsquo;s <code class="inline">/opt/wastelandz/configs/</code> files off <code class="inline">.example</code> and copy them into that same folder to pre-tune settings.</li>
+      <li>Copy the mission rewards into the profile: <code class="inline">cp -r /opt/wastelandz/missions/rewards /opt/reforger/profiles/server1/hf_wastelandz/missions/</code> — these are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</li>
     </ul>
-    <p class="muted">Restart the game server. Player data now persists. You&rsquo;re live.</p>
+    <p class="muted">Start it again (same command). Player data now saves to the database. You&rsquo;re live.</p>
+    <div class="note tip"><div class="h">Make it a service too</div><p>Once it works, run the game server under systemd exactly like the gateway in Part 2 — same recipe, saved as <code class="inline">wz-server1.service</code>, with these three lines swapped in:</p>
+    <div class="code"><pre>Description=WastelandZ Game Server 1
+WorkingDirectory=/opt/reforger/server
+ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60</pre></div>
+    <p>Then <code class="inline">sudo systemctl enable --now wz-server1</code> — it starts on boot and restarts itself if it crashes.</p></div>
   </div>
 
   <hr class="rule">
@@ -524,9 +572,37 @@ WantedBy=multi-user.target</pre></div>
   <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wastelandz_backup_$(date +%F).sql</pre></div>
   <p class="muted">That file is your whole server&rsquo;s save — keep copies somewhere safe.</p>
 
+  <hr class="rule">
+  <div class="part-head"><span class="part-badge">Part 3</span><h2>Two or three servers on one box</h2></div>
+  <p class="muted">One database, one gateway, several game servers — a <b>hive</b>. Players keep the <b>same money, bank and gear</b> on every server; each server keeps its own world (positions, placed objects, map). The Windows tab&rsquo;s &ldquo;Part 4&rdquo; ports table applies here too: game <b>2001/2002/2003</b>, browser <b>17777/17778/17779</b>, gateway <b>5000/5001/5002</b>.</p>
+  <p><b>You install the game once.</b> <code class="inline">/opt/reforger/server/</code> and the shared <code class="inline">workshop/</code> mods folder serve every server. Each extra server is just a <b>config file + profile folder + systemd unit</b> with different numbers. To add server 2:</p>
+  <div class="code"><pre><span class="c"># its own config — new ports, its own map, its own name</span>
+<span class="p">cp</span> /opt/reforger/configs/server1.json /opt/reforger/configs/server2.json
+<span class="p">nano</span> /opt/reforger/configs/server2.json</pre></div>
+  <p class="muted">In <code class="inline">server2.json</code>: change <code class="inline">name</code>, set <code class="inline">bindPort</code>/<code class="inline">publicPort</code> to <b>2002</b>, the <code class="inline">a2s</code> port to <b>17778</b> — and pick the map with <code class="inline">scenarioId</code>. Wasteland-Z runs on top of any Game Master scenario, so a two-server hive can offer two different worlds:</p>
+  <div class="code"><pre><span class="c"># server1.json — Everon (the big island):</span>
+"scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf"
+
+<span class="c"># server2.json — Arland (the smaller southern island):</span>
+"scenarioId": "{2BBBE828037C6F4B}Missions/22_GM_Arland.conf"</pre></div>
+  <p>Each server starts with the same program, pointed at its own config + profile (the profile folder is created on first start):</p>
+  <div class="code"><pre><span class="c"># server 1 — Everon</span>
+/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60
+
+<span class="c"># server 2 — Arland</span>
+/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server2.json -profile /opt/reforger/profiles/server2 -addonsDir /opt/reforger/workshop -maxFPS 60</pre></div>
+  <p>Then wire server 2 into the hive exactly like Step 9 did for server 1:</p>
+  <ul class="clean">
+    <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 6 command), then <code class="inline">sudo systemctl restart wz-gateway</code> — it now listens on 5000 <i>and</i> 5001.</li>
+    <li><b>Wire it:</b> in <code class="inline">/opt/reforger/profiles/server2/hf_wastelandz/configs/</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
+    <li><b>Service:</b> copy <code class="inline">wz-server1.service</code> &rarr; <code class="inline">wz-server2.service</code>, change <code class="inline">server1</code> to <code class="inline">server2</code> in the <code class="inline">Description</code> and <code class="inline">ExecStart</code> lines, then <code class="inline">sudo systemctl enable --now wz-server2</code>. If <code class="inline">ufw</code> is on, open UDP <b>2002</b> + <b>17778</b>.</li>
+  </ul>
+  <div class="note warn"><div class="h">One key per server</div><p>Each server gets its <b>own</b> gateway port and its <b>own</b> random <code class="inline">api_key</code> — that&rsquo;s how the gateway tells them apart. Never reuse a key across servers.</p></div>
+  <div class="note tip"><div class="h">Will the box handle it?</div><p>Each Reforger server is heavy — roughly a few CPU cores and 4&ndash;8&nbsp;GB RAM per server under load. Two servers want a strong 8-core machine; three want more. The gateway and MySQL are lightweight by comparison.</p></div>
+
   <h3>If something&rsquo;s wrong</h3>
   <ul class="clean muted">
-    <li><b>&ldquo;Database connection failed&rdquo;</b> — <code class="inline">DB_PASSWORD</code> in <code class="inline">config.py</code> doesn&rsquo;t match Step 2, or MySQL is stopped (<code class="inline">sudo systemctl status mysql</code>).</li>
+    <li><b>&ldquo;Database connection failed&rdquo;</b> — <code class="inline">DB_PASSWORD</code> in <code class="inline">config.py</code> doesn&rsquo;t match Step 4, or MySQL is stopped (<code class="inline">sudo systemctl status mysql</code>).</li>
     <li><b>Service won&rsquo;t start</b> — run <code class="inline">journalctl -u wz-gateway -e</code> to see why; usually a wrong path or username in the service file.</li>
     <li><b>Port 5000 in use</b> — change <code class="inline">port</code> in <code class="inline">config.py</code> and update <code class="inline">GATEWAY_URL</code>.</li>
     <li><b>Money/gear not saving</b> — <code class="inline">GATEWAY_URL</code> or <code class="inline">api_key</code> mismatch between the game server and <code class="inline">config.py</code>.</li>
