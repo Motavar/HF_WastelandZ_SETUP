@@ -678,15 +678,16 @@ RESPAWN_DELAY_SEC 0
 # HF_CORPSE_DESPAWN_SEC
 # Seconds after a player dies before their corpse — and the gear worn on
 # it (backpack, vest, clothing) — is removed from the world. This is the
-# looting window: a longer value gives players more time to loot a kill.
-# Was a hardcoded 30s (too short for looting); now configurable. The corpse
-# stays the dead player's controlled entity during this window (keeps the
+# looting AND body-recovery window: killers loot the kill, and the dead
+# player can run back to recover their own gear. The corpse stays the
+# dead player's controlled entity during this window (keeps the
 # spawn-menu RPC channel open), so keep it at or above RESPAWN_DELAY_SEC.
-#   30   = old behavior (fast cleanup)
-#   120  = default (comfortable looting window)
-#   300  = 5 min (loot-heavy servers)
-# Default 120. Range 10-3600.
-HF_CORPSE_DESPAWN_SEC 120
+#   120  = fast cleanup (kill-looting only, no run-backs)
+#   600  = default (10 min — body recovery viable)
+#   900  = 15 min (generous run-back window; watch body counts on
+#          high-pop servers — there is no corpse-count cap, only this timer)
+# Default 600. Range 10-3600.
+HF_CORPSE_DESPAWN_SEC 600
 
 # HF_RESYNC_STAGGER_MS
 # GATEWAY (DB) OUTAGE RESILIENCE — recovery-resync pacing.

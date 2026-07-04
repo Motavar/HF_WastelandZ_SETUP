@@ -212,10 +212,17 @@
     <dt>gateway/setup_database.sql</dt><dd>Builds every database table in one shot. You run this once.</dd>
     <dt>gateway/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
     <dt>gateway/start_gateway.bat</dt><dd>Windows one-click start.</dd>
-    <dt>configs/</dt><dd>Example server settings (loot, vehicles, towns, admins&hellip;). Rename off <code class="inline">.example</code> and drop into your server profile. The README inside lists each file; every setting is documented inline.</dd>
+    <dt>configs/</dt><dd><b>Reference copies</b> of the server settings (loot, vehicles, towns, admins&hellip;) &mdash; the server writes its own working copies on first start (see below), so these are for reading and optional pre-tuning, not required drop-ins. The README inside lists each file and which ones auto-create; every setting is documented inline.</dd>
     <dt>missions/</dt><dd>Reward templates for the mission system, plus a guide to authoring missions in-game.</dd>
     <dt>server/</dt><dd>Game-server kit — SteamCMD install script, example <code class="inline">server1.json</code>, and the start/stop batch files (auto-restart loop included).</dd>
   </dl></div>
+
+  <div class="note tip">
+    <div class="h">The server builds its own config files &mdash; you don&rsquo;t have to</div>
+    <p>The <b>first time Wasteland-Z starts</b>, it writes a complete, ready-to-run set of config files into your server profile&rsquo;s <code class="inline">hf_wastelandz\configs\</code> folder, each pre-filled with the current defaults. You can start with <b>no</b> config files at all and edit the generated ones afterwards &mdash; that&rsquo;s the recommended path, because the files the server writes always match the mod version you&rsquo;re running (a hand-copied kit file can fall behind after an update).</p>
+    <p><b>Auto-created on first start:</b> <code class="inline">HFWastelandZ_server.conf</code>, <code class="inline">HFWastelandZ_secrets.conf</code>, <code class="inline">HFWastelandZ_admins.conf</code>, <code class="inline">HFWastelandZ_blacklist.conf</code>, <code class="inline">HFWastelandZ_command_tiers.conf</code>, <code class="inline">HFWastelandZ_loadouts.conf</code>, <code class="inline">HFWastelandZ_town_tiers.conf</code>, <code class="inline">HFWastelandZ_loot_spawn_filter.conf</code>, <code class="inline">HFWastelandZ_item_catalog.conf</code>, <code class="inline">HFWastelandZ_vehicle_spawn.conf</code>, <code class="inline">HFWastelandZ_server_message.txt</code>, plus the per-map files under <code class="inline">configs\map\&lt;MapName&gt;\</code> (towns, spawn points, loot pools, world loot, and the gun / general / vehicle store catalogs &mdash; these regenerate for <b>whatever map you load</b>).</p>
+    <p><b>The two you must fill in yourself:</b> <code class="inline">HFWastelandZ_secrets.conf</code> is written with a <b>placeholder</b> API key you must replace, and <code class="inline">HFWastelandZ_admins.conf</code> is written <b>empty</b> so you must add your Steam64 ID to become an admin. Everything else runs on defaults until you decide to change it.</p>
+  </div>
 
   <div class="note tip">
     <div class="h">Before you begin</div>
