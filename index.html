@@ -455,6 +455,7 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">sudo</span> apt update
 <span class="p">sudo</span> apt install -y steamcmd</pre></div>
     <p class="muted">A license screen appears during install — accept it. No Steam account is needed; dedicated servers download anonymously.</p>
+    <p class="muted">Not on Ubuntu? Debian, Arch and other distros install SteamCMD differently — see Valve&rsquo;s official page for yours: <a href="https://developer.valvesoftware.com/wiki/SteamCMD" target="_blank" rel="noopener">developer.valvesoftware.com/wiki/SteamCMD</a>. The rest of this guide works the same once <code class="inline">steamcmd</code> is installed.</p>
     <p>Make the game server&rsquo;s folder layout (same idea as <code class="inline">C:\reforger\</code> on Windows), then download the server into it — a few GB:</p>
     <div class="code"><pre><span class="p">sudo</span> mkdir -p /opt/reforger/server /opt/reforger/configs /opt/reforger/profiles /opt/reforger/workshop
 <span class="p">sudo</span> chown -R $USER /opt/reforger
