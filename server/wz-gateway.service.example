@@ -1,0 +1,17 @@
+# WastelandZ Gateway — systemd service (Linux)
+# 1. Copy to /etc/systemd/system/wz-gateway.service   (drop the .example)
+# 2. Change "youruser" below to your Linux username
+# 3. sudo systemctl daemon-reload
+# 4. sudo systemctl enable --now wz-gateway
+[Unit]
+Description=WastelandZ Gateway
+After=network.target mysql.service
+
+[Service]
+WorkingDirectory=/opt/wastelandz-gateway
+ExecStart=/usr/bin/python3 /opt/wastelandz-gateway/gateway.py
+Restart=on-failure
+User=youruser
+
+[Install]
+WantedBy=multi-user.target

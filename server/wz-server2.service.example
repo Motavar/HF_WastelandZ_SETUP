@@ -1,0 +1,18 @@
+# WastelandZ Game Server 2 — systemd service (Linux, multi-server "Part 3")
+# 1. Copy to /etc/systemd/system/wz-server2.service   (drop the .example)
+# 2. Change "youruser" below to your Linux username
+# 3. sudo systemctl daemon-reload
+# 4. sudo systemctl enable --now wz-server2
+# Pairs with server2.json.example (ports 2002/17778, its own profile folder).
+[Unit]
+Description=WastelandZ Game Server 2
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/reforger/server
+ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server2.json -profile /opt/reforger/profiles/server2 -addonsDir /opt/reforger/workshop -maxFPS 60
+Restart=on-failure
+User=youruser
+
+[Install]
+WantedBy=multi-user.target

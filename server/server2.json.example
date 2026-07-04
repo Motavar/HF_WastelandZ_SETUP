@@ -1,0 +1,39 @@
+{
+    "bindAddress": "0.0.0.0",
+    "bindPort": 2002,
+    "publicAddress": "",
+    "publicPort": 2002,
+    "a2s": {
+        "address": "0.0.0.0",
+        "port": 17778
+    },
+    "game": {
+        "name": "My Wasteland-Z Server #2 - Arland",
+        "password": "",
+        "passwordAdmin": "PICK_AN_ADMIN_PASSWORD",
+        "admins": [],
+        "scenarioId": "{2BBBE828037C6F4B}Missions/22_GM_Arland.conf",
+        "maxPlayers": 64,
+        "visible": true,
+        "crossPlatform": true,
+        "supportedPlatforms": ["PLATFORM_PC", "PLATFORM_XBL"],
+        "gameProperties": {
+            "battlEye": true,
+            "disableThirdPerson": false,
+            "VONDisableUI": false,
+            "VONDisableDirectSpeechUI": false
+        },
+        "mods": [
+            {
+                "modId": "68A616565DECAB19",
+                "name": "Wasteland-Z"
+            }
+        ]
+    },
+    "operating": {
+        "lobbyPlayerSynchronise": true,
+        "playerSaveTime": 120,
+        "aiLimit": -1,
+        "disableCrashReporter": false
+    }
+}

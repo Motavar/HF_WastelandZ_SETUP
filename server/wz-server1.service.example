@@ -1,0 +1,17 @@
+# WastelandZ Game Server 1 — systemd service (Linux)
+# 1. Copy to /etc/systemd/system/wz-server1.service   (drop the .example)
+# 2. Change "youruser" below to your Linux username
+# 3. sudo systemctl daemon-reload
+# 4. sudo systemctl enable --now wz-server1
+[Unit]
+Description=WastelandZ Game Server 1
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/reforger/server
+ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60
+Restart=on-failure
+User=youruser
+
+[Install]
+WantedBy=multi-user.target

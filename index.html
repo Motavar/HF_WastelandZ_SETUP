@@ -416,8 +416,8 @@ FLUSH PRIVILEGES;</pre></div>
   </div>
 
   <div class="step"><span class="n">0</span>
-    <h4>Make your user &mdash; never build as root</h4>
-    <p>When you SSH in, look at the prompt. <code class="inline">root@myserver:~#</code> means you&rsquo;re <b>root</b> — the account that can do anything, and the one an attacker most wants. Valve&rsquo;s own SteamCMD docs warn: never run game servers as root. Everything in this guide runs as a <b>normal user</b> that borrows admin power with <code class="inline">sudo</code> only when a command needs it.</p>
+    <h4>Accounts &mdash; you and your friends</h4>
+    <p>Your rented box hands you the <b>root</b> login — the master account. Setting up from it is fine. First job: make an admin account for yourself and each friend who&rsquo;ll help run the server — an admin can do everything in this guide (restart servers, edit configs, run game updates) without needing you.</p>
     <p><b>See your admins:</b></p>
     <div class="code"><pre><span class="p">getent</span> group sudo     <span class="c"># the admins — every name after the last ':' is one</span></pre></div>
     <p><b>Add an admin</b> (yourself, or a friend who&rsquo;ll help run the server — two commands, that&rsquo;s it):</p>
@@ -427,7 +427,7 @@ FLUSH PRIVILEGES;</pre></div>
     <p><b>Remove an admin:</b></p>
     <div class="code"><pre><span class="p">sudo</span> deluser dave sudo              <span class="c"># drops admin power, keeps his login</span>
 <span class="p">sudo</span> deluser --remove-home dave     <span class="c"># deletes the account completely</span></pre></div>
-    <p class="muted">If YOU are still on root: run the add-an-admin commands once with your own name, reconnect as that user, and do every step below as it. All the commands already say <code class="inline">sudo</code> where root power is needed.</p>
+    <p class="muted">Do the steps below from root or from your own admin account — the commands work either way. One thing to remember for later: the service files in Part 2 and Step 9 have a <code class="inline">User=</code> line — put <b>your</b> account name there, so the game and gateway run under your account.</p>
   </div>
 
   <div class="step"><span class="n">1</span>
@@ -544,7 +544,7 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre>Description=WastelandZ Game Server 1
 WorkingDirectory=/opt/reforger/server
 ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60</pre></div>
-    <p>Then <code class="inline">sudo systemctl enable --now wz-server1</code> — it starts on boot and restarts itself if it crashes.</p></div>
+    <p>Then <code class="inline">sudo systemctl enable --now wz-server1</code> — it starts on boot and restarts itself if it crashes. Ready-made in the kit: <code class="inline">/opt/wastelandz/server/wz-server1.service.example</code> — copy it to <code class="inline">/etc/systemd/system/wz-server1.service</code> and change <code class="inline">youruser</code>.</p></div>
   </div>
 
   <hr class="rule">
@@ -571,6 +571,7 @@ WantedBy=multi-user.target</pre></div>
     <p class="muted">Then turn it on — this starts it now <i>and</i> on every reboot:</p>
     <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
 <span class="p">sudo</span> systemctl enable --now wz-gateway</pre></div>
+    <p class="muted">Don&rsquo;t want to type it? The kit ships this file ready-made: copy <code class="inline">/opt/wastelandz/server/wz-gateway.service.example</code> to <code class="inline">/etc/systemd/system/wz-gateway.service</code> and just change <code class="inline">youruser</code>.</p>
   </div>
 
   <div class="ops">
@@ -592,10 +593,11 @@ WantedBy=multi-user.target</pre></div>
   <div class="part-head"><span class="part-badge">Part 3</span><h2>Two or three servers on one box</h2></div>
   <p class="muted">One database, one gateway, several game servers — a <b>hive</b>. Players keep the <b>same money, bank and gear</b> on every server; each server keeps its own world (positions, placed objects, map). The Windows tab&rsquo;s &ldquo;Part 4&rdquo; ports table applies here too: game <b>2001/2002/2003</b>, browser <b>17777/17778/17779</b>, gateway <b>5000/5001/5002</b>.</p>
   <p><b>You install the game once.</b> <code class="inline">/opt/reforger/server/</code> and the shared <code class="inline">workshop/</code> mods folder serve every server. Each extra server is just a <b>config file + profile folder + systemd unit</b> with different numbers. To add server 2:</p>
-  <div class="code"><pre><span class="c"># its own config — new ports, its own map, its own name</span>
-<span class="p">cp</span> /opt/reforger/configs/server1.json /opt/reforger/configs/server2.json
+  <div class="code"><pre><span class="c"># its own config — new ports, its own map, its own name.
+# The kit ships one pre-made (ports 2002/17778 + Arland already set):</span>
+<span class="p">cp</span> /opt/wastelandz/server/server2.json.example /opt/reforger/configs/server2.json
 <span class="p">nano</span> /opt/reforger/configs/server2.json</pre></div>
-  <p class="muted">In <code class="inline">server2.json</code>: change <code class="inline">name</code>, set <code class="inline">bindPort</code>/<code class="inline">publicPort</code> to <b>2002</b>, the <code class="inline">a2s</code> port to <b>17778</b> — and pick the map with <code class="inline">scenarioId</code>. Wasteland-Z runs on top of any Game Master scenario, so a two-server hive can offer two different worlds:</p>
+  <p class="muted">In <code class="inline">server2.json</code>: set your server <code class="inline">name</code> + admin password (ports <b>2002</b>/<b>17778</b> and the Arland map are pre-set). The map is the <code class="inline">scenarioId</code> line — Wasteland-Z runs on top of any Game Master scenario, so a two-server hive can offer two different worlds:</p>
   <div class="code"><pre><span class="c"># server1.json — Everon (the big island):</span>
 "scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf"
 
@@ -611,7 +613,7 @@ WantedBy=multi-user.target</pre></div>
   <ul class="clean">
     <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 6 command), then <code class="inline">sudo systemctl restart wz-gateway</code> — it now listens on 5000 <i>and</i> 5001.</li>
     <li><b>Wire it:</b> in <code class="inline">/opt/reforger/profiles/server2/hf_wastelandz/configs/</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
-    <li><b>Service:</b> copy <code class="inline">wz-server1.service</code> &rarr; <code class="inline">wz-server2.service</code>, change <code class="inline">server1</code> to <code class="inline">server2</code> in the <code class="inline">Description</code> and <code class="inline">ExecStart</code> lines, then <code class="inline">sudo systemctl enable --now wz-server2</code>. If <code class="inline">ufw</code> is on, open UDP <b>2002</b> + <b>17778</b>.</li>
+    <li><b>Service:</b> copy the kit&rsquo;s <code class="inline">/opt/wastelandz/server/wz-server2.service.example</code> to <code class="inline">/etc/systemd/system/wz-server2.service</code>, change <code class="inline">youruser</code>, then <code class="inline">sudo systemctl daemon-reload</code> and <code class="inline">sudo systemctl enable --now wz-server2</code>. If <code class="inline">ufw</code> is on, open UDP <b>2002</b> + <b>17778</b>.</li>
   </ul>
   <div class="note warn"><div class="h">One key per server</div><p>Each server gets its <b>own</b> gateway port and its <b>own</b> random <code class="inline">api_key</code> — that&rsquo;s how the gateway tells them apart. Never reuse a key across servers.</p></div>
   <div class="note tip"><div class="h">Will the box handle it?</div><p>Each Reforger server is heavy — roughly a few CPU cores and 4&ndash;8&nbsp;GB RAM per server under load. Two servers want a strong 8-core machine; three want more. The gateway and MySQL are lightweight by comparison.</p></div>
