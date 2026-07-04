@@ -178,6 +178,7 @@
 <a id="top"></a>
 <div class="wrap" style="padding-top:18px">
   <p style="color:#e02020;font-weight:700;font-size:16px;letter-spacing:.04em;border:2px solid #e02020;border-radius:8px;padding:10px 16px;text-align:center;margin:0">(EXPERIMENTAL DOCUMENTATION - UNTESTED)</p>
+  <p class="muted" style="text-align:center;font-size:13px;margin:8px 0 0">Written with AI assistance — the information here may not be correct. As a server admin, you use this guide at your own risk. Full disclaimer shown on first visit.</p>
 </div>
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Dedicated Server</div>
@@ -841,6 +842,34 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
       });
     });
     box.appendChild(b);
+  });
+})();
+</script>
+
+<!-- ================= DISCLAIMER GATE (first visit) ================= -->
+<div id="disclaimer" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(8,8,8,.96);overflow-y:auto">
+  <div style="max-width:680px;margin:8vh auto;padding:32px 28px;background:#141311;border:2px solid #e02020;border-radius:12px;color:#e9e6df;font-size:15px;line-height:1.6">
+    <p style="color:#e02020;font-weight:700;font-size:18px;margin:0 0 14px;letter-spacing:.04em">DISCLAIMER &mdash; READ BEFORE USING THIS GUIDE</p>
+    <p style="margin:0 0 12px">This documentation was written with the assistance of AI. The information in it may be incomplete, out of date, or wrong, and it has not been fully tested.</p>
+    <p style="margin:0 0 8px">By continuing, you accept that:</p>
+    <ul style="margin:0 0 16px;padding-left:22px">
+      <li>You follow these instructions <b>at your own risk</b>. As the server administrator, you are solely responsible for your machine, its security, and its data.</li>
+      <li>This guide and the files in this kit are provided <b>&ldquo;as is&rdquo;, without warranty of any kind</b>, express or implied, including merchantability and fitness for a particular purpose.</li>
+      <li>The authors and contributors are <b>not liable</b> for any damage, data loss, security breach, service outage, or cost arising from the use of this guide or these files.</li>
+      <li>The commands in this guide change real systems. <b>Read every command before running it</b>, and back up before you begin.</li>
+    </ul>
+    <button id="disclaimerAccept" type="button" style="display:block;width:100%;padding:12px;font-size:15px;font-weight:700;color:#fff;background:#e02020;border:0;border-radius:8px;cursor:pointer">I have read and accept this &mdash; show me the guide</button>
+  </div>
+</div>
+<script>
+(function(){
+  var d=document.getElementById('disclaimer');
+  var ok=false;
+  try{ ok=localStorage.getItem('wz_disclaimer_ok')==='1'; }catch(e){}
+  if(!ok){ d.style.display='block'; document.body.style.overflow='hidden'; }
+  document.getElementById('disclaimerAccept').addEventListener('click',function(){
+    try{ localStorage.setItem('wz_disclaimer_ok','1'); }catch(e){}
+    d.style.display='none'; document.body.style.overflow='';
   });
 })();
 </script>
