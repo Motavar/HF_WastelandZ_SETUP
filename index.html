@@ -204,7 +204,7 @@
     <dt>gateway/setup_database.sql</dt><dd>Builds every database table in one shot. You run this once.</dd>
     <dt>gateway/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
     <dt>gateway/start_gateway.bat</dt><dd>Windows one-click start.</dd>
-    <dt>configs/</dt><dd>Example server settings (loot, vehicles, towns, admins&hellip;). Rename off <code class="inline">.example</code> and drop into your server profile.</dd>
+    <dt>configs/</dt><dd>Example server settings (loot, vehicles, towns, admins&hellip;). Rename off <code class="inline">.example</code> and drop into your server profile. The README inside lists each file; every setting is documented inline.</dd>
     <dt>missions/</dt><dd>Reward templates for the mission system, plus a guide to authoring missions in-game.</dd>
     <dt>server/</dt><dd>Game-server kit — SteamCMD install script, example <code class="inline">server1.json</code>, and the start/stop batch files (auto-restart loop included).</dd>
   </dl></div>
@@ -339,7 +339,7 @@ FLUSH PRIVILEGES;</pre></div>
     <ul class="clean">
       <li>In <code class="inline">&hellip;\hf_wastelandz\configs\HFWastelandZ_server.conf</code>, set <code class="inline">GATEWAY_URL http://127.0.0.1:5000/</code>.</li>
       <li>In <code class="inline">&hellip;\hf_wastelandz\configs\HFWastelandZ_secrets.conf</code>, add a line: <code class="inline">API_KEY</code> followed by the <b>same</b> key you put in the gateway&rsquo;s <code class="inline">config.py</code> in Step 5. (A ready-made template with key-generation instructions ships in this download: <code class="inline">configs\HFWastelandZ_secrets.conf.example</code>.)</li>
-      <li>Want to pre-tune settings? Take the files in this download&rsquo;s <code class="inline">configs\</code>, remove <code class="inline">.example</code> from each name, and copy them into that same <code class="inline">hf_wastelandz\configs\</code> folder.</li>
+      <li>Want to pre-tune settings? Take the files in this download&rsquo;s <code class="inline">configs\</code>, remove <code class="inline">.example</code> from each name, and copy them into that same <code class="inline">hf_wastelandz\configs\</code> folder. <code class="inline">configs\README.md</code> lists what each file controls; every setting is documented inside its file.</li>
       <li>Copy <code class="inline">missions\rewards\</code> into <code class="inline">&hellip;\profiles\server1\hf_wastelandz\missions\rewards\</code> — these are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</li>
     </ul>
     <p class="muted">Start the server again. Player data now saves to the database. You&rsquo;re live.</p>
@@ -578,7 +578,7 @@ FLUSH PRIVILEGES;</pre></div>
     <ul class="clean">
       <li>In <code class="inline">&hellip;/hf_wastelandz/configs/HFWastelandZ_server.conf</code>, set <code class="inline">GATEWAY_URL http://127.0.0.1:5000/</code>.</li>
       <li>In <code class="inline">&hellip;/hf_wastelandz/configs/HFWastelandZ_secrets.conf</code>, add a line: <code class="inline">API_KEY</code> followed by the <b>same</b> key from Step 6. (A ready-made template with key-generation instructions ships in the kit: <code class="inline">/opt/wastelandz/configs/HFWastelandZ_secrets.conf.example</code>.)</li>
-      <li>Optionally rename the kit&rsquo;s <code class="inline">/opt/wastelandz/configs/</code> files off <code class="inline">.example</code> and copy them into that same folder to pre-tune settings.</li>
+      <li>Optionally rename the kit&rsquo;s <code class="inline">/opt/wastelandz/configs/</code> files off <code class="inline">.example</code> and copy them into that same folder to pre-tune settings. <code class="inline">configs/README.md</code> lists what each file controls; every setting is documented inside its file.</li>
       <li>Copy the mission rewards into the profile: <code class="inline">cp -r /opt/wastelandz/missions/rewards /opt/reforger/profiles/server1/hf_wastelandz/missions/</code> — these are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</li>
     </ul>
     <p class="muted">Start it again (same command). Player data now saves to the database. You&rsquo;re live.</p>

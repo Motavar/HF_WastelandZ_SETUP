@@ -35,7 +35,7 @@ Linux, follow the numbered steps). It covers:
 | `gateway/setup_database.sql` | Builds every database table in one shot. |
 | `gateway/config.example.py` | Settings template — copy to `config.py` and fill in. |
 | `gateway/start_gateway.bat` | Windows one-click start. |
-| `configs/` | Example server settings (loot, vehicles, towns, admins, loadouts…). |
+| `configs/` | Example server settings (loot, vehicles, towns, admins, loadouts…). [`configs/README.md`](configs/README.md) lists each file; every setting is documented inside its file. |
 | `missions/` | Reward templates for the mission system + a guide to authoring missions in-game. |
 | `server/` | Game-server kit: SteamCMD install script, example `server1.json`, start/stop batch files with auto-restart loop. |
 
