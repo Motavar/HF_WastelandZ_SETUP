@@ -662,9 +662,7 @@ SPAWN_DISTRIBUTION_ENABLED 1
 # Custom HFSpawnMenu replaces the BI deploy screen for first
 # join AND post-death respawn. Player picks RANDOM / TOWN LIST
 # / BEACON LIST / LAST LOCATION; HFSpawnRouter validates and
-# teleports. WB host caveat: the menu opens fine on WB but the
-# spawn pipeline (faction join, character placement) only
-# works on PeerPlugin1 / PeerPlugin2 — test full flow there.
+# teleports.
 # ============================================================
 
 # RESPAWN_DELAY_SEC
