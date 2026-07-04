@@ -17,6 +17,8 @@ plain-English, step-by-step setup guide for **Windows and Linux**.
 
 ## What the guide covers
 
+**[Open the guide →](https://motavar.github.io/HF_WastelandZ_SETUP/)**
+
 (Linux users: the guide's Step 1 clones this repo straight onto the server —
 no ZIP needed.)
 
