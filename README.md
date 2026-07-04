@@ -10,10 +10,32 @@
 information may not be correct. As a server admin you use this kit at your own
 risk. The full disclaimer is shown when you open the guide.
 
-Everything an admin needs to stand up a **Wasteland-Z** dedicated server: the
-game-server install kit with start/stop scripts, the gateway program, the
-database schema, example configs, and the mission reward templates — with a
-plain-English, step-by-step setup guide for **Windows and Linux**.
+## What is this?
+
+**[Arma Reforger](https://reforger.armaplatform.com/)** is Bohemia
+Interactive's military simulation game (PC and Xbox), built on the Enfusion
+engine — the platform that succeeds Arma 3. Anyone can host a dedicated
+server, and mods install themselves: when a player joins a modded server, the
+game downloads its mods automatically from the built-in Workshop.
+
+**[Wasteland-Z](https://wasteland-z.com/)** is a hardcore PVP open-world mod
+for Arma Reforger, by **Heavy Forge, Inc.** The world after the Z — the
+outbreak ended, the cities emptied, and what survived now scavenges, fights,
+and trades for what's left. Town-based scarcity loot, missions, gun / general
+/ vehicle stores, a server-authoritative money economy with ATM banking,
+three-faction PVP, and a cross-server hive: the same money, bank and gear on
+every server in a cluster. It runs on top of any Game Master scenario, on any
+map. The gameplay concept honors the A3 Wasteland lineage, rebuilt ground-up
+for Reforger.
+
+**This repo is the server side.** It exists for admins who want to **host** a
+Wasteland-Z server: the step-by-step setup guide, the gateway program (the
+bridge between game servers and the MySQL database holding player money and
+gear), the database schema, example configs, and start/stop scripts for
+Windows and Linux.
+
+**Just want to play?** You need nothing from here — find a Wasteland-Z server
+in the Reforger server browser and join. The mod installs itself.
 
 ## What the guide covers
 
