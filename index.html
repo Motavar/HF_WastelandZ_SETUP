@@ -375,6 +375,13 @@ FLUSH PRIVILEGES;</pre></div>
   <hr class="rule">
   <div class="part-head"><span class="part-badge">Part 4</span><h2>Two or three servers on one PC</h2></div>
   <p class="muted">One database, one gateway, several game servers — that&rsquo;s a <b>hive</b>. Players keep the <b>same money, bank and gear</b> on every server in the hive; each server keeps its own world (positions, placed objects, map). One gateway serves them all — you do <b>not</b> run a second gateway or database.</p>
+  <p>The finished two-server setup, and how the pieces talk:</p>
+  <div class="code"><pre><span class="c">players → UDP 2001/17777 →</span> WZ-Server-1 (Everon)  <span class="c">→ http://127.0.0.1:5000 + key #1 ─┐</span>
+<span class="c">players → UDP 2002/17778 →</span> WZ-Server-2 (Arland)  <span class="c">→ http://127.0.0.1:5001 + key #2 ─┤</span>
+<span class="c">                                                                              └→</span> WZ-Gateway <span class="c">→</span> MySQL
+<span class="c">The gateway tells the servers apart by the PORT each one calls (5000 vs 5001)
+and proves it with that server's key. Both ports are ONE gateway window,
+and everything right of the players is local to the PC — nothing exposed.</span></pre></div>
 
   <p>Every extra server is the <b>same four things with different numbers</b>. The unique-ports table:</p>
   <div class="tablewrap"><table class="rtab">
@@ -388,7 +395,7 @@ FLUSH PRIVILEGES;</pre></div>
 
   <p>To add <b>server 2</b> (server 3 is the same pattern):</p>
   <ul class="clean">
-    <li><b>Config:</b> copy <code class="inline">server1.json</code> &rarr; <code class="inline">server2.json</code>. Change <code class="inline">name</code>, set <code class="inline">bindPort</code>/<code class="inline">publicPort</code> to <b>2002</b> and the <code class="inline">a2s</code> port to <b>17778</b>. Want a different map on this server? Point <code class="inline">scenarioId</code> at that map&rsquo;s Game Master scenario — Wasteland-Z runs on top of any GM scenario:
+    <li><b>Config:</b> copy this download&rsquo;s <code class="inline">server\server2.json.example</code> to <code class="inline">C:\reforger\configs\server2.json</code> — ports <b>2002</b>/<b>17778</b> and the Arland map are pre-set; change <code class="inline">name</code> and the admin password. The map is the <code class="inline">scenarioId</code> line — Wasteland-Z runs on top of any Game Master scenario:
       <div class="code"><pre><span class="c">Everon (the big island):</span>
 "scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf"
 
@@ -409,13 +416,28 @@ FLUSH PRIVILEGES;</pre></div>
   <div class="code"><pre><span class="c">rem before:</span>
 "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60
 
-<span class="c">rem after — server 1 pinned to the first 16 logical processors (first chiplet):</span>
+<span class="c">rem after — server 1 pinned to the first 16 processor numbers (group one):</span>
 start "" /affinity FFFF /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60
 
-<span class="c">rem and in start_server2.bat — the next 16 (second chiplet):</span>
+<span class="c">rem and in start_server2.bat — the next 16 (group two):</span>
 start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60</pre></div>
   <p class="muted">The mask is a code for &ldquo;which processors&rdquo;. <code class="inline">FFFF</code> = the first 16 processor numbers; Windows usually numbers each core twice back-to-back, so that&rsquo;s the first 8 cores = the first group (the big-cache one on X3D chips — give it to your busiest server). <code class="inline">/wait</code> keeps the auto-restart loop working. Sanity-check anytime: Task Manager &rarr; Details &rarr; right-click <code class="inline">ArmaReforgerServer.exe</code> &rarr; <b>Set affinity</b> shows exactly which processors each server is allowed on.</p>
-  <p class="muted">Masks for the common splits on a 16-core chip — 2 servers: <code class="inline">FFFF</code> + <code class="inline">FFFF0000</code> (a group each). 4 servers at 32&ndash;64 players: <code class="inline">FF</code>, <code class="inline">FF00</code>, <code class="inline">FF0000</code>, <code class="inline">FF000000</code> (half a group — 4 cores — each). 3 servers: pin the two big ones as in the 2-server split and leave the third&rsquo;s line unchanged (unpinned). The same 1&ndash;4 server cheat-sheet table in the Linux tab applies here — only the notation differs.</p>
+  <p><b>Cheat-sheet: 1&ndash;4 servers on a 16-core PC</b> (two 8-core groups; Windows numbers each core twice back-to-back):</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setup</th><th>Server &amp; players</th><th>/affinity mask</th></tr>
+    <tr><td rowspan="1">1 server (up to 128)</td><td><span class="role">WZ-Server-1</span> · 128</td><td><span class="role">none needed</span> (whole chip; or <span class="role">FFFF</span> for the big-cache group)</td></tr>
+    <tr><td rowspan="2">2 servers (2&times;128)</td><td><span class="role">WZ-Server-1</span> · 128</td><td><span class="role">FFFF</span></td></tr>
+    <tr><td><span class="role">WZ-Server-2</span> · 128</td><td><span class="role">FFFF0000</span></td></tr>
+    <tr><td rowspan="3">3 servers (2&times;128 + 1&times;64)</td><td><span class="role">WZ-Server-1</span> · 128</td><td><span class="role">FFFF</span></td></tr>
+    <tr><td><span class="role">WZ-Server-2</span> · 128</td><td><span class="role">FFFF0000</span></td></tr>
+    <tr><td><span class="role">WZ-Server-3</span> · 64</td><td><span class="role">none</span> (floats in the gaps)</td></tr>
+    <tr><td rowspan="4">4 servers (4&times;64 or 4&times;32)</td><td><span class="role">WZ-Server-1</span> · 64</td><td><span class="role">FF</span></td></tr>
+    <tr><td><span class="role">WZ-Server-2</span> · 64</td><td><span class="role">FF00</span></td></tr>
+    <tr><td><span class="role">WZ-Server-3</span> · 64</td><td><span class="role">FF0000</span></td></tr>
+    <tr><td><span class="role">WZ-Server-4</span> · 64</td><td><span class="role">FF000000</span></td></tr>
+  </table></div>
+  <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole group each (max cache per server). 4 servers &rarr; half a group (4 cores) each — plenty at 32&ndash;64 players, and no server ever spans both groups. 3 servers is the awkward count: pin the two big ones, let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch Task Manager on busy nights and adjust <code class="inline">aiLimit</code> before touching the masks.</p>
+  <p class="muted"><b>Different CPU?</b> Older Intels (e.g. an i9-9900K, 8 cores) are <b>one group</b> — no favourite half; split down the middle with <code class="inline">FF</code> / <code class="inline">FF00</code> and expect lower comfortable player caps. Newer hybrid Intels (12th&nbsp;gen up, e.g. an i7-13700K) mix fast <b>P-cores</b> (numbered first, each twice back-to-back) and small <b>E-cores</b> (after them): pin game servers to P-cores (<code class="inline">FF</code> / <code class="inline">FF00</code>) and leave the E-cores unpinned — they carry the gateway, MySQL and Windows itself. See your layout anytime: Task Manager &rarr; Details &rarr; right-click the server &rarr; <b>Set affinity</b> lists every processor number.</p>
 </div></section>
 </div>
 
@@ -693,6 +715,7 @@ MemoryMax=32G</pre></div>
     <tr><td><span class="role">wz-server4</span> · 64</td><td><span class="role">12-15 28-31</span></td><td><span class="role">24G</span></td></tr>
   </table></div>
   <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole group each (max cache per server). 4 servers &rarr; half a group (4 cores) each — plenty at 32&ndash;64 players, and no server ever spans both groups. 3 servers is the awkward count: keep the two big ones on their own groups and let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch <code class="inline">htop</code> on busy nights and adjust <code class="inline">aiLimit</code> before touching the core map. RAM: even the 4-server row uses under half of a 128&nbsp;GB box.</p>
+  <p class="muted"><b>Different CPU?</b> Step 1 tells you the truth about any chip. If every row&rsquo;s last digit is <code class="inline">0</code>, your chip is <b>one group</b> (most older Intels, e.g. an i9-9900K): there&rsquo;s no favourite to pick — split the cores in half (first half + their twins to server 1, the rest to server 2) and expect lower comfortable player caps on older chips. Newer Intels (12th&nbsp;gen up, e.g. an i7-13700K) mix fast <b>P-cores</b> and small <b>E-cores</b> — in <code class="inline">lscpu -e</code> the P-cores appear <i>twice</i> (they have twins), E-cores <i>once</i>. Pin game servers to P-cores only and leave the E-cores unpinned — they carry the gateway, MySQL and the system.</p>
 
   <h3>If something&rsquo;s wrong</h3>
   <ul class="clean muted">
