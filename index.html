@@ -629,6 +629,30 @@ WantedBy=multi-user.target</pre></div>
 </div></section>
 </div>
 
+<!-- ================= MODS (shared) ================= -->
+<section><div class="wrap">
+  <span class="section-tag">Mods</span>
+  <h2>Add, remove &amp; track mods</h2>
+  <p class="muted">Same on Windows and Linux. There is <b>no installer</b> — the <code class="inline">mods</code> list inside your server config (<code class="inline">server1.json</code>) <i>is</i> the mod manager. On every start the server reads that list, auto-downloads anything missing from the Reforger Workshop into your <code class="inline">workshop</code> folder, and loads <b>exactly what&rsquo;s listed — nothing else</b>.</p>
+
+  <h3>Add a mod</h3>
+  <p>Find it on the official Workshop site: <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a>. The mod&rsquo;s ID is right in its page URL — the 16 characters before the name, e.g. <code class="inline">&hellip;/workshop/<b>68A616565DECAB19</b>-wasteland-z</code>. Add one block to the <code class="inline">mods</code> list and restart the server:</p>
+  <div class="code"><pre>"mods": [
+    { "modId": "68A616565DECAB19", "name": "Wasteland-Z" },
+    { "modId": "ABCDEF1234567890", "name": "Cool Helmet Pack" }
+]</pre></div>
+  <p class="muted">The <code class="inline">name</code> is your own label — write whatever helps you remember what it is. Mind the comma between blocks (JSON&rsquo;s one gotcha: every block except the last needs one).</p>
+
+  <h3>Remove a mod — including a problem mod</h3>
+  <p>Delete its block from the list, restart. That&rsquo;s the whole procedure — the server only loads what&rsquo;s listed. The mod&rsquo;s downloaded files stay in the <code class="inline">workshop</code> folder but are completely inert; if you want the disk space back, delete the folder named with that mod&rsquo;s ID inside the workshop folder.</p>
+
+  <h3>Track your mods</h3>
+  <p>The <code class="inline">mods</code> list is the single source of truth — one block per mod, nothing can load that isn&rsquo;t in it. Running several servers? Each <code class="inline">serverN.json</code> has its <b>own</b> list, so server 1 and server 2 can run different mod sets. To see what a server actually loaded, its boot log prints every addon as it starts.</p>
+
+  <div class="note warn"><div class="h">One game mode at a time</div><p>Wasteland-Z is a <b>game mode</b> — it owns the gameplay. Content mods (weapons, clothing, vehicles, buildings) sit alongside it fine; adding <i>another</i> game-mode mod makes the two fight. If a mod&rsquo;s Workshop page says &ldquo;game mode,&rdquo; it doesn&rsquo;t belong on a Wasteland-Z server.</p></div>
+  <div class="note tip"><div class="h">Server broke after adding a mod — or after a game update?</div><p>Remove the last mod you added, restart. If it broke right after a Reforger update instead: mod authors need a few days to catch up with game patches — remove your extra mods, restart, then add them back one at a time as they&rsquo;re updated.</p></div>
+</div></section>
+
 <!-- ================= ROLES (shared) ================= -->
 <style>
   .tablewrap{overflow-x:auto;margin:12px 0}
