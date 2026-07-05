@@ -688,7 +688,7 @@ User=<span class="p">youruser</span>
 
 <span class="c">[Install]</span>
 WantedBy=multi-user.target</pre></div>
-    <p class="muted"><code class="inline">ExecStart</code> uses the venv&rsquo;s Python from Step 5 (a no-venv install uses <code class="inline">/usr/bin/python3</code> instead). Then turn it on — this starts it now <i>and</i> on every reboot:</p>
+    <p class="muted">That <code class="inline">ExecStart</code> path <b>is</b> the venv — pointing systemd straight at <code class="inline">venv/bin/python</code> runs the gateway inside the venv automatically; you do <b>not</b> <code class="inline">activate</code> it for a service. (A no-venv install uses <code class="inline">/usr/bin/python3</code> instead.) Set <code class="inline">User=</code> to your Linux username, and make sure that user owns <code class="inline">/opt/wastelandz-gateway</code> (the <code class="inline">chown -R</code> from Step 5). Then turn it on — this starts it now <i>and</i> on every reboot:</p>
     <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
 <span class="p">sudo</span> systemctl enable --now wz-gateway</pre></div>
     <p class="muted">Don&rsquo;t want to type it? The kit ships this file ready-made: copy <code class="inline">/opt/wastelandz/server/wz-gateway.service.example</code> to <code class="inline">/etc/systemd/system/wz-gateway.service</code> and just change <code class="inline">youruser</code>.</p>
