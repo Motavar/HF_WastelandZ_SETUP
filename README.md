@@ -26,7 +26,10 @@ and trades for what's left. Town-based scarcity loot, missions, gun / general
 three-faction PVP, and a cross-server hive: the same money, bank and gear on
 every server in a cluster. It runs on top of any Game Master scenario, on any
 map. The gameplay concept honors the A3 Wasteland lineage, rebuilt ground-up
-for Reforger.
+for Reforger. It's published on the
+**[Reforger Workshop](https://reforger.armaplatform.com/workshop/68A616565DECAB19)**
+(mod ID `68A616565DECAB19`) — this kit already pre-lists it in every server
+config, so it downloads and loads automatically.
 
 **This repo is the server side.** It exists for admins who want to **host** a
 Wasteland-Z server: the step-by-step setup guide, the gateway program (the
