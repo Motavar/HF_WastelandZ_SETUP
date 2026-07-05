@@ -1226,8 +1226,8 @@ DISABLE_BUILTIN_PLAYER_MARKERS 1
 # (config.py in the gateway repo) holding the DB credentials, the API key,
 # and its own FLASK_DEBUG flag. None of those live here — this game server
 # only needs the URL below (the API key goes in HFWastelandZ_secrets.conf).
-# Must end with trailing slash. Default: http://localhost:5000/
-GATEWAY_URL http://localhost:5000/
+# Must end with trailing slash. Default: http://127.0.0.1:5000/
+GATEWAY_URL http://127.0.0.1:5000/
 
 # --- Economy ---
 # Starting money for new players (first spawn)

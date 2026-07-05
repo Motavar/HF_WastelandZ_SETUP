@@ -224,6 +224,37 @@
     <p><b>The two you must fill in yourself:</b> <code class="inline">HFWastelandZ_secrets.conf</code> is written with a <b>placeholder</b> API key you must replace, and <code class="inline">HFWastelandZ_admins.conf</code> is written <b>empty</b> so you must add your Steam64 ID to become an admin. Everything else runs on defaults until you decide to change it.</p>
   </div>
 
+  <h3>Where everything lives on your server</h3>
+  <p class="muted">After setup you have three top-level folders (Linux <code class="inline">/opt/</code> shown below; Windows mirrors this under <code class="inline">C:\reforger\</code> plus your gateway folder). The spot that trips people up: HF&rsquo;s live config files sit under the profile&rsquo;s extra <b><code class="inline">profile/</code></b> subfolder.</p>
+  <div class="code"><pre>/opt/
+├── wastelandz/                <span class="c"># THIS KIT (git clone) — reference copies, read-only</span>
+│   ├── gateway/                 <span class="c"># gateway program + setup_database.sql + config.example.py</span>
+│   ├── configs/                 <span class="c"># reference *.example HF settings (optional pre-tuning)</span>
+│   ├── missions/                <span class="c"># mission reward templates + in-game authoring guide</span>
+│   └── server/                  <span class="c"># systemd + server1/2.json examples + SteamCMD script</span>
+│
+├── wastelandz-gateway/        <span class="c"># the RUNNING gateway (copied out of the kit)</span>
+│   ├── config.py                <span class="c"># YOUR DB password + gateway key — never share or commit</span>
+│   ├── gateway.py               <span class="c"># the Flask service</span>
+│   ├── setup_database.sql       <span class="c"># builds the tables (tables only — holds NO credentials)</span>
+│   └── venv/                    <span class="c"># isolated Python you create (Ubuntu 24.04 / PEP 668)</span>
+│
+└── reforger/                  <span class="c"># the game server</span>
+    ├── server/                  <span class="c"># ArmaReforgerServer + game files (from SteamCMD)</span>
+    ├── workshop/                <span class="c"># -addonsDir (mod cache)</span>
+    ├── configs/
+    │   └── server1.json         <span class="c"># Reforger config: server NAME, admin password, mods, scenario</span>
+    └── profiles/
+        └── server1/             <span class="c"># -profile dir for this server</span>
+            ├── addons/
+            │   └── Wasteland-Z_68A616565DECAB19/   <span class="c"># the downloaded mod (data.pak)</span>
+            ├── logs/            <span class="c"># console.log lives here</span>
+            └── profile/         <span class="c"># $profile: root  &lt;-- note the extra 'profile/' level</span>
+                └── hf_wastelandz/
+                    ├── configs/  <span class="c"># *** HF configs: server.conf, secrets.conf, admins.conf, catalogs...</span>
+                    └── missions/ <span class="c"># mission reward templates go here</span></pre></div>
+  <p class="muted"><b>Key takeaway:</b> the HF config files are at <code class="inline">/opt/reforger/profiles/server1/profile/hf_wastelandz/configs/</code> — note the <code class="inline">profile/</code> level Enfusion adds. On <b>Windows</b> it&rsquo;s the same shape under <code class="inline">C:\reforger\profiles\server1\profile\hf_wastelandz\configs\</code>.</p>
+
   <div class="note tip">
     <div class="h">Before you begin</div>
     <p>You need a PC (or rented machine) that stays on, and this download. That&rsquo;s it — the guide covers installing the game server itself, and the server downloads from Steam <b>anonymously</b> (no Steam account needed). The <b>Wasteland-Z</b> mod downloads automatically from the Reforger Workshop the first time the server starts.</p>
@@ -336,7 +367,7 @@ FLUSH PRIVILEGES;</pre></div>
     <h4>Start it and check</h4>
     <p>Double-click <code class="inline">start_gateway.bat</code> (or run <code class="inline">python gateway.py</code>). A black window opens and <b>stays open</b> — that&rsquo;s normal, leave it running. You should see <code class="inline">Database connection: OK</code> and a <code class="inline">Listening&hellip;</code> line.</p>
     <p class="muted">Now open a browser to:</p>
-    <div class="code"><pre>http://localhost:5000/api/ping</pre></div>
+    <div class="code"><pre>http://127.0.0.1:5000/api/ping</pre></div>
     <p class="muted">You should see <code class="inline">"status":"ok"</code> and <code class="inline">"database":"connected"</code>. That means the gateway and database are talking.</p>
   </div>
 
@@ -351,12 +382,12 @@ FLUSH PRIVILEGES;</pre></div>
 
   <div class="step"><span class="n">8</span>
     <h4>Connect the game server &mdash; then first start</h4>
-    <p>Start the server once (double-click <code class="inline">C:\reforger\scripts\start_server1.bat</code>) and let it boot — it downloads the Wasteland-Z mod and creates its profile folder, then Wasteland-Z writes starter config files into <code class="inline">C:\reforger\profiles\server1\hf_wastelandz\configs\</code>. Close the server window, then wire it up:</p>
+    <p>Start the server once (double-click <code class="inline">C:\reforger\scripts\start_server1.bat</code>) and let it boot — it downloads the Wasteland-Z mod and creates its profile folder, then Wasteland-Z writes starter config files into <code class="inline">C:\reforger\profiles\server1\profile\hf_wastelandz\configs\</code>. Close the server window, then wire it up:</p>
     <ul class="clean">
-      <li>In <code class="inline">&hellip;\hf_wastelandz\configs\HFWastelandZ_server.conf</code>, set <code class="inline">GATEWAY_URL http://127.0.0.1:5000/</code>.</li>
+      <li><code class="inline">HFWastelandZ_server.conf</code> — <code class="inline">GATEWAY_URL</code> already defaults to <code class="inline">http://127.0.0.1:5000/</code> (correct for a local gateway); only change it if your gateway is on another machine/port.</li>
       <li>In <code class="inline">&hellip;\hf_wastelandz\configs\HFWastelandZ_secrets.conf</code>, add a line: <code class="inline">API_KEY</code> followed by the <b>same</b> key you put in the gateway&rsquo;s <code class="inline">config.py</code> in Step 5. (A ready-made template with key-generation instructions ships in this download: <code class="inline">configs\HFWastelandZ_secrets.conf.example</code>.)</li>
-      <li>Want to pre-tune settings? Take the files in this download&rsquo;s <code class="inline">configs\</code>, remove <code class="inline">.example</code> from each name, and copy them into that same <code class="inline">hf_wastelandz\configs\</code> folder. <code class="inline">configs\README.md</code> lists what each file controls; every setting is documented inside its file.</li>
-      <li>Copy <code class="inline">missions\rewards\</code> into <code class="inline">&hellip;\profiles\server1\hf_wastelandz\missions\rewards\</code> — these are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</li>
+      <li>Want to pre-tune settings? Take the files in this download&rsquo;s <code class="inline">configs\</code>, remove <code class="inline">.example</code> from each name, and copy them into that same <code class="inline">profile\hf_wastelandz\configs\</code> folder. <code class="inline">configs\README.md</code> lists what each file controls; every setting is documented inside its file.</li>
+      <li>Copy <code class="inline">missions\rewards\</code> into <code class="inline">&hellip;\profiles\server1\profile\hf_wastelandz\missions\rewards\</code> — these are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</li>
     </ul>
     <p class="muted">Start the server again. Player data now saves to the database. You&rsquo;re live.</p>
   </div>
@@ -373,7 +404,7 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="op"><h4>Watch it (monitor)</h4><p>The windows <i>are</i> the monitors — gateway saves/loads scroll in <b>WZ-Gateway</b>, the game log scrolls in each server window.</p></div>
     <div class="op"><h4>Start on boot</h4><p>Press <span class="kbd">Win</span>+<span class="kbd">R</span>, type <code class="inline">shell:startup</code>, Enter — then put a <b>shortcut to <code class="inline">start_all.bat</code></b> in the folder that opens. Everything launches when you log in. (Prefer no auto-login? Use Task Scheduler &rarr; <i>At startup</i> instead.)</p></div>
     <div class="op"><h4>Game updated?</h4><p>Stop the server windows, run <code class="inline">install_or_update_server.bat</code>, start again. The Wasteland-Z mod updates itself on server start.</p></div>
-    <div class="op"><h4>Is it alive?</h4><p>Browse <code class="inline">http://localhost:5000/api/ping</code> anytime. <code class="inline">status: ok</code> = healthy.</p></div>
+    <div class="op"><h4>Is it alive?</h4><p>Browse <code class="inline">http://127.0.0.1:5000/api/ping</code> anytime. <code class="inline">status: ok</code> = healthy.</p></div>
     <div class="op"><h4>Restart MySQL</h4><p><span class="kbd">Win</span>+<span class="kbd">R</span> &rarr; type <code class="inline">services.msc</code> &rarr; find <b>MySQL80</b> &rarr; right-click &rarr; Restart.</p></div>
   </div>
   <h3>Back up your data (do this regularly)</h3>
@@ -421,7 +452,7 @@ and everything right of the players is local to the PC — nothing exposed.</spa
       <p class="muted" style="margin-top:8px">Any other map — including community maps — works the same way. Find its ID on the Workshop website: open the map mod&rsquo;s page at <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a> and click its <b>Scenarios</b> tab — the ScenarioId shown there (it looks like <code class="inline">{GUID}Missions/Name.conf</code>) is what goes in <code class="inline">scenarioId</code>. Add that map mod to the same server&rsquo;s <code class="inline">mods</code> list too.</p></li>
     <li><b>Batch files:</b> copy <code class="inline">start_server1.bat</code> &rarr; <code class="inline">start_server2.bat</code> and <code class="inline">stop_server1.bat</code> &rarr; <code class="inline">stop_server2.bat</code>. Inside both, change every <code class="inline">server1</code> to <code class="inline">server2</code> and the title <code class="inline">WZ-Server-1</code> to <code class="inline">WZ-Server-2</code>. (The install folder and <code class="inline">workshop\</code> mods folder are <b>shared</b> — don&rsquo;t copy those.)</li>
     <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 5 command). Restart the gateway window — it now listens on 5000 <i>and</i> 5001.</li>
-    <li><b>Wire it:</b> in <code class="inline">profiles\server2\hf_wastelandz\configs\</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
+    <li><b>Wire it:</b> in <code class="inline">profiles\server2\profile\hf_wastelandz\configs\</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
     <li><b>Start it:</b> remove the <code class="inline">rem</code> in front of the server-2 lines in <code class="inline">start_all.bat</code>. Forward UDP 2002 + 17778 in your router.</li>
   </ul>
   <div class="note warn"><div class="h">One key per server</div><p>Each server gets its <b>own</b> gateway port and its <b>own</b> random <code class="inline">api_key</code> — that&rsquo;s how the gateway tells them apart. Never reuse a key across servers.</p></div>
@@ -593,7 +624,7 @@ FLUSH PRIVILEGES;</pre></div>
     <h4>Test that it runs</h4>
     <div class="code"><pre><span class="p">venv/bin/python</span> gateway.py</pre></div>
     <p class="muted">This runs the gateway in the foreground, so it <b>holds this terminal</b> — that&rsquo;s normal (it&rsquo;s a server, meant to keep running). Look for <code class="inline">Database connection: OK</code> in its output — <b>that line is your success check.</b> Then press <span class="kbd">Ctrl</span>+<span class="kbd">C</span> to stop it; Part 2 below runs it properly on its own. (<code class="inline">venv/bin/python</code> works whether or not the venv is &ldquo;activated&rdquo;; a no-venv install uses plain <code class="inline">python3 gateway.py</code>.)</p>
-    <div class="note tip"><div class="h">Optional — curl check (needs a second terminal)</div><p>Because the gateway holds this terminal, the <code class="inline">curl</code> check has to run from a <b>separate SSH session</b> while the gateway is still running. Or just skip it — once it&rsquo;s a service (Part 2) it runs in the background and <code class="inline">curl</code> works from any terminal:</p><div class="code"><pre><span class="p">curl</span> http://localhost:5000/api/ping</pre></div></div>
+    <div class="note tip"><div class="h">Optional — curl check (needs a second terminal)</div><p>Because the gateway holds this terminal, the <code class="inline">curl</code> check has to run from a <b>separate SSH session</b> while the gateway is still running. Or just skip it — once it&rsquo;s a service (Part 2) it runs in the background and <code class="inline">curl</code> works from any terminal:</p><div class="code"><pre><span class="p">curl</span> http://127.0.0.1:5000/api/ping</pre></div></div>
   </div>
 
   <div class="step"><span class="n">8</span>
@@ -612,9 +643,9 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">./ArmaReforgerServer</span> -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60</pre></div>
     <p class="muted">When it settles, press <span class="kbd">Ctrl</span>+<span class="kbd">C</span> to stop it. Wasteland-Z has now written its starter config files into <code class="inline">/opt/reforger/profiles/server1/profile/hf_wastelandz/configs/</code>.</p>
     <div class="note tip"><div class="h">You&rsquo;re running on defaults</div><p>Wasteland-Z ships with working defaults for everything — loot, economy, missions, weapons, vehicles. To go live you only need to set <b>two things</b>: the gateway URL and its key (steps a &amp; b below). Everything else is optional tuning you can do later.</p></div>
-    <p><b>a) Point the mod at the gateway.</b> Open the HF server config:</p>
+    <p><b>a) Gateway URL — already set for a local gateway.</b> The mod defaults <code class="inline">GATEWAY_URL</code> to <code class="inline">http://127.0.0.1:5000/</code>, which is correct when the gateway is on the same box (the normal setup) — so you can <b>skip this</b>. Only edit it if your gateway runs on a different machine or port:</p>
     <div class="code"><pre><span class="p">nano</span> /opt/reforger/profiles/server1/profile/hf_wastelandz/configs/HFWastelandZ_server.conf</pre></div>
-    <p class="muted">Find the <code class="inline">GATEWAY_URL</code> line and set it to <code class="inline">GATEWAY_URL http://127.0.0.1:5000/</code>. Save: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>.</p>
+    <p class="muted">Set the <code class="inline">GATEWAY_URL</code> line to your gateway&rsquo;s address (keep the trailing slash), then save: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>.</p>
     <p><b>b) Give it the gateway key.</b> Open the secrets file:</p>
     <div class="code"><pre><span class="p">nano</span> /opt/reforger/profiles/server1/profile/hf_wastelandz/configs/HFWastelandZ_secrets.conf</pre></div>
     <p class="muted">Add a line — <code class="inline">API_KEY</code> then a space then the <b>same gateway key from Step 6</b> (the one in <code class="inline">config.py</code> for this server). Save and exit the same way. A ready-made template ships at <code class="inline">/opt/wastelandz/configs/HFWastelandZ_secrets.conf.example</code>.</p>
@@ -664,7 +695,7 @@ WantedBy=multi-user.target</pre></div>
 <span class="p">sudo</span> systemctl stop wz-gateway
 <span class="p">sudo</span> systemctl start wz-gateway</pre></div></div>
     <div class="op"><h4>Watch live logs (monitor)</h4><div class="code"><pre><span class="p">journalctl</span> -u wz-gateway -f</pre></div><p class="muted"><span class="kbd">Ctrl</span>+<span class="kbd">C</span> stops watching (the service keeps running).</p></div>
-    <div class="op"><h4>Is it alive?</h4><div class="code"><pre><span class="p">curl</span> http://localhost:5000/api/ping</pre></div></div>
+    <div class="op"><h4>Is it alive?</h4><div class="code"><pre><span class="p">curl</span> http://127.0.0.1:5000/api/ping</pre></div></div>
     <div class="op"><h4>Restart MySQL</h4><div class="code"><pre><span class="p">sudo</span> systemctl restart mysql</pre></div></div>
     <div class="op"><h4>Starts on reboot?</h4><p>Yes — <code class="inline">enable --now</code> above already set that up. Nothing else to do.</p></div>
   </div>
