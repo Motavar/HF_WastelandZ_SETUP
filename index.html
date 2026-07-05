@@ -326,7 +326,7 @@ FLUSH PRIVILEGES;</pre></div>
     <p>In the gateway folder, make a copy of <code class="inline">config.example.py</code> and name the copy <code class="inline">config.py</code>. Open <code class="inline">config.py</code> in Notepad and set two things:</p>
     <ul class="clean">
       <li><code class="inline">DB_PASSWORD</code> = the password you made in Step 2.</li>
-      <li>In <code class="inline">SERVERS</code>, set <code class="inline">api_key</code> to the <b>gateway key</b> you just generated (unique per server).</li>
+      <li>Set <code class="inline">api_key</code> — the <b>GATEWAY KEY</b>, shown in the file as <code class="inline">CHANGE_ME_UNIQUE_KEY_1</code> — to the key you just generated. <b>Each server needs its own unique gateway key.</b></li>
     </ul>
     <p class="muted">Leave <code class="inline">host</code> as <code class="inline">127.0.0.1</code> and <code class="inline">port</code> as <code class="inline">5000</code>.</p>
     <div class="note danger"><div class="h">Keep it private</div><p><code class="inline">config.py</code> holds your password and key. Never share it or upload it anywhere public.</p></div>
@@ -585,7 +585,7 @@ FLUSH PRIVILEGES;</pre></div>
     <p>Now copy the template to the real settings file and open it in <b>nano</b>:</p>
     <div class="code"><pre><span class="p">cp</span> config.example.py config.py
 <span class="p">nano</span> config.py</pre></div>
-    <p class="muted">Set <code class="inline">DB_PASSWORD</code> to your Step 4 password, and in <code class="inline">SERVERS</code> set <code class="inline">api_key</code> to the <b>gateway key</b> you just generated (unique per server). Leave <code class="inline">host</code> as <code class="inline">127.0.0.1</code> and <code class="inline">port</code> as <code class="inline">5000</code>. Save in nano: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>.</p>
+    <p class="muted">Set <code class="inline">DB_PASSWORD</code> to your Step 4 password, and set <code class="inline">api_key</code> — the <b>GATEWAY KEY</b>, shown in the file as <code class="inline">CHANGE_ME_UNIQUE_KEY_1</code> — to the key you just generated. <b>Each server needs its own unique gateway key.</b> Leave <code class="inline">host</code> as <code class="inline">127.0.0.1</code> and <code class="inline">port</code> as <code class="inline">5000</code>. Save in nano: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>.</p>
     <div class="note danger"><div class="h">Keep it private</div><p><code class="inline">config.py</code> holds your password and key. Never share it or upload it anywhere public.</p></div>
   </div>
 
