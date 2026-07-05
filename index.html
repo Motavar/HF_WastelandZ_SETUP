@@ -601,8 +601,12 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">sudo</span> apt install -y python3-venv
 <span class="p">python3</span> -m venv venv
 <span class="p">source</span> venv/bin/activate
-<span class="p">pip</span> install -r requirements.txt</pre></div>
+<span class="p">pip</span> install -r requirements.txt
+
+<span class="c"># give the whole folder (incl. the venv) to the account the service will run as</span>
+<span class="p">sudo</span> chown -R youruser:youruser /opt/wastelandz-gateway</pre></div>
     <p class="muted">The <code class="inline">mysql</code> line asks for the <code class="inline">wastelandz</code> password you set in Step 4, then builds the tables — no output means it worked. The script itself holds <b>no usernames or passwords</b>; you never edit it.</p>
+    <div class="note warn"><div class="h">Ownership — replace <code class="inline">youruser</code></div><p>Change <code class="inline">youruser</code> to your Linux username (the same one you&rsquo;ll set in the service&rsquo;s <code class="inline">User=</code> line in Part 2). This matters: if you created the venv while in a <b>root shell</b> (e.g. after a <code class="inline">sudo -i</code> or a <code class="inline">sudo mysql</code> session), the files end up owned by <b>root</b>, and the gateway service — which runs as <code class="inline">youruser</code> — can&rsquo;t read or run them. The <code class="inline">chown -R</code> above fixes that no matter who created the files, so it&rsquo;s safe to always run.</p></div>
     <div class="note tip"><div class="h">Why the virtual environment (venv)?</div><p>Modern Ubuntu (24.04 / Python 3.12) blocks system-wide <code class="inline">pip install</code> to protect the OS Python — you&rsquo;d hit <code class="inline">error: externally-managed-environment</code>. A <b>venv</b> is an isolated Python just for the gateway: the clean, recommended way. Your prompt shows <code class="inline">(venv)</code> once it&rsquo;s active, and that&rsquo;s why Step 7 and the service below run <code class="inline">venv/bin/python</code>.</p></div>
     <div class="note warn"><div class="h">No-venv option (older systems)</div><p>On systems without that restriction (older Ubuntu/Debian), you can skip the venv and install into system Python — then Step 7 and the service use plain <code class="inline">python3</code> instead of <code class="inline">venv/bin/python</code>:</p><div class="code"><pre><span class="p">pip3</span> install -r requirements.txt
 <span class="c"># to force it on a PEP-668 system instead of using a venv (not recommended):</span>
