@@ -3,8 +3,13 @@
 -- ============================================================
 -- Run this script to create the database and all tables.
 --
--- Usage:
---   mysql -u root -p < setup_database.sql
+-- Usage (Ubuntu/Debian — 'sudo' logs root in automatically, no password prompt):
+--   sudo mysql < setup_database.sql
+--
+--   'sudo mysql' IS the login (as root, via socket auth); the '< file' part
+--   feeds this script into that session. You do NOT log in as 'wastelandz'.
+--   The 'wastelandz' login + password are made in the setup guide and go in
+--   config.py (DB_PASSWORD) — this script only builds tables.
 --
 -- HIVE-SHARED MODEL
 --   Player-associated data (money, bank, inventory, faction, stats,
