@@ -655,11 +655,12 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="note tip"><div class="h">Server name &amp; admin password</div><p>Those aren&rsquo;t HF settings — they live in the Reforger config <code class="inline">server1.json</code> (the <code class="inline">name</code> and <code class="inline">passwordAdmin</code> fields). Change them any time:</p><div class="code"><pre><span class="p">nano</span> /opt/reforger/configs/server1.json</pre></div></div>
     <div class="note tip"><div class="h">Optional — tune it later</div><p>To customize loot/economy/etc., rename the kit&rsquo;s <code class="inline">/opt/wastelandz/configs/*.example</code> files (drop <code class="inline">.example</code>) and copy them into the profile&rsquo;s <code class="inline">hf_wastelandz/configs/</code> folder. <code class="inline">configs/README.md</code> documents each one — none of it is needed to go live.</p></div>
     <p class="muted">Now start it again (same command). Player data saves to the database — <b>you&rsquo;re live.</b></p>
-    <div class="note tip"><div class="h">Make it a service too</div><p>Once it works, run the game server under systemd exactly like the gateway in Part 2 — same recipe, saved as <code class="inline">wz-server1.service</code>, with these three lines swapped in:</p>
-    <div class="code"><pre>Description=WastelandZ Game Server 1
-WorkingDirectory=/opt/reforger/server
-ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60</pre></div>
-    <p>Then <code class="inline">sudo systemctl enable --now wz-server1</code> — it starts on boot and restarts itself if it crashes. Ready-made in the kit: <code class="inline">/opt/wastelandz/server/wz-server1.service.example</code> — copy it to <code class="inline">/etc/systemd/system/wz-server1.service</code> and change <code class="inline">youruser</code>.</p></div>
+    <div class="note tip"><div class="h">Make it a service too (recommended)</div><p>Run the game server under systemd so it starts on boot and restarts itself if it crashes. The kit ships the service file ready-made — copy it, set your username, and enable it:</p>
+    <div class="code"><pre><span class="p">sudo</span> cp /opt/wastelandz/server/wz-server1.service.example /etc/systemd/system/wz-server1.service
+<span class="p">sudo</span> nano /etc/systemd/system/wz-server1.service   <span class="c"># set the User= line to your Linux username (save: Ctrl+O, Enter, Ctrl+X)</span>
+<span class="p">sudo</span> systemctl daemon-reload
+<span class="p">sudo</span> systemctl enable --now wz-server1</pre></div>
+    <p class="muted">Same pattern as the gateway service in Part 2 — this one just runs the game server. It now runs in the background and survives reboots. Manage it with <code class="inline">sudo systemctl start|stop|restart|status wz-server1</code>.</p></div>
   </div>
 
   <hr class="rule">
