@@ -303,7 +303,7 @@
 CREATE USER 'wastelandz'@'localhost' IDENTIFIED BY '<span class="p">your_password_here</span>';
 GRANT ALL PRIVILEGES ON wastelandz.* TO 'wastelandz'@'localhost';
 FLUSH PRIVILEGES;</pre></div>
-    <div class="note warn"><div class="h">Pick a password</div><p>Replace <code class="inline">your_password_here</code> with a password you choose, and <b>write it down</b> — the gateway needs it in Step 5.</p></div>
+    <div class="note warn"><div class="h">Pick a password</div><p>Replace <code class="inline">your_password_here</code> with a password you choose, and <b>write it down</b> — the gateway needs it in Step 5. Because MySQL 8&rsquo;s password policy is on, it must be <b>8+ characters with an upper- and lower-case letter, a number, and a symbol</b> (e.g. <code class="inline">Wast3land_Z!</code>) — a weaker one fails with <code class="inline">ERROR 1819</code>.</p></div>
   </div>
 
   <div class="step"><span class="n">3</span>
@@ -527,8 +527,18 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <p>Update the package list, then install both:</p>
     <div class="code"><pre><span class="p">sudo</span> apt update
 <span class="p">sudo</span> apt install -y mysql-server python3 python3-pip</pre></div>
-    <p class="muted">Then lock MySQL down and set its passwords (answer the prompts — &ldquo;Y&rdquo; is safe for each):</p>
+    <p class="muted">Then lock MySQL down and set the root password:</p>
     <div class="code"><pre><span class="p">sudo</span> mysql_secure_installation</pre></div>
+    <p class="muted">It asks a series of questions. Recommended answers:</p>
+    <ul class="clean">
+      <li><b>VALIDATE PASSWORD component?</b> &mdash; optional. <code class="inline">N</code> is fine (you set your own strong passwords).</li>
+      <li><b>New root password</b> &mdash; set a strong one and <b>write it down</b>.</li>
+      <li><b>Remove anonymous users?</b> &mdash; <b>Y</b> &mdash; closes password-less access.</li>
+      <li><b>Disallow root login remotely?</b> &mdash; <b>Y</b> &mdash; root only connects locally; the gateway uses its own <code class="inline">wastelandz</code> login.</li>
+      <li><b>Remove test database and access to it?</b> &mdash; <b>Y</b> &mdash; the default <code class="inline">test</code> database is open to everyone.</li>
+      <li><b>Reload privilege tables now?</b> &mdash; <b>Y</b> &mdash; applies it all right away.</li>
+    </ul>
+    <div class="note tip"><div class="h">Safe to say yes</div><p>None of these touch the <code class="inline">wastelandz</code> database or login you create in the next step &mdash; they only strip out MySQL&rsquo;s insecure defaults. Answering <b>Y</b> to all four is the right call for a dedicated server.</p></div>
   </div>
 
   <div class="step"><span class="n">4</span>
@@ -540,7 +550,7 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
 CREATE USER 'wastelandz'@'localhost' IDENTIFIED BY '<span class="p">your_password_here</span>';
 GRANT ALL PRIVILEGES ON wastelandz.* TO 'wastelandz'@'localhost';
 FLUSH PRIVILEGES;</pre></div>
-    <div class="note warn"><div class="h">Pick a password</div><p>Replace <code class="inline">your_password_here</code> with one you choose and <b>write it down</b> — you need it in Step 6.</p></div>
+    <div class="note warn"><div class="h">Pick a password</div><p>Replace <code class="inline">your_password_here</code> with one you choose and <b>write it down</b> — you need it in Step 6. Because you enabled MySQL&rsquo;s password policy in Step 3, it must be <b>8+ characters with an upper- and lower-case letter, a number, and a symbol</b> (e.g. <code class="inline">Wast3land_Z!</code>) — a weaker one fails with <code class="inline">ERROR 1819</code>.</p></div>
   </div>
 
   <div class="step"><span class="n">5</span>
@@ -556,6 +566,7 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">sudo</span> mysql wastelandz &lt; setup_database.sql
 <span class="p">pip3</span> install -r requirements.txt</pre></div>
     <p class="muted">No error from the <code class="inline">mysql</code> line means the tables were created.</p>
+    <div class="note tip"><div class="h">Got an <code class="inline">ERROR 1819 … password does not satisfy</code>?</div><p>The <code class="inline">wastelandz</code> login wasn&rsquo;t created in Step 4 first, so the script&rsquo;s built-in placeholder (<code class="inline">CHANGE_ME</code>) tripped the password policy — this is <b>not</b> about the password you chose. Do Step 4 (with a policy-strength password), then re-run the <code class="inline">mysql</code> line; the script reuses the login you already made and skips its placeholder.</p></div>
   </div>
 
   <div class="step"><span class="n">6</span>
