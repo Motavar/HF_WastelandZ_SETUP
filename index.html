@@ -119,6 +119,12 @@
   .step h4{font-family:var(--font-display);font-weight:700;font-size:20px;letter-spacing:.01em;
     margin:0 0 6px;padding-left:30px}
   @media(max-width:560px){.step{padding:18px 16px 18px 20px}.step>.n{left:-11px;width:30px;height:30px;font-size:15px}.step h4{padding-left:20px}}
+  .substep{font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--sand);
+    margin:26px 0 8px;padding-top:18px;border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:11px}
+  .substep .lt{display:inline-flex;align-items:center;justify-content:center;flex:none;
+    width:27px;height:27px;border-radius:50%;background:var(--bg-2);border:1px solid var(--rust);
+    color:var(--rust);font-size:14px;font-weight:700}
 
   /* ---- code blocks ---- */
   .code{position:relative;background:var(--bg-3);border:1px solid var(--line-2);border-radius:10px;
@@ -654,19 +660,22 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">./ArmaReforgerServer</span> -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonDownloadDir /opt/reforger/workshop -maxFPS 60</pre></div>
     <p class="muted">When it settles, press <span class="kbd">Ctrl</span>+<span class="kbd">C</span> to stop it. Wasteland-Z has now written its starter config files into <code class="inline">/opt/reforger/profiles/server1/profile/hf_wastelandz/configs/</code>.</p>
     <div class="note tip"><div class="h">You&rsquo;re running on defaults</div><p>Wasteland-Z ships with working defaults for everything — loot, economy, missions, weapons, vehicles. To go live you only need to set <b>two things</b>: the gateway URL and its key (steps a &amp; b below). Everything else is optional tuning you can do later.</p></div>
-    <p><b>a) Gateway URL — already set for a local gateway.</b> The mod defaults <code class="inline">GATEWAY_URL</code> to <code class="inline">http://127.0.0.1:5000/</code>, which is correct when the gateway is on the same box (the normal setup) — so you can <b>skip this</b>. Only edit it if your gateway runs on a different machine or port:</p>
+    <h5 class="substep"><span class="lt">a</span> Gateway URL — already set for a local gateway</h5>
+    <p>The mod defaults <code class="inline">GATEWAY_URL</code> to <code class="inline">http://127.0.0.1:5000/</code>, which is correct when the gateway is on the same box (the normal setup) — so you can <b>skip this</b>. Only edit it if your gateway runs on a different machine or port:</p>
     <div class="code"><pre><span class="p">nano</span> /opt/reforger/profiles/server1/profile/hf_wastelandz/configs/HFWastelandZ_server.conf</pre></div>
     <p class="muted">Set the <code class="inline">GATEWAY_URL</code> line to your gateway&rsquo;s address (keep the trailing slash), then save: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>.</p>
-    <p><b>b) Give it the gateway key.</b> Open the secrets file:</p>
+    <h5 class="substep"><span class="lt">b</span> Give it the gateway key</h5>
+    <p>Open the secrets file:</p>
     <div class="code"><pre><span class="p">nano</span> /opt/reforger/profiles/server1/profile/hf_wastelandz/configs/HFWastelandZ_secrets.conf</pre></div>
     <p class="muted">Add a line — <code class="inline">API_KEY</code> then a space then the <b>same gateway key from Step 6</b> (the one in <code class="inline">config.py</code> for this server). Save and exit the same way. A ready-made template ships at <code class="inline">/opt/wastelandz/configs/HFWastelandZ_secrets.conf.example</code>.</p>
-    <p><b>c) Add the mission reward templates:</b></p>
+    <h5 class="substep"><span class="lt">c</span> Add the mission reward templates</h5>
     <div class="code"><pre><span class="p">cp</span> -r /opt/wastelandz/missions/rewards /opt/reforger/profiles/server1/profile/hf_wastelandz/missions/</pre></div>
     <p class="muted">These are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</p>
     <div class="note tip"><div class="h">Server name &amp; admin password</div><p>Those aren&rsquo;t HF settings — they live in the Reforger config <code class="inline">server1.json</code> (the <code class="inline">name</code> and <code class="inline">passwordAdmin</code> fields). Change them any time:</p><div class="code"><pre><span class="p">nano</span> /opt/reforger/configs/server1.json</pre></div></div>
     <div class="note tip"><div class="h">Optional — tune it later</div><p>To customize loot/economy/etc., rename the kit&rsquo;s <code class="inline">/opt/wastelandz/configs/*.example</code> files (drop <code class="inline">.example</code>) and copy them into the profile&rsquo;s <code class="inline">hf_wastelandz/configs/</code> folder. <code class="inline">configs/README.md</code> documents each one — none of it is needed to go live.</p></div>
     <p class="muted">Now start it again (same command). Player data saves to the database — <b>you&rsquo;re live.</b></p>
-    <p><b>d) Make yourself the admin</b> (do this once it&rsquo;s running). Wasteland-Z admins are keyed by <b>Bohemia Identity GUID</b> &mdash; a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code tied to your Bohemia account. <b>It is NOT your Steam number.</b> There are two ways to find yours:</p>
+    <h5 class="substep"><span class="lt">d</span> Make yourself the admin</h5>
+    <p>Do this once it&rsquo;s running. Wasteland-Z admins are keyed by <b>Bohemia Identity GUID</b> &mdash; a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code tied to your Bohemia account. <b>It is NOT your Steam number.</b> There are two ways to find yours:</p>
     <p><b>1) In the game (easiest):</b> launch Arma Reforger, click your <b>profile</b> in the upper-right corner &mdash; your Identity GUID is listed there. Copy it.</p>
     <p><b>2) From the server log:</b> join the running server once, then read it out of the log:</p>
     <div class="code"><pre><span class="p">grep</span> -rh "Authenticated player" /opt/reforger/profiles/server1/logs/ | tail</pre></div>
