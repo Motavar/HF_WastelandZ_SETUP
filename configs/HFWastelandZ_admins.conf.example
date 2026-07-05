@@ -4,8 +4,8 @@
 # ============================================================
 #
 # This file decides each player's ROLE (their permission tier),
-# keyed by Steam64 ID. The server is the only machine that reads
-# it — players cannot fake their role.
+# keyed by BOHEMIA IDENTITY GUID. The server is the only machine
+# that reads it — players cannot fake their role.
 #
 # THE FIVE ROLES  (higher number = more power)
 #   OWNER    40   you — full control, including server restart
@@ -15,22 +15,40 @@
 #   EVERYONE  0   default — every normal player (no line needed)
 #
 # FORMAT  (one player per line)
-#   <ROLE> <Steam64ID>
+#   <ROLE> <IdentityGUID>
 #
-# Steam64 IDs are 17-digit numbers. Find one at https://steamid.io
-# or from a Steam profile URL. Anyone NOT listed here is EVERYONE.
+# The Identity GUID is a lowercase 8-4-4-4-12 code tied to a Bohemia
+# account, e.g.  a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+# It is NOT a Steam64 number.
+#
+# HOW TO FIND A PLAYER'S GUID: have them join the server once, then
+# read it from the server log — grep for  Authenticated player  and
+# copy the  identityId=  value on the line with their name:
+#     grep -rh "Authenticated player" <server>/logs/ | tail
+#   (once the server is a systemd service:  journalctl -u wz-server1 ...)
 #
 # EXAMPLE
-#   OWNER   76561198000000001
-#   ADMIN   76561198000000002
-#   MOD     76561198000000003
-#   TRUSTED 76561198000000004
+#   OWNER   a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+#   ADMIN   b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+#   MOD     c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+#   TRUSTED d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f90
+#
+# ⚠ NO TRAILING SPACES / NO WINDOWS LINE-ENDINGS
+#   The server matches admins by EXACT text. A stray trailing space
+#   after the GUID, or Windows CRLF line-endings (from editing/pasting
+#   on Windows), are invisible in most editors but make the ID silently
+#   FAIL to match — the player stays EVERYONE with no error shown.
+#   Edit this file on the server (nano) with no space after the GUID.
+#   If admin isn't recognized, clean the file and verify:
+#     sed -i 's/[[:space:]]*$//' HFWastelandZ_admins.conf
+#     cat -A HFWastelandZ_admins.conf   # each role line must end in $ (no ^M, no space)
+#   (A known parsing issue being fixed in the mod; the sed line is the fix for now.)
 #
 # ------------------------------------------------------------
 # HOW TO SET SOMEONE'S ROLE
 # ------------------------------------------------------------
 # 1) FIRST admin (and the ONLY way to set OWNER): edit this file.
-#    Add a line like  OWNER 7656119...  then restart the server.
+#    Add a line like  OWNER a1b2c3d4-...  then restart the server.
 #
 # 2) After that, do it live in-game (no restart) with the command:
 #       /admin promote <name|playerId> <EVERYONE|TRUSTED|MOD|ADMIN>
@@ -63,7 +81,7 @@
 #   No file / empty file  → no admins; Game Master access denied for all.
 # ============================================================
 
-# --- ROLES ---  (uncomment and use your own Steam64 IDs)
-# OWNER 76561198000000001
-# ADMIN 76561198000000002
-# MOD   76561198000000003
+# --- ROLES ---  (uncomment and use your own Identity GUIDs)
+# OWNER a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+# ADMIN b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+# MOD   c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f

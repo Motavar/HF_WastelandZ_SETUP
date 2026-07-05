@@ -221,7 +221,7 @@
     <div class="h">The server builds its own config files &mdash; you don&rsquo;t have to</div>
     <p>The <b>first time Wasteland-Z starts</b>, it writes a complete, ready-to-run set of config files into your server profile&rsquo;s <code class="inline">hf_wastelandz\configs\</code> folder, each pre-filled with the current defaults. You can start with <b>no</b> config files at all and edit the generated ones afterwards &mdash; that&rsquo;s the recommended path, because the files the server writes always match the mod version you&rsquo;re running (a hand-copied kit file can fall behind after an update).</p>
     <p><b>Auto-created on first start:</b> <code class="inline">HFWastelandZ_server.conf</code>, <code class="inline">HFWastelandZ_secrets.conf</code>, <code class="inline">HFWastelandZ_admins.conf</code>, <code class="inline">HFWastelandZ_blacklist.conf</code>, <code class="inline">HFWastelandZ_command_tiers.conf</code>, <code class="inline">HFWastelandZ_loadouts.conf</code>, <code class="inline">HFWastelandZ_town_tiers.conf</code>, <code class="inline">HFWastelandZ_loot_spawn_filter.conf</code>, <code class="inline">HFWastelandZ_item_catalog.conf</code>, <code class="inline">HFWastelandZ_vehicle_spawn.conf</code>, <code class="inline">HFWastelandZ_server_message.txt</code>, plus the per-map files under <code class="inline">configs\map\&lt;MapName&gt;\</code> (towns, spawn points, loot pools, world loot, and the gun / general / vehicle store catalogs &mdash; these regenerate for <b>whatever map you load</b>).</p>
-    <p><b>The two you must fill in yourself:</b> <code class="inline">HFWastelandZ_secrets.conf</code> is written with a <b>placeholder</b> API key you must replace, and <code class="inline">HFWastelandZ_admins.conf</code> is written <b>empty</b> so you must add your Steam64 ID to become an admin. Everything else runs on defaults until you decide to change it.</p>
+    <p><b>The two you must fill in yourself:</b> <code class="inline">HFWastelandZ_secrets.conf</code> is written with a <b>placeholder</b> API key you must replace, and <code class="inline">HFWastelandZ_admins.conf</code> is written <b>empty</b> so you must add your Bohemia Identity GUID (not your Steam number) to become an admin &mdash; see Step 9d. Everything else runs on defaults until you decide to change it.</p>
   </div>
 
   <h3>Where everything lives on your server</h3>
@@ -666,6 +666,16 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="note tip"><div class="h">Server name &amp; admin password</div><p>Those aren&rsquo;t HF settings — they live in the Reforger config <code class="inline">server1.json</code> (the <code class="inline">name</code> and <code class="inline">passwordAdmin</code> fields). Change them any time:</p><div class="code"><pre><span class="p">nano</span> /opt/reforger/configs/server1.json</pre></div></div>
     <div class="note tip"><div class="h">Optional — tune it later</div><p>To customize loot/economy/etc., rename the kit&rsquo;s <code class="inline">/opt/wastelandz/configs/*.example</code> files (drop <code class="inline">.example</code>) and copy them into the profile&rsquo;s <code class="inline">hf_wastelandz/configs/</code> folder. <code class="inline">configs/README.md</code> documents each one — none of it is needed to go live.</p></div>
     <p class="muted">Now start it again (same command). Player data saves to the database — <b>you&rsquo;re live.</b></p>
+    <p><b>d) Make yourself the admin</b> (do this once it&rsquo;s running). Wasteland-Z admins are keyed by <b>Bohemia Identity GUID</b> &mdash; a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code tied to your Bohemia account. <b>It is NOT your Steam number.</b> To find yours: join the running server once from the game, then read it out of the log:</p>
+    <div class="code"><pre><span class="p">grep</span> -rh "Authenticated player" /opt/reforger/profiles/server1/logs/ | tail</pre></div>
+    <p class="muted">Copy the <code class="inline">identityId=</code> value on the line with your player name. (After Part 2 makes it a service, you can use <code class="inline">sudo journalctl -u wz-server1 | grep "Authenticated player"</code> instead.)</p>
+    <p>Add yourself as <code class="inline">OWNER</code> in the admin file:</p>
+    <div class="code"><pre><span class="p">nano</span> /opt/reforger/profiles/server1/profile/hf_wastelandz/configs/HFWastelandZ_admins.conf</pre></div>
+    <div class="code"><pre>OWNER a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d   <span class="c"># &larr; your GUID from the log, not this placeholder</span></pre></div>
+    <div class="note warn"><div class="h">&#9888; No trailing spaces or Windows line-endings in this file</div><p>Wasteland-Z matches admins by <b>exact</b> ID text. A stray <b>trailing space</b> after the GUID, or <b>Windows line-endings</b> (from editing or pasting on Windows), are invisible in most editors but make the ID <b>silently fail to match</b> &mdash; you stay a regular player, with <b>no error shown</b>. After saving, strip any hidden characters and verify:</p><div class="code"><pre><span class="p">cd</span> /opt/reforger/profiles/server1/profile/hf_wastelandz/configs
+<span class="p">sed</span> -i 's/[[:space:]]*$//' HFWastelandZ_admins.conf
+<span class="p">cat</span> -A HFWastelandZ_admins.conf</pre></div><p class="muted">In the <code class="inline">cat -A</code> output your <code class="inline">OWNER</code> line must end in just <code class="inline">$</code> &mdash; <b>no</b> <code class="inline">^M</code> and <b>no</b> space before it. <i>Why:</i> this is a known parsing issue being fixed in the mod; until then the <code class="inline">sed</code> line guarantees a clean file. Restart the server after editing &mdash; then <span class="kbd">F8</span> opens the admin menu and <code class="inline">/zeus</code> gives you Game Master.</p></div>
+
     <div class="note tip"><div class="h">Next: make it run on its own</div><p>Right now you&rsquo;re starting the game server by hand to confirm it works. <b>Part 2 &rarr; Step B</b> turns it into a background service (<code class="inline">wz-server1</code>) that starts on boot and restarts itself if it crashes — do that once you&rsquo;ve seen it boot and connect to the gateway.</p></div>
   </div>
 
@@ -885,7 +895,7 @@ Copy a block back into server1.json's "mods" list to re-enable it.</span>
   <p class="muted">This part is the same on Windows and Linux — it&rsquo;s done with config files and in-game commands.</p>
 
   <h3>The five roles</h3>
-  <p class="muted">Every player has a role. Higher beats lower. Roles live in one file: <code class="inline">$profile:HFWastelandZ_admins.conf</code>, keyed by Steam64 ID.</p>
+  <p class="muted">Every player has a role. Higher beats lower. Roles live in one file: <code class="inline">$profile:HFWastelandZ_admins.conf</code>, keyed by <b>Bohemia Identity GUID</b> (a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code &mdash; not your Steam number; see Part 1 &rarr; Step 9d for how to find yours).</p>
   <div class="tablewrap"><table class="rtab">
     <tr><th>Role</th><th>Can do</th></tr>
     <tr><td><span class="role">OWNER</span></td><td>Everything, including <code class="inline">/admin restart</code>. Set by editing the file only.</td></tr>
@@ -898,10 +908,10 @@ Copy a block back into server1.json's "mods" list to re-enable it.</span>
   <h3>Make someone a mod, admin, or owner</h3>
   <p><b>Your first admin — and the only way to set OWNER — is by editing the file.</b> Add a line and restart:</p>
   <div class="code"><pre><span class="c"># in $profile:HFWastelandZ_admins.conf</span>
-OWNER 76561198000000001
-ADMIN 76561198000000002
-MOD   76561198000000003</pre></div>
-  <p class="muted">Steam64 IDs are the 17-digit numbers from <a href="https://steamid.io" target="_blank" rel="noopener">steamid.io</a>. Anyone not listed is EVERYONE.</p>
+OWNER a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+ADMIN b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+MOD   c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f</pre></div>
+  <p class="muted">Those are <b>Bohemia Identity GUIDs</b> (lowercase <code class="inline">8-4-4-4-12</code> hex), one per admin &mdash; find yours via Part 1 &rarr; Step 9d. Put <b>no trailing space</b> after the GUID (see the gotcha in Step 9d). Anyone not listed is EVERYONE.</p>
   <p>After you have one admin, change roles <b>live, no restart</b>, from in-game chat:</p>
   <div class="code"><pre>/admin promote &lt;name|playerId&gt; &lt;EVERYONE|TRUSTED|MOD|ADMIN&gt;</pre></div>
   <div class="note warn"><div class="h">The rules</div><p>You must be <b>ADMIN or OWNER</b> to change roles. An ADMIN can grant any role <b>up to and including ADMIN</b>. <b>OWNER</b> is never granted in-game — it&rsquo;s file-only so no one can lock you out, so seed yourself as OWNER in the file first. You can change anyone at or below your own rank (an ADMIN can demote a peer ADMIN), but never someone above you — and an <b>OWNER can never be changed in-game</b> by anyone.</p></div>
