@@ -797,7 +797,8 @@ and everything right of the players is local to the box — nothing exposed.</sp
   <h3>Big box? Give each server its own cores</h3>
   <p><b>RAM first — there&rsquo;s nothing to divide.</b> Linux hands out memory on demand: a full 128-player Reforger server uses roughly 8&ndash;16&nbsp;GB, MySQL + the gateway a few more. Even three servers fit comfortably in 64&nbsp;GB. The only setting worth adding is a per-server safety cap (below) so a memory leak can never take down the whole box.</p>
   <p><b>CPU is the part worth splitting.</b> A big AMD chip (like a 16-core Ryzen 7950X3D) is really <b>two groups of 8 cores</b> glued together. Each group shares one pot of very fast memory called <i>cache</i> — the chip&rsquo;s short-term memory. A game server runs best when its group belongs to it alone; two servers squeezed into one group fight over the pot and both get slower. The fix is one line per server that says &ldquo;you may only use <i>these</i> cores&rdquo; — one server per group.</p>
-  <p><b>Step 1 — see your two groups.</b> Run (looks, changes nothing):</p>
+  <h5 class="substep"><span class="lt">1</span> See your two groups</h5>
+  <p>Run (looks, changes nothing):</p>
   <div class="code"><pre><span class="p">lscpu</span> -e</pre></div>
   <p class="muted">One row per CPU number. Look at the <b>last digit</b> on each row: rows ending in <code class="inline">0</code> are group one, rows ending in <code class="inline">1</code> are group two. On a 16-core AMD chip you&rsquo;ll typically see: CPU numbers <b>0&ndash;7 and 16&ndash;23</b> end in 0 (group one), <b>8&ndash;15 and 24&ndash;31</b> end in 1 (group two). (Why 32 CPU numbers on a 16-core chip? Each core can run two things at once, so it shows up twice.)</p>
   <p class="muted">On an &ldquo;X3D&rdquo; chip, one group has a much bigger memory pot — the fast one. See which:</p>
@@ -805,7 +806,8 @@ and everything right of the players is local to the box — nothing exposed.</sp
   <div class="code"><pre>98304K   <span class="c">&larr; 96 MB = the BIG pot. First line is cpu0, so group one has it.</span>
 32768K   <span class="c">&larr; 32 MB = the normal pot (cpu8&rsquo;s group — group two).</span></pre></div>
   <p class="muted">Give the big-pot group to your busiest server. If the 96&nbsp;MB shows up on the <i>second</i> line instead, swap the two <code class="inline">CPUAffinity</code> lines in Step 2. Not an X3D chip? Both lines read the same — the split still works, there&rsquo;s just no favourite group.</p>
-  <p><b>Step 2 — pin each server to its group.</b> Edit each server&rsquo;s service file (the kit&rsquo;s <code class="inline">.service.example</code> already ships these two lines <b>commented out</b> — you just delete the leading <code class="inline">#</code>):</p>
+  <h5 class="substep"><span class="lt">2</span> Pin each server to its group</h5>
+  <p>Edit each server&rsquo;s service file (the kit&rsquo;s <code class="inline">.service.example</code> already ships these two lines <b>commented out</b> — you just delete the leading <code class="inline">#</code>):</p>
   <div class="code"><pre><span class="p">sudo</span> nano /etc/systemd/system/wz-server1.service   <span class="c"># then repeat for wz-server2.service</span></pre></div>
   <p class="muted">In the <code class="inline">[Service]</code> section of <b>each</b> file, uncomment (or add) its <b>own</b> pair of lines — <code class="inline">wz-server1.service</code> gets group one, <code class="inline">wz-server2.service</code> gets group two (they are separate files; never put both pairs in one). Save each (<span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>):</p>
   <div class="code"><pre><span class="c"># ── these two lines go in wz-server1.service (group one — the big-pot group) ──</span>
@@ -815,7 +817,7 @@ MemoryMax=32G
 <span class="c"># ── and these two go in the SEPARATE file wz-server2.service (group two) ──</span>
 CPUAffinity=8-15 24-31
 MemoryMax=32G</pre></div>
-  <p><b>Step 3 — apply:</b></p>
+  <h5 class="substep"><span class="lt">3</span> Apply</h5>
   <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
 <span class="p">sudo</span> systemctl restart wz-server1 wz-server2</pre></div>
   <p class="muted"><code class="inline">CPUAffinity</code> = &ldquo;this service may only run on these cores.&rdquo; <code class="inline">MemoryMax</code> = if the server ever leaks past the cap, systemd kills <i>it</i> (and <code class="inline">Restart=on-failure</code> brings it right back) instead of the box dying. Leave the gateway and <code class="inline">mysql</code> <b>unpinned</b> — they&rsquo;re lightweight and slot into whatever&rsquo;s idle. Verify with <code class="inline">htop</code>: each server&rsquo;s load stays inside its own core block. One core pegged at 100% while its neighbours idle is the engine&rsquo;s normal single-thread ceiling, not a problem to fix — the levers for a struggling full server are <code class="inline">aiLimit</code> in <code class="inline">serverN.json</code> and Wasteland-Z&rsquo;s mission/AI density settings.</p>
