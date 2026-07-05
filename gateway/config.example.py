@@ -52,6 +52,10 @@ FLASK_DEBUG = False
 # One entry per game server. The gateway listens on every ACTIVE port below and
 # identifies each request by the port it arrived on (-> that server's id + key).
 # Keep unused servers COMMENTED OUT so no port ever runs on a default key.
+#
+# api_key = the GATEWAY KEY for that server. Each server needs its OWN unique key
+#   (generate one with: python3 -c "import secrets; print(secrets.token_hex(32))").
+#   The SAME key must go in that server's HFWastelandZ_secrets.conf (API_KEY).
 SERVERS = [
     {"server_id": "server-1", "port": 5000, "host": "127.0.0.1", "api_key": "CHANGE_ME_UNIQUE_KEY_1"},
 
