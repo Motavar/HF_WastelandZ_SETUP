@@ -1302,14 +1302,26 @@ HF_VEHICLE_STORE_FUEL_PCT 100
 # Server name (shown in admin tools and logs)
 SERVER_NAME WastelandZ Dev Server
 
-# Unique server ID. This MUST EXACTLY MATCH this server's SERVER_ID in the
-# gateway config (config.py — for a single server, or the matching entry's
-# server_id in the gateway's SERVERS list). The gateway stamps DB rows with the
-# server id and the mod compares it to decide "same server -> restore my last
-# location + gear" — if they differ, your saved position/gear will NOT restore.
+# !!! CRITICAL — SERVER_ID MUST EXACTLY MATCH the gateway's server_id for THIS
+# server: gateway config.py SERVER_ID (single server) OR the matching entry's
+# server_id in the gateway's SERVERS list (multi-server). The gateway stamps DB
+# rows with ITS server id; the mod compares it to decide "same server -> restore
+# my LAST LOCATION + keep gear on relog".
+#
+# IF THEY DIFFER: last-location and keep-gear-on-relog SILENTLY do NOT restore.
+# Money + inventory STILL work (those are hive-wide) — so it looks like "only
+# position won't save," which is exactly this mismatch. The server logs a CRIT
+# on the first player join if it detects a mismatch:
+#   [HF][CRIT][GATEWAY] SERVER_ID MISMATCH — HF config SERVER_ID='X' but the
+#   gateway calls this server 'Y' ... FIX: set 'SERVER_ID Y' here and restart.
+# If last-location isn't working, grep the server log for: SERVER_ID MISMATCH
+#
 # Servers sharing a hive use the same database (gateway HIVE_ID); player
 # money/inventory are shared hive-wide, world objects stay per-server.
-SERVER_ID dev-01
+# DEFAULT is 'server-1' to match the gateway example's first SERVERS entry
+# (config.example.py: server_id 'server-1'), so a fresh setup matches out of
+# the box. If your gateway uses a different id for this server, change it here.
+SERVER_ID server-1
 
 # SERVER_IP
 # Public address shown to players on the HUD (IP:port or hostname).
