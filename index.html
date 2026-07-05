@@ -702,16 +702,17 @@ WantedBy=multi-user.target</pre></div>
     <p class="muted">The game server now starts on boot and restarts itself if it crashes — same as the gateway.</p>
   </div>
 
-  <p class="muted">Day-to-day, the commands below manage <b>any</b> of your services — just swap the name (<code class="inline">wz-gateway</code>, <code class="inline">wz-server1</code>, or <code class="inline">mysql</code>):</p>
+  <p class="muted"><b>Your three services:</b> <code class="inline">wz-server1</code> (the game server), <code class="inline">wz-gateway</code> (the gateway), and <code class="inline">mysql</code> (the database). Every command below works on <b>any</b> of them — just swap the name. After a reboot they start on their own; if you ever start them by hand, the order is <code class="inline">mysql</code> &rarr; <code class="inline">wz-gateway</code> &rarr; <code class="inline">wz-server1</code>.</p>
   <div class="ops">
-    <div class="op"><h4>Is it running?</h4><div class="code"><pre><span class="p">sudo</span> systemctl status wz-gateway</pre></div><p class="muted">Green <code class="inline">active (running)</code> = good.</p></div>
+    <div class="op"><h4>Is it running?</h4><div class="code"><pre><span class="p">sudo</span> systemctl status wz-server1</pre></div><p class="muted">Green <code class="inline">active (running)</code> = good. It opens a scrollable view — press <span class="kbd">q</span> to exit back to the prompt.</p></div>
     <div class="op"><h4>Restart / stop / start</h4><div class="code"><pre><span class="p">sudo</span> systemctl restart wz-gateway
 <span class="p">sudo</span> systemctl stop wz-gateway
 <span class="p">sudo</span> systemctl start wz-gateway</pre></div></div>
     <div class="op"><h4>Watch live logs (monitor)</h4><div class="code"><pre><span class="p">journalctl</span> -u wz-gateway -f</pre></div><p class="muted"><span class="kbd">Ctrl</span>+<span class="kbd">C</span> stops watching (the service keeps running).</p></div>
     <div class="op"><h4>Is it alive?</h4><div class="code"><pre><span class="p">curl</span> http://127.0.0.1:5000/api/ping</pre></div></div>
     <div class="op"><h4>Restart MySQL</h4><div class="code"><pre><span class="p">sudo</span> systemctl restart mysql</pre></div></div>
-    <div class="op"><h4>Starts on reboot?</h4><p>Yes — <code class="inline">enable --now</code> above already set that up. Nothing else to do.</p></div>
+    <div class="op"><h4>Start on boot (on / off)</h4><div class="code"><pre><span class="p">sudo</span> systemctl enable wz-server1
+<span class="p">sudo</span> systemctl disable wz-server1</pre></div><p class="muted">Your earlier <code class="inline">enable --now</code> already turned both on — they auto-start after a reboot.</p></div>
   </div>
 
   <h3>Back up your data (do this regularly)</h3>
