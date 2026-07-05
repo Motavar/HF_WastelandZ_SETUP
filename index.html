@@ -462,13 +462,13 @@ and everything right of the players is local to the PC — nothing exposed.</spa
   <p><b>RAM needs no dividing</b> — Windows hands it out on demand, and a full 128-player server uses roughly 8&ndash;16&nbsp;GB. (Windows has no simple per-program RAM cap like Linux&rsquo;s — skip that part.) <b>CPU is the part worth splitting:</b> a big AMD chip (e.g. a 16-core Ryzen 7950X3D) is really <b>two groups of 8 cores</b>, each sharing one pot of very fast memory (cache). Two servers squeezed into one group fight over the pot — give each server its own group.</p>
   <p>On Windows the tool is the <code class="inline">/affinity</code> flag. In <code class="inline">start_server1.bat</code>, change the server line:</p>
   <div class="code"><pre><span class="c">rem before:</span>
-"%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60
+"%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60
 
 <span class="c">rem after — server 1 pinned to the first 16 processor numbers (group one):</span>
-start "" /affinity FFFF /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60
+start "" /affinity FFFF /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60
 
 <span class="c">rem and in start_server2.bat — the next 16 (group two):</span>
-start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60</pre></div>
+start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60</pre></div>
   <p class="muted">The mask is a code for &ldquo;which processors&rdquo;. <code class="inline">FFFF</code> = the first 16 processor numbers; Windows usually numbers each core twice back-to-back, so that&rsquo;s the first 8 cores = the first group (the big-cache one on X3D chips — give it to your busiest server). <code class="inline">/wait</code> keeps the auto-restart loop working. Sanity-check anytime: Task Manager &rarr; Details &rarr; right-click <code class="inline">ArmaReforgerServer.exe</code> &rarr; <b>Set affinity</b> shows exactly which processors each server is allowed on.</p>
   <p><b>Cheat-sheet: 1&ndash;4 servers on a 16-core PC</b> (two 8-core groups; Windows numbers each core twice back-to-back):</p>
   <div class="tablewrap"><table class="rtab">
