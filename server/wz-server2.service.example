@@ -10,7 +10,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/opt/reforger/server
-ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server2.json -profile /opt/reforger/profiles/server2 -addonsDir /opt/reforger/workshop -maxFPS 60
+ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server2.json -profile /opt/reforger/profiles/server2 -addonDownloadDir /opt/reforger/workshop -maxFPS 60
 Restart=on-failure
 User=youruser
 # Big box running 2+ servers? Uncomment to give this server its own cores

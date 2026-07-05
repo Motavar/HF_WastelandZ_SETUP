@@ -20,7 +20,7 @@ if exist "%STOPFLAG%" del "%STOPFLAG%"
 
 :loop
 echo [%date% %time%] Starting Wasteland-Z server 1 ...
-"%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonsDir "%ADDONS%" -maxFPS 60
+"%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60
 if exist "%STOPFLAG%" (
   del "%STOPFLAG%"
   echo Stopped by stop_server1.bat.

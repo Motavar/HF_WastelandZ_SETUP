@@ -241,13 +241,13 @@
 │
 └── reforger/                  <span class="c"># the game server</span>
     ├── server/                  <span class="c"># ArmaReforgerServer + game files (from SteamCMD)</span>
-    ├── workshop/                <span class="c"># -addonsDir (mod cache)</span>
+    ├── workshop/                <span class="c"># -addonDownloadDir: Workshop mods download here, shared by all servers</span>
+    │   └── addons/
+    │       └── Wasteland-Z_68A616565DECAB19/   <span class="c"># the downloaded mod (data.pak)</span>
     ├── configs/
     │   └── server1.json         <span class="c"># Reforger config: server NAME, admin password, mods, scenario</span>
     └── profiles/
         └── server1/             <span class="c"># -profile dir for this server</span>
-            ├── addons/
-            │   └── Wasteland-Z_68A616565DECAB19/   <span class="c"># the downloaded mod (data.pak)</span>
             ├── logs/            <span class="c"># console.log lives here</span>
             └── profile/         <span class="c"># $profile: root  &lt;-- note the extra 'profile/' level</span>
                 └── hf_wastelandz/
@@ -644,7 +644,7 @@ FLUSH PRIVILEGES;</pre></div>
     <h4>Connect your game server &mdash; then first start</h4>
     <p>Start the game server once and let it boot — it downloads the Wasteland-Z mod from the Workshop and writes its starter config files. This is the command (one long line — same program, its config, its profile folder, the shared mods folder):</p>
     <div class="code"><pre><span class="p">cd</span> /opt/reforger/server
-<span class="p">./ArmaReforgerServer</span> -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60</pre></div>
+<span class="p">./ArmaReforgerServer</span> -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonDownloadDir /opt/reforger/workshop -maxFPS 60</pre></div>
     <p class="muted">When it settles, press <span class="kbd">Ctrl</span>+<span class="kbd">C</span> to stop it. Wasteland-Z has now written its starter config files into <code class="inline">/opt/reforger/profiles/server1/profile/hf_wastelandz/configs/</code>.</p>
     <div class="note tip"><div class="h">You&rsquo;re running on defaults</div><p>Wasteland-Z ships with working defaults for everything — loot, economy, missions, weapons, vehicles. To go live you only need to set <b>two things</b>: the gateway URL and its key (steps a &amp; b below). Everything else is optional tuning you can do later.</p></div>
     <p><b>a) Gateway URL — already set for a local gateway.</b> The mod defaults <code class="inline">GATEWAY_URL</code> to <code class="inline">http://127.0.0.1:5000/</code>, which is correct when the gateway is on the same box (the normal setup) — so you can <b>skip this</b>. Only edit it if your gateway runs on a different machine or port:</p>
@@ -733,10 +733,10 @@ and everything right of the players is local to the box — nothing exposed.</sp
   <p class="muted">Any other map — including community maps — works the same way. Find its ID on the Workshop website: open the map mod&rsquo;s page at <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a> and click its <b>Scenarios</b> tab — the ScenarioId shown there (it looks like <code class="inline">{GUID}Missions/Name.conf</code>) is what goes in <code class="inline">scenarioId</code>. Add that map mod to the same server&rsquo;s <code class="inline">mods</code> list too.</p>
   <p>Each server starts with the same program, pointed at its own config + profile (the profile folder is created on first start):</p>
   <div class="code"><pre><span class="c"># server 1 — Everon</span>
-/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonsDir /opt/reforger/workshop -maxFPS 60
+/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server1.json -profile /opt/reforger/profiles/server1 -addonDownloadDir /opt/reforger/workshop -maxFPS 60
 
 <span class="c"># server 2 — Arland</span>
-/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server2.json -profile /opt/reforger/profiles/server2 -addonsDir /opt/reforger/workshop -maxFPS 60</pre></div>
+/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server2.json -profile /opt/reforger/profiles/server2 -addonDownloadDir /opt/reforger/workshop -maxFPS 60</pre></div>
   <p>Then wire server 2 into the hive exactly like Step 9 did for server 1:</p>
   <ul class="clean">
     <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 6 command), then <code class="inline">sudo systemctl restart wz-gateway</code> — it now listens on 5000 <i>and</i> 5001.</li>
@@ -767,7 +767,9 @@ and everything right of the players is local to the box — nothing exposed.</sp
   <div class="code"><pre>98304K   <span class="c">&larr; 96 MB = the BIG pot. First line is cpu0, so group one has it.</span>
 32768K   <span class="c">&larr; 32 MB = the normal pot (cpu8&rsquo;s group — group two).</span></pre></div>
   <p class="muted">Give the big-pot group to your busiest server. If the 96&nbsp;MB shows up on the <i>second</i> line instead, swap the two <code class="inline">CPUAffinity</code> lines in Step 2. Not an X3D chip? Both lines read the same — the split still works, there&rsquo;s just no favourite group.</p>
-  <p><b>Step 2 — two lines per server</b> in <code class="inline">/etc/systemd/system/wz-serverN.service</code>, <code class="inline">[Service]</code> section. The kit&rsquo;s <code class="inline">.service.example</code> files already carry them commented out — remove the <code class="inline">#</code>:</p>
+  <p><b>Step 2 — pin each server to its group.</b> Edit each server&rsquo;s service file (the kit&rsquo;s <code class="inline">.service.example</code> already ships these two lines <b>commented out</b> — you just delete the leading <code class="inline">#</code>):</p>
+  <div class="code"><pre><span class="p">sudo</span> nano /etc/systemd/system/wz-server1.service   <span class="c"># then repeat for wz-server2.service</span></pre></div>
+  <p class="muted">In the <code class="inline">[Service]</code> section, uncomment (or add) these two lines — server 1 gets group one, server 2 gets group two. Save (<span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>), then apply with <code class="inline">sudo systemctl daemon-reload &amp;&amp; sudo systemctl restart wz-server1 wz-server2</code>:</p>
   <div class="code"><pre><span class="c"># wz-server1 — group one (the big-pot group in the Step 1 example)</span>
 CPUAffinity=0-7 16-23
 MemoryMax=32G
