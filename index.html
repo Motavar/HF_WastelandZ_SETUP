@@ -517,7 +517,7 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
 
 <span class="p">steamcmd</span> +force_install_dir /opt/reforger/server +login anonymous +app_update 1874900 validate +quit</pre></div>
     <div class="note tip"><div class="h">Game updated?</div><p>Whenever Reforger gets an official update, stop your servers and re-run that same <code class="inline">steamcmd</code> line. It only downloads what changed.</p></div>
-    <p>Drop in the ready-made config from the kit (Wasteland-Z is pre-listed in <code class="inline">mods</code> — it works as-is; open it in <code class="inline">nano</code> later to rename your server):</p>
+    <p>Drop in the ready-made config from the kit (Wasteland-Z is pre-listed in <code class="inline">mods</code> — it works as-is; open it in <code class="inline">nano</code> later to rename your server — save/exit with <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>):</p>
     <div class="code"><pre><span class="p">cp</span> /opt/wastelandz/server/server1.json.example /opt/reforger/configs/server1.json</pre></div>
     <p class="muted">Don&rsquo;t start it yet — it needs the database and gateway first (Steps 3&ndash;8). Step 9 does the first start.</p>
   </div>
@@ -566,7 +566,7 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">sudo</span> mysql wastelandz &lt; setup_database.sql
 <span class="p">pip3</span> install -r requirements.txt</pre></div>
     <p class="muted">No error from the <code class="inline">mysql</code> line means the tables were created.</p>
-    <div class="note tip"><div class="h">Got an <code class="inline">ERROR 1819 … password does not satisfy</code>?</div><p>The <code class="inline">wastelandz</code> login wasn&rsquo;t created in Step 4 first, so the script&rsquo;s built-in placeholder (<code class="inline">CHANGE_ME</code>) tripped the password policy — this is <b>not</b> about the password you chose. Do Step 4 (with a policy-strength password), then re-run the <code class="inline">mysql</code> line; the script reuses the login you already made and skips its placeholder.</p></div>
+    <div class="note tip"><div class="h">Got an <code class="inline">ERROR 1819 … password does not satisfy</code>?</div><p>That comes from the <code class="inline">CREATE USER</code> line in Step 4, not this script (this script only builds tables). Your password must meet the policy from Step 3 — <b>8+ characters with an upper- and lower-case letter, a number, and a symbol</b>. Re-run Step 4 with a compliant password, then run this line again.</p></div>
   </div>
 
   <div class="step"><span class="n">6</span>
@@ -624,7 +624,7 @@ ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/
     <h4>Make it a service (once)</h4>
     <p>Create the service file:</p>
     <div class="code"><pre><span class="p">sudo</span> nano /etc/systemd/system/wz-gateway.service</pre></div>
-    <p class="muted">Paste this in (change <code class="inline">youruser</code> to your Linux username), then save and exit:</p>
+    <p class="muted">Paste this in (change <code class="inline">youruser</code> to your Linux username), then save and exit — in nano: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, then <span class="kbd">Ctrl</span>+<span class="kbd">X</span>:</p>
     <div class="code"><pre><span class="c">[Unit]</span>
 Description=WastelandZ Gateway
 After=network.target mysql.service
@@ -673,7 +673,7 @@ and everything right of the players is local to the box — nothing exposed.</sp
 # The kit ships one pre-made (ports 2002/17778 + Arland already set):</span>
 <span class="p">cp</span> /opt/wastelandz/server/server2.json.example /opt/reforger/configs/server2.json
 <span class="p">nano</span> /opt/reforger/configs/server2.json</pre></div>
-  <p class="muted">In <code class="inline">server2.json</code>: set your server <code class="inline">name</code> + admin password (ports <b>2002</b>/<b>17778</b> and the Arland map are pre-set). The map is the <code class="inline">scenarioId</code> line — Wasteland-Z runs on top of any Game Master scenario, so a two-server hive can offer two different worlds:</p>
+  <p class="muted">In <code class="inline">server2.json</code>: set your server <code class="inline">name</code> + admin password (ports <b>2002</b>/<b>17778</b> and the Arland map are pre-set). Save and exit nano: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>. The map is the <code class="inline">scenarioId</code> line — Wasteland-Z runs on top of any Game Master scenario, so a two-server hive can offer two different worlds:</p>
   <div class="code"><pre><span class="c"># server1.json — Everon (the big island):</span>
 "scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf"
 

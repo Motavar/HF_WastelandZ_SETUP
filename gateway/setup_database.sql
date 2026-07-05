@@ -25,12 +25,11 @@ CREATE DATABASE IF NOT EXISTS wastelandz
 
 USE wastelandz;
 
--- Create gateway service account (not root!)
-CREATE USER IF NOT EXISTS 'wastelandz'@'localhost'
-  IDENTIFIED BY 'CHANGE_ME';
-
-GRANT ALL PRIVILEGES ON wastelandz.* TO 'wastelandz'@'localhost';
-FLUSH PRIVILEGES;
+-- NOTE: the 'wastelandz' login is created in the setup guide's
+-- "Create the database" step, with a password you choose. This script
+-- only builds tables — it holds no password, so it can be re-run safely
+-- and never trips MySQL's password policy (no placeholder password).
+-- Guide: https://motavar.github.io/HF_WastelandZ_SETUP/
 
 -- ============================================================
 -- PLAYERS table — the SHARED player profile.
