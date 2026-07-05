@@ -563,10 +563,9 @@ FLUSH PRIVILEGES;</pre></div>
 
 <span class="c"># build the tables and install requirements</span>
 <span class="p">cd</span> /opt/wastelandz-gateway
-<span class="p">sudo</span> mysql wastelandz &lt; setup_database.sql
+<span class="p">mysql</span> -u wastelandz -p wastelandz &lt; setup_database.sql
 <span class="p">pip3</span> install -r requirements.txt</pre></div>
-    <p class="muted">No error from the <code class="inline">mysql</code> line means the tables were created.</p>
-    <div class="note tip"><div class="h">Got an <code class="inline">ERROR 1819 … password does not satisfy</code>?</div><p>That comes from the <code class="inline">CREATE USER</code> line in Step 4, not this script (this script only builds tables). Your password must meet the policy from Step 3 — <b>8+ characters with an upper- and lower-case letter, a number, and a symbol</b>. Re-run Step 4 with a compliant password, then run this line again.</p></div>
+    <p class="muted">The <code class="inline">mysql</code> line asks for the <code class="inline">wastelandz</code> password you set in Step 4, then builds the tables — no output means it worked. The script itself holds <b>no usernames or passwords</b>; you never edit it.</p>
   </div>
 
   <div class="step"><span class="n">6</span>

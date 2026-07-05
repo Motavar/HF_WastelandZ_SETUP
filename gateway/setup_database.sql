@@ -18,18 +18,11 @@
 --   no data to migrate).
 -- ============================================================
 
--- Create database
-CREATE DATABASE IF NOT EXISTS wastelandz
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
+-- The database and the 'wastelandz' login are created in the setup guide
+-- ("Create the database" step). This script builds TABLES ONLY and holds
+-- NO usernames or passwords. Run it logged in as the wastelandz user:
+--   mysql -u wastelandz -p wastelandz < setup_database.sql
 USE wastelandz;
-
--- NOTE: the 'wastelandz' login is created in the setup guide's
--- "Create the database" step, with a password you choose. This script
--- only builds tables — it holds no password, so it can be re-run safely
--- and never trips MySQL's password policy (no placeholder password).
--- Guide: https://motavar.github.io/HF_WastelandZ_SETUP/
 
 -- ============================================================
 -- PLAYERS table — the SHARED player profile.
