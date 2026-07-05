@@ -561,11 +561,20 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
 <span class="p">cp</span> -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
 
-<span class="c"># build the tables and install requirements</span>
+<span class="c"># build the tables (logs in as the wastelandz user)</span>
 <span class="p">cd</span> /opt/wastelandz-gateway
 <span class="p">mysql</span> -u wastelandz -p wastelandz &lt; setup_database.sql
-<span class="p">pip3</span> install -r requirements.txt</pre></div>
+
+<span class="c"># create an isolated Python environment and install the gateway into it</span>
+<span class="p">sudo</span> apt install -y python3-venv
+<span class="p">python3</span> -m venv venv
+<span class="p">source</span> venv/bin/activate
+<span class="p">pip</span> install -r requirements.txt</pre></div>
     <p class="muted">The <code class="inline">mysql</code> line asks for the <code class="inline">wastelandz</code> password you set in Step 4, then builds the tables — no output means it worked. The script itself holds <b>no usernames or passwords</b>; you never edit it.</p>
+    <div class="note tip"><div class="h">Why the virtual environment (venv)?</div><p>Modern Ubuntu (24.04 / Python 3.12) blocks system-wide <code class="inline">pip install</code> to protect the OS Python — you&rsquo;d hit <code class="inline">error: externally-managed-environment</code>. A <b>venv</b> is an isolated Python just for the gateway: the clean, recommended way. Your prompt shows <code class="inline">(venv)</code> once it&rsquo;s active, and that&rsquo;s why Step 7 and the service below run <code class="inline">venv/bin/python</code>.</p></div>
+    <div class="note warn"><div class="h">No-venv option (older systems)</div><p>On systems without that restriction (older Ubuntu/Debian), you can skip the venv and install into system Python — then Step 7 and the service use plain <code class="inline">python3</code> instead of <code class="inline">venv/bin/python</code>:</p><div class="code"><pre><span class="p">pip3</span> install -r requirements.txt
+<span class="c"># to force it on a PEP-668 system instead of using a venv (not recommended):</span>
+<span class="p">pip3</span> install -r requirements.txt --break-system-packages</pre></div></div>
   </div>
 
   <div class="step"><span class="n">6</span>
@@ -581,8 +590,8 @@ FLUSH PRIVILEGES;</pre></div>
 
   <div class="step"><span class="n">7</span>
     <h4>Test that it runs</h4>
-    <div class="code"><pre><span class="p">python3</span> gateway.py</pre></div>
-    <p class="muted">Look for <code class="inline">Database connection: OK</code>. Then press <span class="kbd">Ctrl</span>+<span class="kbd">C</span> to stop it — Part 2 below makes it run properly on its own. Check its health from another terminal:</p>
+    <div class="code"><pre><span class="p">venv/bin/python</span> gateway.py</pre></div>
+    <p class="muted">Look for <code class="inline">Database connection: OK</code>. Then press <span class="kbd">Ctrl</span>+<span class="kbd">C</span> to stop it — Part 2 below makes it run properly on its own. (<code class="inline">venv/bin/python</code> works whether or not the venv is &ldquo;activated&rdquo;; a no-venv install uses plain <code class="inline">python3 gateway.py</code>.) Check its health from another terminal:</p>
     <div class="code"><pre><span class="p">curl</span> http://localhost:5000/api/ping</pre></div>
   </div>
 
@@ -630,13 +639,13 @@ After=network.target mysql.service
 
 <span class="c">[Service]</span>
 WorkingDirectory=/opt/wastelandz-gateway
-ExecStart=/usr/bin/python3 /opt/wastelandz-gateway/gateway.py
+ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway/gateway.py
 Restart=on-failure
 User=<span class="p">youruser</span>
 
 <span class="c">[Install]</span>
 WantedBy=multi-user.target</pre></div>
-    <p class="muted">Then turn it on — this starts it now <i>and</i> on every reboot:</p>
+    <p class="muted"><code class="inline">ExecStart</code> uses the venv&rsquo;s Python from Step 5 (a no-venv install uses <code class="inline">/usr/bin/python3</code> instead). Then turn it on — this starts it now <i>and</i> on every reboot:</p>
     <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
 <span class="p">sudo</span> systemctl enable --now wz-gateway</pre></div>
     <p class="muted">Don&rsquo;t want to type it? The kit ships this file ready-made: copy <code class="inline">/opt/wastelandz/server/wz-gateway.service.example</code> to <code class="inline">/etc/systemd/system/wz-gateway.service</code> and just change <code class="inline">youruser</code>.</p>

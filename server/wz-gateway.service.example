@@ -9,7 +9,8 @@ After=network.target mysql.service
 
 [Service]
 WorkingDirectory=/opt/wastelandz-gateway
-ExecStart=/usr/bin/python3 /opt/wastelandz-gateway/gateway.py
+# venv install (guide default): use the venv's python. No-venv install: /usr/bin/python3
+ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway/gateway.py
 Restart=on-failure
 User=youruser
 
