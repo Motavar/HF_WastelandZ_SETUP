@@ -778,12 +778,12 @@ and everything right of the players is local to the box — nothing exposed.</sp
   <p class="muted">Give the big-pot group to your busiest server. If the 96&nbsp;MB shows up on the <i>second</i> line instead, swap the two <code class="inline">CPUAffinity</code> lines in Step 2. Not an X3D chip? Both lines read the same — the split still works, there&rsquo;s just no favourite group.</p>
   <p><b>Step 2 — pin each server to its group.</b> Edit each server&rsquo;s service file (the kit&rsquo;s <code class="inline">.service.example</code> already ships these two lines <b>commented out</b> — you just delete the leading <code class="inline">#</code>):</p>
   <div class="code"><pre><span class="p">sudo</span> nano /etc/systemd/system/wz-server1.service   <span class="c"># then repeat for wz-server2.service</span></pre></div>
-  <p class="muted">In the <code class="inline">[Service]</code> section, uncomment (or add) these two lines — server 1 gets group one, server 2 gets group two. Save (<span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>), then apply with <code class="inline">sudo systemctl daemon-reload &amp;&amp; sudo systemctl restart wz-server1 wz-server2</code>:</p>
-  <div class="code"><pre><span class="c"># wz-server1 — group one (the big-pot group in the Step 1 example)</span>
+  <p class="muted">In the <code class="inline">[Service]</code> section of <b>each</b> file, uncomment (or add) its <b>own</b> pair of lines — <code class="inline">wz-server1.service</code> gets group one, <code class="inline">wz-server2.service</code> gets group two (they are separate files; never put both pairs in one). Save each (<span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>):</p>
+  <div class="code"><pre><span class="c"># ── these two lines go in wz-server1.service (group one — the big-pot group) ──</span>
 CPUAffinity=0-7 16-23
 MemoryMax=32G
 
-<span class="c"># wz-server2 — group two</span>
+<span class="c"># ── and these two go in the SEPARATE file wz-server2.service (group two) ──</span>
 CPUAffinity=8-15 24-31
 MemoryMax=32G</pre></div>
   <p><b>Step 3 — apply:</b></p>
