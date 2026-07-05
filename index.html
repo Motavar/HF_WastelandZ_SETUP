@@ -638,6 +638,13 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="p">sudo</span> ufw allow from <span class="p">THE.OTHER.IP.ADDRESS</span> to any port 5000 proto tcp</pre></div>
     <div class="note danger"><div class="h">Two hard rules</div><p>Never run <code class="inline">ufw allow 5000</code> on its own — that opens it to the whole internet. And leave MySQL&rsquo;s port <b>3306</b> closed; it only needs to be reached locally.</p></div>
     <p class="muted">If you turned <code class="inline">ufw</code> on, also open the game&rsquo;s own ports so players can join: <code class="inline">sudo ufw allow 2001/udp</code> and <code class="inline">sudo ufw allow 17777/udp</code>. (Ubuntu ships with <code class="inline">ufw</code> off — then there&rsquo;s nothing to do.)</p>
+    <div class="note tip"><div class="h">Ports at a glance (per server — all UDP)</div>
+    <ul class="clean">
+      <li><b>Open to the internet:</b> <code class="inline">2001</code> (game — players join) &amp; <code class="inline">17777</code> (A2S / <b>Steam</b> query — this <i>is</i> the Steam port; it&rsquo;s what lists your server in the browser). Server 2 = <code class="inline">2002</code>/<code class="inline">17778</code>, etc.</li>
+      <li><b>Optional:</b> <code class="inline">19999</code> (RCON remote admin) — only if you use it, and restrict it to your admin IP; never open it wide.</li>
+      <li><b>Keep local, never public:</b> <code class="inline">5000</code> (gateway — open only to a remote bot&rsquo;s IP if off-box) &amp; <code class="inline">3306</code> (MySQL).</li>
+    </ul>
+    <p>No separate &ldquo;Steam&rdquo; ports are needed — Reforger isn&rsquo;t a Source-engine server (no <code class="inline">27015</code> etc.), and SteamCMD downloads are <b>outbound</b> (nothing to forward).</p></div>
   </div>
 
   <div class="step"><span class="n">9</span>
