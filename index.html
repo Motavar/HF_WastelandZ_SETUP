@@ -1015,8 +1015,8 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
   <h3>What a mission looks like</h3>
   <p class="muted">A mission is an ordered list of steps &mdash; some are <b>events</b> (spawn a scene), the rest are <b>logic</b> (show a message, wait for a condition, hand out a reward, end the mission). A common shape: show a heads-up &rarr; spawn the event &rarr; wait until the enemies are dead &rarr; spawn a reward &rarr; complete. You arrange these steps in the Mission Editor.</p>
 
-  <div class="note tip"><div class="h">Start from ready-made templates</div>
-  <p>You don&rsquo;t have to start from a blank page. <b>Download the mission &amp; reward templates from the Wasteland-Z SETUP GitHub</b>, drop them into your server, and open them in the editor to see how a working mission is put together &mdash; then build your own the same way.</p></div>
+  <div class="note tip"><div class="h">Grab the example missions</div>
+  <p>You don&rsquo;t have to start from a blank page. <b>Download the example missions from the <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main/missions" target="_blank" rel="noopener">Wasteland-Z SETUP repo</a></b> (the <code class="inline">missions/</code> folder &mdash; copy <code class="inline">events/</code>, <code class="inline">templates/</code> and <code class="inline">rewards/</code> into your server&rsquo;s <code class="inline">&lt;profile&gt;/hf_wastelandz/missions/</code>), then open them in the editor to see how a working mission is put together &mdash; then build your own the same way. More examples get added over time, so check back.</p></div>
 
   <div class="note tip"><div class="h">The pool runs it on a timer</div>
   <p>You don&rsquo;t spawn missions by hand for players. Finished missions go into the <b>Mission Pool</b>, which spawns them automatically &mdash; on a per-tier timer, away from players, with cooldowns so the same spot doesn&rsquo;t reused instantly. You just build missions and turn the pool on.</p></div>
