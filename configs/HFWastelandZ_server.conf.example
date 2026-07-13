@@ -946,6 +946,13 @@ CLEANUP_DWELL_DISTANCE_M 10
 # 1/3/5/10 min. Range 10-7200.
 CLEANUP_DWELL_DURATION_SEC 300
 
+# MISSION_ENGAGE_RADIUS_M
+# A mission's TIMEOUT clock stays DORMANT until a player comes within this
+# many metres of the mission anchor ("engagement"), then starts from that
+# moment - so a mission can sit unfound without expiring. Also fires the
+# "Mission started" toast to players in the zone. Default 50. Range 5-2000.
+MISSION_ENGAGE_RADIUS_M 50
+
 
 # === VEHICLE RESUPPLY COSTS ==================================
 # Cost model for refuel / repair / rearm at marker-defined
