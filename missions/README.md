@@ -1,77 +1,69 @@
-# Missions — how they work on your server
+# Missions — example pack
 
-Missions in Wasteland-Z are built **in-game** with the admin tools — you never
-hand-write mission files. You author a scene once, chain it into a mission
-flow, and the server's mission pool spawns it automatically on a schedule you
-control.
+Missions in Wasteland-Z are built **in-game** with the admin tools (F8 →
+MISSIONS) — you don't hand-write these files. This folder ships a small set of
+**working examples** so you can drop them onto your server, see how a real
+mission is put together, and build your own the same way.
 
-This folder ships the one thing that DOES need to be installed by hand: the
-five **seed reward templates** that missions hand out (loot crates and a
-flyable helicopter).
+> Full walkthrough: open the setup guide and click the **Mission Setup** tab —
+> <https://motavar.github.io/HF_WastelandZ_SETUP/>
 
-## One-time setup: install the reward templates
-
-Copy the `rewards/` folder into your server profile:
+## What's in here
 
 ```
-missions/rewards/   →   <profile>/hf_wastelandz/missions/rewards/
+missions/
+├── rewards/      ← what missions hand out (loot crates)
+├── events/       ← the scenes (AI + structures + markers), built in Zeus
+└── templates/    ← the mission flows (logic that ties events + rewards together)
 ```
 
-`<profile>` is wherever your dedicated server's `-profile=` flag points.
-Restart the server (or, in-game: F8 → MISSIONS → REWARDS → RELOAD).
+### Example missions
 
-| Template | What players get |
+| Mission | Tier | What it shows |
+|---|---|---|
+| `Mission_outpost1` | EASY | Announce → secure an outpost (wait until all AI dead) → drop four loot crates → then unlock a Zeus-placed vehicle and spawn two more on completion. Demonstrates events, waiting for AI, multiple rewards, and setting vehicle options (lock at start, unlock at the end). |
+| `Mission_hack1` | MEDIUM | Announce → hack a terminal (circle-hold countdown) under a mission timeout → drop three loot crates → complete. Demonstrates the hack objective and a timeout fail-safe. |
+
+### Events
+
+| Event | Used by |
 |---|---|
-| `weapons_crate` | Sniper rifles + suppressed AKs with magazines. |
-| `rockets_crate` | RPG-7s and LAWs with rockets. |
-| `explosives_crate` | Grenades, smoke, C-4, mines. |
-| `huey_gunship` | A UH-1H gunship — spawns locked, damaged and out of fuel; players fight for it, repair it, and fly it home. |
-| `heli_repair_kit` | Wrench + medical supplies to fix up the Huey. |
+| `outpost1` | `Mission_outpost1` |
+| `hack1` | `Mission_hack1` |
 
-You can adjust the contents by editing the JSON files, then RELOAD.
+### Rewards
 
-## How the pieces fit together
+| Reward | Kind |
+|---|---|
+| `Guns_Crate` | Loot crate |
+| `Ammo_Crate` | Loot crate |
+| `Explosives_Crate` | Loot crate |
+| `Rocket_Crate` | Loot crate |
 
-- A **reward** is what players get — a crate of loot or a vehicle.
-- An **event** is a scene placed in the world — enemies, props, and markers
-  showing where vehicles, loot, and reinforcements appear.
-- A **mission** is a flow that strings events and logic together —
-  e.g. *spawn the outpost → wait until all AI are dead → spawn the
-  weapons crate → mission complete*.
-- The **mission pool** is the auto-spawner. Put missions into its
-  SMALL / MEDIUM / LARGE rotations and it keeps them cycling on a
-  per-size schedule, away from players, with cooldowns.
+## Install
 
-## Authoring your first mission (in-game, ~10 minutes)
-
-Everything happens in the admin menu: **F8 → MISSIONS**.
-
-1. **Build the scene.** EVENTS panel: type a name, NEW EVENT. Walk to the
-   location, open Zeus, and place your enemies, cover, and props — the first
-   thing you place becomes the scene's anchor. Use the DROP buttons
-   (VEH / LOOT / PATROL / WAVE) to mark where the vehicle, loot crate,
-   patrols, and reinforcements go — each marker points the way YOU are
-   facing when you drop it. SAVE EVENT.
-2. **Build the flow.** MISSION EDITOR panel: add your event from the library,
-   then add logic steps — `WAIT_UNTIL_AI_DEAD`, `SPAWN_REWARD` with a reward
-   name (e.g. `weapons_crate`), `MISSION_COMPLETE`. SAVE MISSION.
-3. **Test it.** RUNTIME panel: spawn the mission by name, play it through.
-4. **Put it on rotation.** MISSION POOL panel: select the mission and
-   ADD → POOL under the size you want. PAUSE / RESUME per size or all at
-   once, whenever you like.
-
-## Where mission files live on your server
+Copy the three folders into your server profile:
 
 ```
-<profile>/hf_wastelandz/missions/
-├── rewards/            ← the templates from this folder (+ any you add)
-├── events/             ← saved scenes        (*.event.json)
-├── templates/          ← saved missions      (*.mission.json)
-├── <MapName>/spots/    ← per-map spawn points
-└── active_pool.json    ← auto-spawner settings (created on first boot)
+missions/rewards/     →   <profile>/hf_wastelandz/missions/rewards/
+missions/events/      →   <profile>/hf_wastelandz/missions/events/
+missions/templates/   →   <profile>/hf_wastelandz/missions/templates/
 ```
 
-Everything except `rewards/` is created and managed by the in-game tools —
-you don't need to touch these files. If you want to fine-tune the spawn
-cadence, `active_pool.json` can be edited by hand (per-size intervals in
-seconds, plus a master `enabled` switch); the server re-reads it on restart.
+`<profile>` is wherever your dedicated server's `-profile` flag points. Include
+the `_index.json` in each folder — it's the manifest the server reads.
+
+Then in-game (as admin): **F8 → MISSIONS → REWARDS → RELOAD**, and reload the
+event/mission lists from the same panel. The two example missions appear in the
+MISSIONS list; LOAD one into the editor to inspect how its logic is wired, or
+add it to the pool and start it.
+
+## Notes
+
+- **Tiers are EASY / MEDIUM / HARD.** A mission's tier decides which map spawn
+  markers can host it and which pool timer runs it.
+- These are examples to learn from and copy — edit them, or build fresh ones
+  in-game. More examples get added over time, so check back.
+- `spots/` (per-map spawn markers) and `active_pool.json` (pool timers) are
+  **your server's own** settings and aren't shipped here — you place spawn
+  markers and set pool timers on your own server.

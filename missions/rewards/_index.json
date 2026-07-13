@@ -1,10 +1,1 @@
-{
- "schema_version": 1,
- "templates": [
-  "weapons_crate",
-  "rockets_crate",
-  "explosives_crate",
-  "huey_gunship",
-  "heli_repair_kit"
- ]
-}
+{"schema_version":1,"templates":["Rocket_Crate.reward.json","Explosives_Crate.reward.json","Guns_Crate.reward.json","Ammo_Crate.reward.json"]}
