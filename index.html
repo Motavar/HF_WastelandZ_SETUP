@@ -169,9 +169,26 @@
   footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
   .credit{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.06em;color:var(--ink-faint)}
   .credit b{color:var(--sand);font-weight:600}
+
+  /* ---- top-level view tabs (Server Setup / Mission Setup) ---- */
+  .viewtabs{display:flex;justify-content:center;gap:10px;margin:16px auto 4px;flex-wrap:wrap}
+  .viewtabs button{font-family:var(--font-display);font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    font-size:15px;color:var(--ink-dim);background:var(--bg-card);border:1px solid var(--line-2);
+    border-radius:10px;padding:12px 30px;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+  .viewtabs button:hover{color:var(--ink);border-color:var(--rust)}
+  .viewtabs button[aria-selected="true"]{background:linear-gradient(180deg,var(--rust),#e85f12);
+    color:#1a1206;border-color:transparent}
+  .view{display:none}
+  body[data-view="server"] .view-server{display:block}
+  body[data-view="mission"] .view-mission{display:block}
+
+  /* ---- coming-soon pill ---- */
+  .pill{display:inline-block;font-family:var(--font-display);font-weight:700;text-transform:uppercase;
+    letter-spacing:.1em;font-size:10.5px;padding:2px 8px;border-radius:20px;vertical-align:middle}
+  .pill.soon{color:#1a1206;background:var(--warn)}
 </style>
 </head>
-<body data-os="windows">
+<body data-os="windows" data-view="server">
 
 <header class="top">
   <div class="wrap">
@@ -186,6 +203,15 @@
   <p style="color:#e02020;font-weight:700;font-size:16px;letter-spacing:.04em;border:2px solid #e02020;border-radius:8px;padding:10px 16px;text-align:center;margin:0">(EXPERIMENTAL DOCUMENTATION - UNTESTED)</p>
   <p class="muted" style="text-align:center;font-size:13px;margin:8px 0 0">Written with AI assistance — the information here may not be correct. As a server admin, you use this guide at your own risk. Full disclaimer shown on first visit.</p>
 </div>
+
+<div class="wrap">
+  <div class="viewtabs" role="tablist" aria-label="Guide section">
+    <button role="tab" data-view="server" aria-selected="true">Server Setup</button>
+    <button role="tab" data-view="mission" aria-selected="false">Mission Setup</button>
+  </div>
+</div>
+
+<main class="view view-server">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Dedicated Server</div>
   <h1>Set up your server, step by step.</h1>
@@ -966,6 +992,323 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
   <p><b>Setup:</b> in the game&rsquo;s <code class="inline">config.json</code>, set <code class="inline">game.maxPlayers</code> to your playable count <b>plus</b> the buffer, and set <code class="inline">RESERVED_TOTAL_SLOTS</code> to that same number. Example: 128 players &rarr; <code class="inline">maxPlayers 130</code>, <code class="inline">RESERVED_BUFFER 2</code>. ADMIN/OWNER always get in; MOD only bumps regular players.</p>
   <div class="note tip"><div class="h">How to see it working</div><p>It runs on the server, so watch the <b>server console / log</b> — set <code class="inline">HF_DEBUG_ADMIN 1</code> in <code class="inline">server.conf</code> and you&rsquo;ll see lines like <code class="inline">ReservedSlots: ON total=130 buffer=2&hellip;</code> and <code class="inline">BUMP&hellip;</code> when it acts. Players in a bumpable slot also see a &ldquo;high-risk&rdquo; banner in their HUD.</p></div>
 </div></section>
+</main>
+
+<main class="view view-mission">
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">Wasteland-Z &middot; Admin Guide</div>
+  <h1>Missions &amp; the Mission Editor</h1>
+  <p class="lede">Build your own missions in-game &mdash; no files to hand-write. Place enemies and structures with Zeus, chain them into a flow with logic steps, and let the pool spawn them on a timer. This is how it all fits together, in the order you actually do it.</p>
+</div></div>
+
+<section><div class="wrap">
+  <span class="section-tag">The whole idea</span>
+  <h2>A mission is Logic + Events</h2>
+  <p class="muted">Two building blocks, and that&rsquo;s the whole system:</p>
+  <div class="flow">
+    <div class="node"><div class="k">Event</div><div class="v">A scene you place in the world with Zeus &mdash; the enemies, the buildings, and markers showing where vehicles, loot and reinforcements appear. <b>Events are the mission content.</b></div></div>
+    <div class="arrow">+</div>
+    <div class="node"><div class="k">Logic</div><div class="v">The flow that drives the mission &mdash; show a message, wait until the enemies are dead, hand out a reward, clean up. <b>Logic runs the mission.</b></div></div>
+  </div>
+  <p class="muted">A <b>reward</b> is the third piece &mdash; the thing players get (a loot crate or a vehicle). You build rewards once and reuse them across any mission.</p>
+
+  <h3>What a mission looks like</h3>
+  <p class="muted">A mission is an ordered list of steps &mdash; some are <b>events</b> (spawn a scene), the rest are <b>logic</b> (show a message, wait for a condition, hand out a reward, end the mission). A common shape: show a heads-up &rarr; spawn the event &rarr; wait until the enemies are dead &rarr; spawn a reward &rarr; complete. You arrange these steps in the Mission Editor.</p>
+
+  <div class="note tip"><div class="h">Start from ready-made templates</div>
+  <p>You don&rsquo;t have to start from a blank page. <b>Download the mission &amp; reward templates from the Wasteland-Z SETUP GitHub</b>, drop them into your server, and open them in the editor to see how a working mission is put together &mdash; then build your own the same way.</p></div>
+
+  <div class="note tip"><div class="h">The pool runs it on a timer</div>
+  <p>You don&rsquo;t spawn missions by hand for players. Finished missions go into the <b>Mission Pool</b>, which spawns them automatically &mdash; on a per-tier timer, away from players, with cooldowns so the same spot doesn&rsquo;t reused instantly. You just build missions and turn the pool on.</p></div>
+</div></section>
+
+<hr class="rule">
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Before you start</span><h2>One-time setup</h2></div>
+  <p class="muted">Do these once. After that, everything is in-game in the <span class="kbd">F8</span> admin menu.</p>
+
+  <div class="step"><span class="n">A</span>
+    <h4>Download &amp; install the templates</h4>
+    <p><b>Rewards</b> are what missions hand out &mdash; loot crates and vehicles. <b>Download the ready-made mission &amp; reward templates from the Wasteland-Z SETUP GitHub</b>, then copy the rewards into your server profile:</p>
+    <div class="code"><pre>FROM:  missions/rewards/     <span class="c"># from the SETUP download</span>
+TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
+    <p class="muted"><code class="inline">&lt;profile&gt;</code> is wherever your server&rsquo;s <code class="inline">-profile</code> points. Then in-game: <b>F8 &rarr; MISSIONS &rarr; REWARDS &rarr; RELOAD</b> &mdash; the templates appear in the list. If the panel shows <b>0 templates</b>, the <code class="inline">_index.json</code> file didn&rsquo;t get copied &mdash; copy it in too.</p>
+  </div>
+
+  <div class="step"><span class="n">B</span>
+    <h4>Turn on mission markers, and drop spawn markers on the map</h4>
+    <p>The pool needs to know <b>where</b> missions may appear. You place <b>spawn markers</b> on the map &mdash; each one is a candidate location.</p>
+    <ul class="clean">
+      <li>Turn on <b>Debug / Mission markers</b> so you can see them.</li>
+      <li>Drop a spawn marker and tag it <b>EASY</b>, <b>MEDIUM</b>, or <b>HARD</b>. Drop as many as you like &mdash; more markers means more variety in where missions land.</li>
+      <li>A marker with no tier tag accepts <b>any</b> tier. A tagged marker only accepts missions of that tier.</li>
+    </ul>
+    <div class="note tip"><div class="h">Keep them apart, keep them clear</div>
+    <p>The pool won&rsquo;t spawn a mission within ~50&nbsp;m of a player, and each spot goes on a ~10-minute cooldown after its mission ends. Spread markers around the map and away from busy areas.</p></div>
+  </div>
+</div></section>
+
+<hr class="rule">
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Part 1</span><h2>Build the Event (the scene)</h2></div>
+  <p class="muted">The event is what players actually see and fight. You build it live with Zeus.</p>
+
+  <div class="step"><span class="n">1</span>
+    <h4>Create the event and set its tier</h4>
+    <p>F8 &rarr; MISSIONS &rarr; <b>EVENTS</b>. Type a name, pick the <b>tier / type</b>, and click <b>NEW EVENT</b>. You&rsquo;re now in event-edit mode.</p>
+  </div>
+
+  <div class="step"><span class="n">2</span>
+    <h4>Place the arrow, then build in Zeus</h4>
+    <p>Press <span class="kbd">F8</span> to close the admin menu. An <b>arrow</b> appears in the world &mdash; that&rsquo;s the scene&rsquo;s reference point and facing.</p>
+    <ul class="clean">
+      <li>Move the arrow to an open area where the scene should sit.</li>
+      <li>Open <b>Zeus</b> (hold <span class="kbd">Y</span>) and place your <b>AI soldiers</b> and <b>buildings / cover</b>.</li>
+      <li>The first thing you place becomes the <b>anchor</b> &mdash; everything else is stored relative to it, so the whole scene keeps its shape wherever the mission spawns.</li>
+    </ul>
+    <div class="note tip"><div class="h">The AI stay frozen while you build</div>
+    <p>Enemies you place are automatically suspended and made damage-proof during editing &mdash; they won&rsquo;t shoot you and you can&rsquo;t accidentally kill them. They wake up only when the mission spawns for real.</p></div>
+  </div>
+
+  <div class="step"><span class="n">3</span>
+    <h4>Drop your markers</h4>
+    <p>Back in the EVENTS tab, use the <b>DROP</b> buttons to mark where things go. <b>Each marker faces the way you&rsquo;re looking when you drop it</b> &mdash; so stand where it goes, face the right direction, then click.</p>
+    <div class="tablewrap"><table class="rtab">
+      <tr><th>Button</th><th>Marks where&hellip;</th></tr>
+      <tr><td><b>DROP VEH</b></td><td>a vehicle spawns (point the way the nose should face).</td></tr>
+      <tr><td><b>DROP LOOT</b></td><td>a loot crate / reward drops.</td></tr>
+      <tr><td><b>DROP WAVE</b></td><td>a wave of enemies spawns (reinforcements, defenders).</td></tr>
+      <tr><td><b>DROP PATROL</b> <span class="pill soon">coming soon</span></td><td>a patrol route waypoint. <span class="muted">(Route-following is being finished &mdash; see below.)</span></td></tr>
+    </table></div>
+  </div>
+
+  <div class="step"><span class="n">4</span>
+    <h4>Save the event</h4>
+    <p>Press <span class="kbd">F8</span> and click <b>SAVE EVENT</b>. The scene disappears from the world &mdash; that&rsquo;s expected. It&rsquo;s saved now; you can <b>select it and spawn it again</b> to check it, or <b>stop</b> it.</p>
+  </div>
+</div></section>
+
+<hr class="rule">
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Part 2</span><h2>Build the Mission (the flow)</h2></div>
+
+  <div class="step"><span class="n">5</span>
+    <h4>Create the mission and load it into the editor</h4>
+    <p>F8 &rarr; MISSIONS. Type a mission name, pick a tier (<b>EASY / MEDIUM / HARD</b>), and save &mdash; the name now appears in the list. Select it and click <b>LOAD</b> to open the full-screen Mission Editor.</p>
+    <p class="muted">Tip: open an existing mission first and use it as a reference for how the logic is laid out.</p>
+  </div>
+
+  <div class="step"><span class="n">6</span>
+    <h4>Add the event, the logic, and the rewards</h4>
+    <ul class="clean">
+      <li><b>Add the event:</b> pick it from the EVENT LIBRARY and click <b>ADD EVENT</b>.</li>
+      <li><b>Add logic:</b> click a logic type, set its options (a value box, condition buttons, or a picker &mdash; the panel changes to match), then click <b>ADD LOGIC</b>. See the <a href="#logic">logic reference</a> below.</li>
+      <li><b>Add rewards:</b> use <code class="inline">SPAWN_REWARD</code> and pick the reward from the list.</li>
+      <li>Reorder or fix steps with <b>MOVE UP / MOVE DOWN</b>, <b>REPLACE SEL</b>, and <b>REMOVE NODE</b>.</li>
+    </ul>
+    <div class="note warn"><div class="h">If adding logic glitches</div>
+    <p>Sometimes adding a logic step hangs the editor &mdash; a node won&rsquo;t add, or the list stops responding. If that happens, <b>exit the Mission Editor and go back in</b>, then keep going. It&rsquo;s harmless and you won&rsquo;t lose saved work.</p></div>
+  </div>
+
+  <div class="step"><span class="n">7</span>
+    <h4>Save the mission</h4>
+    <p>Click <b>SAVE MISSION</b> in the footer. Your flow is written to disk and is ready to test or pool.</p>
+  </div>
+</div></section>
+
+<hr class="rule">
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Part 3</span><h2>Pool it &amp; run</h2></div>
+  <div class="step"><span class="n">8</span>
+    <h4>Add the mission to the pool and start it</h4>
+    <ul class="clean">
+      <li>In the <b>Mission Pool</b> panel, select your mission and <b>ADD</b> it to the rotation.</li>
+      <li>Click <b>START</b> (or START ALL). The pool now spawns pooled missions on their tier timers.</li>
+      <li><b>Pause / resume</b> per tier or all at once, any time.</li>
+    </ul>
+    <div class="tablewrap"><table class="rtab">
+      <tr><th>Tier</th><th>Default spawn interval</th></tr>
+      <tr><td><b>EASY</b></td><td>every 15 minutes</td></tr>
+      <tr><td><b>MEDIUM</b></td><td>every 30 minutes</td></tr>
+      <tr><td><b>HARD</b></td><td>every 60 minutes</td></tr>
+    </table></div>
+    <p class="muted">One mission per tier spawns per interval (a steady trickle, not a burst). Intervals and the master on/off are tunable in <code class="inline">active_pool.json</code>. To test a single mission immediately, spawn it directly from the editor with <b>SPAWN MISSION HERE</b>.</p>
+  </div>
+</div></section>
+
+<hr class="rule">
+
+<a id="logic"></a>
+<section><div class="wrap">
+  <span class="section-tag">Reference</span>
+  <h2>Logic steps</h2>
+  <p class="muted">The editor builds every step for you &mdash; you click the type, then set its options with a value box, condition buttons, or a picker. These are the ones you&rsquo;ll use most.</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Step</th><th>What it does</th><th>You set</th></tr>
+    <tr><td><b>Popup message</b></td><td>Shows a message to everyone, then continues.</td><td>The message text.</td></tr>
+    <tr><td><b>Wait until AI dead</b></td><td>Pauses the mission until the targeted enemies are gone.</td><td>Click the event, ADD TARGET the group(s), pick ALL / ANY / LEADER.</td></tr>
+    <tr><td><b>Wait (duration)</b></td><td>Pauses for a set number of seconds.</td><td>Seconds.</td></tr>
+    <tr><td><b>Spawn reward</b></td><td>Drops a reward template at a loot marker.</td><td>ADD TARGET the loot marker, pick the reward.</td></tr>
+    <tr><td><b>Spawn loot</b></td><td>Drops a loot crate filled from a loot pool.</td><td>ADD TARGET a marker, name the pool.</td></tr>
+    <tr><td><b>Spawn vehicle</b></td><td>Spawns a drivable vehicle at a vehicle marker.</td><td>ADD TARGET the marker, pick a vehicle. <a href="#vehicles">More &rarr;</a></td></tr>
+    <tr><td><b>Set vehicle options</b></td><td>Locks / heals / fuels / god-modes a mission vehicle.</td><td>ADD TARGET the vehicle, cycle the buttons. <a href="#vehicles">More &rarr;</a></td></tr>
+    <tr><td><b>Spawn wave</b></td><td>Spawns a hostile AI group at a wave marker.</td><td>ADD TARGET the wave marker, name the group prefab.</td></tr>
+    <tr><td><b>Wait until hack</b></td><td>Pauses until players hack a terminal you placed.</td><td>Pick the terminal, set TIME / RADIUS / STARTUP / DECAY. <a href="#hack">More &rarr;</a></td></tr>
+    <tr><td><b>Objective</b></td><td>A goal gate: wait for a condition, optionally show a toast.</td><td>A condition (kill / reach a spot / hold for N seconds).</td></tr>
+    <tr><td><b>Unlock reward</b></td><td>Opens a locked reward (e.g. a reward vehicle) so players can use it.</td><td>ADD TARGET the reward&rsquo;s marker.</td></tr>
+    <tr><td><b>Complete / Fail</b></td><td>Ends the mission as a win or a loss.</td><td>Nothing.</td></tr>
+    <tr><td><b>Complete if / Fail if</b></td><td>Ends the mission the moment a condition is met (checked constantly).</td><td>ADD TARGET + condition.</td></tr>
+    <tr><td><b>Mission timeout</b></td><td>Fails the mission after N seconds. A safety net.</td><td>Seconds.</td></tr>
+    <tr><td><b>Clear event</b></td><td>Despawns an event&rsquo;s entities mid-mission.</td><td>The event.</td></tr>
+    <tr><td><b>Call mission</b></td><td>Chains another mission at the same spot.</td><td>The mission name.</td></tr>
+  </table></div>
+</div></section>
+
+<hr class="rule">
+
+<section><div class="wrap">
+  <span class="section-tag">Deeper</span>
+  <h2>Zeus AI &amp; waiting for the fight to end</h2>
+  <p class="muted">The bread-and-butter mission: place enemies, wait until they&rsquo;re dead, hand out the reward.</p>
+  <h3>Placing the enemies</h3>
+  <p class="muted">Anything you drop in Zeus during event editing becomes part of the event &mdash; individual soldiers or whole groups. They spawn hostile to <b>every</b> player faction (nobody can befriend them), and by default they <b>hold their ground</b> near where you placed them, so they don&rsquo;t wander off and leave a straggler somewhere across the map.</p>
+  <h3>Waiting until they&rsquo;re dead</h3>
+  <p class="muted">Add a <b>Wait until AI dead</b> step, click the event, and ADD TARGET the group(s) you want to wait on. Then choose:</p>
+  <ul class="clean">
+    <li><b>ALL</b> &mdash; every member of the group is dead (the usual choice).</li>
+    <li><b>ANY</b> &mdash; at least one has died.</li>
+    <li><b>LEADER</b> &mdash; the group&rsquo;s leader is dead.</li>
+  </ul>
+  <p class="muted">You can target more than one group &mdash; the step waits for all of them. Once satisfied, the mission moves to the next step (spawn the reward, complete, etc.).</p>
+  <h3>Reinforcements &amp; objectives</h3>
+  <ul class="clean">
+    <li><b>Spawn wave</b> drops a fresh hostile group at a WAVE marker &mdash; use it for defenders or a second push. Kill them with a <b>Complete if &hellip; all dead</b> or another <b>Wait until AI dead</b>.</li>
+    <li><b>Objective</b> supports <b>kill</b>, <b>reach a spot</b> (any player within range of a marker), and <b>hold for N seconds</b>, with an optional on-screen toast when met.</li>
+  </ul>
+</div></section>
+
+<hr class="rule">
+
+<a id="vehicles"></a>
+<section><div class="wrap">
+  <span class="section-tag">Deeper</span>
+  <h2>Vehicles</h2>
+  <p class="muted">A mission vehicle comes from one of two places, and that changes how you control it:</p>
+  <ul class="clean">
+    <li><b>Placed in Zeus</b> &mdash; part of the event, already sitting there when the mission spawns.</li>
+    <li><b>Spawned by logic</b> &mdash; a <b>Spawn vehicle</b> step creates one at a VEH marker, at any point you choose.</li>
+  </ul>
+
+  <h3>Vehicles you place in Zeus</h3>
+  <p class="muted">Drop the vehicle in Zeus like any other object while building the event. To change how it behaves, add a <b>Set vehicle options</b> step and ADD TARGET the <b>vehicle itself</b> &mdash; <b>you do not need a vehicle marker</b> to change the behavior of a Zeus-placed vehicle.</p>
+  <p class="muted">Because logic steps run in order, you can condition the same vehicle at the <b>start</b> of the mission and again at the <b>end</b>. For example:</p>
+  <ul class="clean">
+    <li><b>Lock</b> it at the start, then <b>Unlock</b> it on mission complete &mdash; the vehicle becomes the payoff for finishing.</li>
+    <li>Set it out of fuel or god-moded at the start, then refuel or release it at the end.</li>
+  </ul>
+
+  <h3>Spawning a vehicle with logic</h3>
+  <ol class="clean">
+    <li>In the event, <b>DROP VEH</b> where it should appear &mdash; <b>face the way the nose should point.</b></li>
+    <li>Add a <b>Spawn vehicle</b> step, ADD TARGET that marker, and pick a vehicle from the catalog (grouped by category: Cars, Vans, Armored, Helicopters&hellip;).</li>
+  </ol>
+  <p class="muted">Put the step wherever you want it to fire &mdash; up front, or as a reward <b>on mission complete</b>. The vehicle spawns drivable and automatically faces where the marker points. A VEH marker <b>is</b> required here, because you&rsquo;re creating a brand-new vehicle at that spot.</p>
+
+  <h3>Set vehicle options &mdash; the controls</h3>
+  <p class="muted">Whichever way the vehicle got there, <b>Set vehicle options</b> conditions it. ADD TARGET the vehicle, then cycle the buttons (no typing):</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Button</th><th>Effect</th></tr>
+    <tr><td><b>LOCK</b></td><td>Seals the vehicle for all players until you unlock it.</td></tr>
+    <tr><td><b>GOD</b></td><td>Makes it invincible.</td></tr>
+    <tr><td><b>FUEL</b></td><td>Sets fuel: 0 / 25 / 50 / 75 / 100&#37;.</td></tr>
+    <tr><td><b>HEALTH</b></td><td>100&#37; = fully repaired; below 100 = visibly damaged.</td></tr>
+    <tr><td><b>AMMO</b> <span class="pill soon">coming soon</span></td><td>Rearm isn&rsquo;t wired yet &mdash; leave on NO CHANGE.</td></tr>
+  </table></div>
+  <div class="note warn"><div class="h">Vehicle health, honestly</div>
+  <p>Setting <b>HEALTH 100</b> fully repairs. Any value <b>below 100</b> damages the vehicle but isn&rsquo;t an exact percentage, and <b>0 doesn&rsquo;t make a quiet wreck &mdash; it explodes</b> (a proper burnt-out wreck is still being built). For a beat-up-but-usable vehicle, set a mid HEALTH and lock/god as needed.</p></div>
+  <h3>Reward vehicles &amp; locking</h3>
+  <p class="muted">A vehicle can also be a <b>reward</b> &mdash; spawned locked (and optionally out of fuel) as the objective, then opened with an <b>Unlock reward</b> step once players earn it. A reward vehicle destroyed while still locked respawns, so it can&rsquo;t be griefed before it&rsquo;s claimed. Lock behavior is the <code class="inline">lock_flags</code> field in the reward template &mdash; combine flags by adding their numbers:</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>lock_flags</th><th>Meaning</th></tr>
+    <tr><td><span class="role">0</span></td><td>Unlocked from the moment it spawns.</td></tr>
+    <tr><td><span class="role">1</span></td><td>Locked to the mission faction until unlocked.</td></tr>
+    <tr><td><span class="role">2</span></td><td>Locked to the single player who unlocks it.</td></tr>
+    <tr><td><span class="role">4</span></td><td>Fuel drained on spawn.</td></tr>
+    <tr><td><span class="role">5</span></td><td>Faction-locked + no fuel (1&nbsp;+&nbsp;4).</td></tr>
+  </table></div>
+  <p class="muted">The <b>no-ammo</b> and <b>damaged</b> lock flags exist in the template but aren&rsquo;t functional yet &mdash; see coming soon.</p>
+</div></section>
+
+<hr class="rule">
+
+<a id="hack"></a>
+<section><div class="wrap">
+  <span class="section-tag">Deeper</span>
+  <h2>Hack terminals</h2>
+  <p class="muted">A hold-the-ground objective: players must stand in a circle around a terminal and hold it while a timer counts down.</p>
+  <h3>Place the terminal</h3>
+  <ol class="clean">
+    <li>In the event, click <b>PLACE HACK ITEM</b> &mdash; the terminal (a laptop) spawns into your hands.</li>
+    <li>Walk it to the spot and place it. <b>SAVE EVENT.</b></li>
+  </ol>
+  <h3>Wire it into the mission</h3>
+  <p class="muted">Add a <b>Wait until hack</b> step, pick the terminal from the event&rsquo;s items, then cycle the four config buttons:</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Button</th><th>Sets</th><th>Values</th></tr>
+    <tr><td><b>TIME</b></td><td>Total hack countdown.</td><td>1 / 2 / 5 / 10 / 15 min</td></tr>
+    <tr><td><b>RADIUS</b></td><td>How big the hold-circle is.</td><td>10 / 15 / 20 / 25 / 30 m</td></tr>
+    <tr><td><b>STARTUP</b></td><td>Optional commit hold before the main timer.</td><td>Off / 3 / 5 / 10 s</td></tr>
+    <tr><td><b>DECAY</b></td><td>What happens when the circle empties mid-hack.</td><td>Off (pause) / Slow / Med / Hard</td></tr>
+  </table></div>
+  <h3>How it plays</h3>
+  <p class="muted">Players approach the terminal, use it to <b>START</b>, and hold the circle. The countdown <b>pauses when the circle is empty</b> and resumes when someone steps back in (or <b>decays</b> backward if you set DECAY). Anyone who leaves gets a warning to get back in. When the timer hits zero with someone inside, the hack completes and the mission continues.</p>
+  <div class="note warn"><div class="h">Always pair a hack with a timeout</div>
+  <p>A hack has no built-in failure &mdash; if players never finish it, the mission waits forever. Add a <b>Mission timeout</b> step (or a global timer) so an unfinished hack fails cleanly.</p></div>
+</div></section>
+
+<hr class="rule">
+
+<section><div class="wrap">
+  <span class="section-tag">Roadmap</span>
+  <h2>Advanced &amp; coming soon</h2>
+  <p class="muted">These are in the editor but not fully live yet. You may see the buttons &mdash; here&rsquo;s the honest status so you don&rsquo;t build a demo around them:</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Feature</th><th>Status</th></tr>
+    <tr><td><b>Patrol routes</b> (DROP PATROL &rarr; patrol path)</td><td><span class="pill soon">coming soon</span> Waypoints drop, but route-following needs a Workbench step to finish. AI hold position for now.</td></tr>
+    <tr><td><b>Helicopter spawns</b> (Spawn heli)</td><td><span class="pill soon">coming soon</span> Crewed-heli logic is written; awaiting a prefab hookup and flight testing.</td></tr>
+    <tr><td><b>Escort objectives</b></td><td><span class="pill soon">coming soon</span> Placeholder &mdash; not usable yet.</td></tr>
+    <tr><td><b>Silent vehicle wrecks</b> (health 0)</td><td><span class="pill soon">coming soon</span> A 0-health vehicle currently explodes; a proper burnt wreck is in progress.</td></tr>
+    <tr><td><b>Vehicle rearm / exact repair&#37;</b></td><td><span class="pill soon">coming soon</span> AMMO and partial-repair are not wired yet.</td></tr>
+  </table></div>
+</div></section>
+
+<hr class="rule">
+
+<section><div class="wrap">
+  <span class="section-tag">Quick help</span>
+  <h2>Gotchas &amp; where files live</h2>
+  <div class="note warn"><div class="h">Common snags</div>
+  <ul class="clean" style="margin-top:4px">
+    <li><b>Adding logic hangs the editor</b> &rarr; exit and re-enter the Mission Editor, then continue.</li>
+    <li><b>A marker points the wrong way</b> &rarr; you faced the wrong direction when you dropped it. Stand on it, face the right way, drop again.</li>
+    <li><b>REWARDS shows 0 templates</b> &rarr; <code class="inline">_index.json</code> is missing from the rewards folder.</li>
+    <li><b>A hack mission never ends</b> &rarr; you forgot a <b>Mission timeout</b>.</li>
+    <li><b>The reward never dropped</b> &rarr; the earlier <b>Wait until AI dead</b> is still waiting. Confirm every targeted group actually dies.</li>
+  </ul></div>
+  <h3>Where mission files live on your server</h3>
+  <div class="code"><pre>&lt;profile&gt;/hf_wastelandz/missions/
+├── rewards/            <span class="c"># the templates from this kit (+ any you add)</span>
+├── events/             <span class="c"># saved scenes        (*.event.json)</span>
+├── templates/          <span class="c"># saved missions      (*.mission.json)</span>
+├── &lt;MapName&gt;/spots/     <span class="c"># per-map spawn markers</span>
+└── active_pool.json    <span class="c"># pool timers + on/off switch</span></pre></div>
+  <p class="muted">Everything except <code class="inline">rewards/</code> is created and managed by the in-game tools &mdash; you don&rsquo;t hand-edit these. To fine-tune spawn cadence, <code class="inline">active_pool.json</code> can be edited by hand; the server re-reads it on restart.</p>
+</div></section>
+</main>
 
 <footer><div class="wrap">
   <span class="credit">WASTELAND-Z &middot; Dedicated Server Setup</span>
@@ -975,8 +1318,18 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
 
 <script>
 (function(){
-  // OS toggle
   var body=document.body;
+  // Top-level view tabs (Server Setup / Mission Setup)
+  document.querySelectorAll('.viewtabs button').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      body.setAttribute('data-view', btn.getAttribute('data-view'));
+      document.querySelectorAll('.viewtabs button').forEach(function(b){
+        b.setAttribute('aria-selected', b===btn ? 'true':'false');
+      });
+      window.scrollTo({top:0,behavior:'auto'});
+    });
+  });
+  // OS toggle
   document.querySelectorAll('.seg button').forEach(function(btn){
     btn.addEventListener('click',function(){
       var os=btn.getAttribute('data-os');
