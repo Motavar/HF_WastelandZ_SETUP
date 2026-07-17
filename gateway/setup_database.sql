@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS money_drops (
   pos_y         FLOAT        NOT NULL,
   pos_z         FLOAT        NOT NULL,
   amount        INT          NOT NULL,
-  drop_source   VARCHAR(16)  NOT NULL DEFAULT 'death',   -- 'death' | 'player_drop'
+  drop_source   VARCHAR(16)  NOT NULL DEFAULT 'death',   -- 'death' | 'player_drop' | 'admin_money'
   dropper_uid   VARCHAR(64)  DEFAULT '',
   dropper_name  VARCHAR(128) DEFAULT '',
   created_at    DATETIME     DEFAULT CURRENT_TIMESTAMP,

@@ -85,7 +85,7 @@ app.config['JSON_SORT_KEYS'] = False
 # --------------------------------------------------------
 # Version
 # --------------------------------------------------------
-GATEWAY_VERSION = "0.7.0"
+GATEWAY_VERSION = "0.7.1"
 
 # --------------------------------------------------------
 # Server roster — multi-server hive.
@@ -1467,8 +1467,8 @@ def money_drops_insert():
         return jsonify({"status": "error", "message": "map_name, expires_at required"}), 400
     if not isinstance(amount, int) or amount <= 0:
         return jsonify({"status": "error", "message": "amount must be positive integer"}), 400
-    if drop_source not in ("death", "player_drop"):
-        return jsonify({"status": "error", "message": "drop_source must be 'death' or 'player_drop'"}), 400
+    if drop_source not in ("death", "player_drop", "admin_money"):
+        return jsonify({"status": "error", "message": "drop_source must be 'death', 'player_drop' or 'admin_money'"}), 400
 
     conn = get_db()
     if not conn:

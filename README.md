@@ -10,6 +10,20 @@
 information may not be correct. As a server admin you use this kit at your own
 risk. The full disclaimer is shown when you open the guide.
 
+> ## 🚨 CRITICAL PATCH — Gateway 0.7.1 (2026-07-16)
+>
+> If your gateway is running **0.7.0 or older, update it now**: replace
+> `gateway.py` on your gateway machine with the copy in this repo's
+> `gateway/` folder and restart the gateway. That's the whole update — no
+> database migration, no config change, no game-server restart.
+>
+> **Why:** 0.7.0 refuses to save admin-spawned money drops (`/money`) to the
+> database, so those drops are silently deleted on server restart. Wallets,
+> banking, death drops and player drops are unaffected.
+>
+> **Not updating won't break the game** — but the server console will print a
+> `GATEWAY VERSION MISMATCH` warning every 60 seconds until you update.
+
 ## What is this?
 
 **[Arma Reforger](https://reforger.armaplatform.com/)** is Bohemia
