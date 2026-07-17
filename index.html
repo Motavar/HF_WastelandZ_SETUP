@@ -181,6 +181,7 @@
   .view{display:none}
   body[data-view="server"] .view-server{display:block}
   body[data-view="mission"] .view-mission{display:block}
+  body[data-view="upgrade"] .view-upgrade{display:block}
 
   /* ---- coming-soon pill ---- */
   .pill{display:inline-block;font-family:var(--font-display);font-weight:700;text-transform:uppercase;
@@ -208,6 +209,7 @@
   <div class="viewtabs" role="tablist" aria-label="Guide section">
     <button role="tab" data-view="server" aria-selected="true">Server Setup</button>
     <button role="tab" data-view="mission" aria-selected="false">Mission Setup</button>
+    <button role="tab" data-view="upgrade" aria-selected="false">Upgrade</button>
   </div>
 </div>
 
@@ -1307,6 +1309,95 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
 ├── &lt;MapName&gt;/spots/     <span class="c"># per-map spawn markers</span>
 └── active_pool.json    <span class="c"># pool timers + on/off switch</span></pre></div>
   <p class="muted">Everything except <code class="inline">rewards/</code> is created and managed by the in-game tools &mdash; you don&rsquo;t hand-edit these. To fine-tune spawn cadence, <code class="inline">active_pool.json</code> can be edited by hand; the server re-reads it on restart.</p>
+</div></section>
+</main>
+
+<!-- ================= UPGRADE ================= -->
+<main class="view view-upgrade">
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">Wasteland-Z &middot; Keeping current</div>
+  <h1>Update the gateway.</h1>
+  <p class="lede">The Wasteland-Z <b>mod</b> updates itself from the Reforger Workshop every time the server starts &mdash; you never touch it. The <b>gateway</b> is the one piece you host yourself, so when a new version ships you refresh its code by hand. Almost always that means replacing a single file: <code class="inline">gateway.py</code>.</p>
+</div></div>
+
+<section><div class="wrap">
+  <span class="section-tag">What updates itself, what you update</span>
+  <h2>Only the gateway needs a manual update</h2>
+  <ul class="clean muted">
+    <li><b>The mod</b> (gameplay, menus, everything players see) &mdash; auto-downloads from the Workshop on server start. Nothing to do.</li>
+    <li><b>The database</b> &mdash; your data stays as it is. A release only touches the schema in rare cases, and its notes say so explicitly.</li>
+    <li><b>The gateway</b> &mdash; the small Python program you run. New logic ships as an updated <code class="inline">gateway.py</code>. That&rsquo;s what this page covers.</li>
+  </ul>
+  <div class="note tip"><div class="h">The usual case is one file</div><p>Most gateway updates change only <code class="inline">gateway.py</code>. The steps below replace just that file and leave your <code class="inline">config.py</code> &mdash; your database password and gateway key &mdash; completely untouched.</p></div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Quick update</span><h2>Replace gateway.py from GitHub</h2></div>
+  <p class="muted">Run these in your <b>running gateway folder</b> &mdash; the working copy you made during setup (<code class="inline">/opt/wastelandz-gateway/</code> on Linux, <code class="inline">C:\wastelandz-gateway\</code> on Windows), <b>not</b> the reference kit folder.</p>
+
+  <div class="step"><span class="n">1</span>
+    <h4>Back up the file you have now</h4>
+    <p>So you can roll back in seconds if the new one misbehaves.</p>
+    <div class="code"><pre><span class="c"># Linux</span>
+cd /opt/wastelandz-gateway
+cp gateway.py gateway.py.bak
+
+<span class="c"># Windows (Command Prompt)</span>
+cd C:\wastelandz-gateway
+copy gateway.py gateway.py.bak</pre></div>
+  </div>
+
+  <div class="step"><span class="n">2</span>
+    <h4>Download the latest gateway.py</h4>
+    <p>This pulls the current file straight from the kit&rsquo;s public repo and writes it over the old one. <code class="inline">curl</code> ships with modern Windows and Linux alike, so the command is the same on both.</p>
+    <div class="code"><pre>curl -fL -o gateway.py https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway/gateway.py</pre></div>
+    <p class="muted"><code class="inline">-f</code> makes curl fail loudly on a bad address instead of saving an error page over your file; <code class="inline">-L</code> follows GitHub&rsquo;s redirect. The URL points at this kit&rsquo;s <code class="inline">main</code> branch, file <code class="inline">gateway/gateway.py</code>.</p>
+    <div class="note warn"><div class="h">Got a 404? Check the file didn&rsquo;t blank</div><p>If the download errors, your <code class="inline">gateway.py</code> may have been emptied. Check its size &mdash; on Linux <code class="inline">ls -l gateway.py</code>, on Windows <code class="inline">dir gateway.py</code> &mdash; and if it&rsquo;s empty, put the backup back with <code class="inline">cp gateway.py.bak gateway.py</code> (Windows: <code class="inline">copy gateway.py.bak gateway.py</code>) before trying again.</p></div>
+  </div>
+
+  <div class="step"><span class="n">3</span>
+    <h4>Restart the gateway</h4>
+    <p>The new code only takes effect after a restart.</p>
+    <div class="code"><pre><span class="c"># Linux — systemd service</span>
+sudo systemctl restart wz-gateway
+sudo systemctl status wz-gateway --no-pager
+
+<span class="c"># Windows — close the WZ-Gateway window, then start it again</span>
+<span class="c"># (double-click start_gateway.bat, or run: python gateway.py)</span></pre></div>
+  </div>
+
+  <div class="step"><span class="n">4</span>
+    <h4>Confirm it&rsquo;s healthy</h4>
+    <p>Hit the health check &mdash; you want <code class="inline">status: ok</code>.</p>
+    <div class="code"><pre>curl http://127.0.0.1:5000/api/ping</pre></div>
+    <p class="muted">Or just browse to <code class="inline">http://127.0.0.1:5000/api/ping</code>. On Linux you can also watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
+  </div>
+
+  <div class="note tip"><div class="h">Roll back if something&rsquo;s off</div><p>Restore the backup and restart:</p>
+    <div class="code" style="margin-top:8px"><pre><span class="c"># Linux</span>
+cp gateway.py.bak gateway.py && sudo systemctl restart wz-gateway
+
+<span class="c"># Windows</span>
+copy gateway.py.bak gateway.py</pre></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h3>When the update is more than one file</h3>
+  <p class="muted">Once in a while a release also changes other files &mdash; new Python packages (<code class="inline">requirements.txt</code>), the config template (<code class="inline">config.example.py</code>), or the database schema (<code class="inline">setup_database.sql</code>). The release notes call that out. When it happens, refresh the whole kit instead of one file:</p>
+  <div class="code"><pre><span class="c"># Linux — update the reference kit (the git clone), then copy the gateway across</span>
+cd /opt/wastelandz
+git pull
+cp -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
+
+<span class="c"># if requirements changed, re-install inside the venv</span>
+cd /opt/wastelandz-gateway
+source venv/bin/activate
+pip install -r requirements.txt
+
+sudo systemctl restart wz-gateway</pre></div>
+  <div class="note danger"><div class="h">Your config.py is safe &mdash; leave it alone</div><p><code class="inline">config.py</code> holds your database password and gateway key and is never stored in the repo, so <code class="inline">git pull</code> and the single-file <code class="inline">curl</code> both leave it untouched. The <code class="inline">cp -r</code> above copies only the program files the kit ships &mdash; it does <b>not</b> contain a <code class="inline">config.py</code>, so your live one stays in place. Never overwrite it.</p></div>
+  <p class="muted">If a release ever needs a database change, its notes give the exact SQL to run &mdash; apply that separately. A normal gateway update never touches your data.</p>
 </div></section>
 </main>
 
