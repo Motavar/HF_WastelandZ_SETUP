@@ -1,17 +1,24 @@
 # WastelandZ Gateway — systemd service (Linux)
+# Updated for Arma Reforger 1.8 — 2026-08-17
 # 1. Copy to /etc/systemd/system/wz-gateway.service   (drop the .example)
-# 2. Change "youruser" below to your Linux username
-# 3. sudo systemctl daemon-reload
-# 4. sudo systemctl enable --now wz-gateway
+# 2. Change "youruser" below to your Linux username   <-- MOST COMMON MISTAKE
+# 3. sudo systemd-analyze verify /etc/systemd/system/wz-gateway.service
+#    ...must print NOTHING.
+# 4. sudo systemctl daemon-reload
+# 5. sudo systemctl enable --now wz-gateway
 [Unit]
 Description=WastelandZ Gateway
-After=network.target mysql.service
+# network-online, NOT network.target: the latter only means the network stack
+# started, not that DNS resolves or a route exists.
+Wants=network-online.target
+After=network-online.target mysql.service
 
 [Service]
 WorkingDirectory=/opt/wastelandz-gateway
 # venv install (guide default): use the venv's python. No-venv install: /usr/bin/python3
 ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway/gateway.py
-Restart=on-failure
+Restart=always
+RestartSec=10
 User=youruser
 
 [Install]

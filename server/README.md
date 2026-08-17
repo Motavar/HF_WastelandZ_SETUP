@@ -4,6 +4,24 @@ Everything to install and run the Arma Reforger dedicated server for
 Wasteland-Z on Windows or Linux — full walkthrough in the main guide
 ([`index.html`](../index.html), "Install the game server" + "Run" sections).
 
+**Updated for Arma Reforger 1.8 — 2026-08-17.** The service files and
+`start_server1.bat` now run SteamCMD before every start, so the server is never
+behind its clients (a server on an older build than the players is unjoinable).
+The Linux units also gained `network-online.target`, a bounded restart loop, and
+shutdown timeouts.
+
+Two checks worth running after you copy a service file — they catch the two
+mistakes behind nearly every "it won't start":
+
+```bash
+sudo systemd-analyze verify /etc/systemd/system/wz-server1.service   # must print NOTHING
+grep -n "User" /etc/systemd/system/wz-server1.service                # must NOT say youruser
+```
+
+`ExecStart` must be **one unbroken line**. If it gets split when pasted, systemd
+keeps the first half and silently drops the rest — the server starts, but
+without `-maxFPS` or `-addonDownloadDir`, with no error.
+
 | File | What it is |
 |---|---|
 | `install_or_update_server.bat` | Windows: installs the Reforger server via SteamCMD. Re-run after every official game update. |

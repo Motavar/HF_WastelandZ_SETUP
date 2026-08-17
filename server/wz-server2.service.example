@@ -1,17 +1,61 @@
 # WastelandZ Game Server 2 — systemd service (Linux, multi-server "Part 3")
+# Updated for Arma Reforger 1.8 — 2026-08-17
+#
 # 1. Copy to /etc/systemd/system/wz-server2.service   (drop the .example)
-# 2. Change "youruser" below to your Linux username
-# 3. sudo systemctl daemon-reload
-# 4. sudo systemctl enable --now wz-server2
+# 2. Change "youruser" below to your Linux username   <-- MOST COMMON MISTAKE
+# 3. Check the SteamCMD path in ExecStartPre:  which steamcmd
+# 4. sudo systemd-analyze verify /etc/systemd/system/wz-server2.service
+#    ...must print NOTHING. Then:
+#    grep -n "User" /etc/systemd/system/wz-server2.service
+#    ...must NOT still say youruser.
+# 5. sudo systemctl daemon-reload
+# 6. sudo systemctl enable --now wz-server2
+#
 # Pairs with server2.json.example (ports 2002/17778, its own profile folder).
+#
+# !! ExecStart MUST BE ONE UNBROKEN LINE !!
+# If it gets split when you paste it, systemd keeps the first half and silently
+# throws the rest away - the server starts, but without -maxFPS or
+# -addonDownloadDir. Your editor wrapping it on screen is fine; a real newline
+# in the middle is not. `systemd-analyze verify` catches this as
+# "Missing '=', ignoring line".
+
 [Unit]
 Description=WastelandZ Game Server 2
-After=network.target
+# network-online, NOT network.target: the latter only means the network stack
+# started, not that DNS resolves. A server that races ahead of real
+# connectivity can come up with no mods and then sit there looking healthy.
+Wants=network-online.target
+After=network-online.target
+# Cap the restart loop: 5 tries per 10 minutes, then systemd stops trying and
+# the unit shows in `systemctl --failed` instead of retrying a broken config
+# forever. Once you have fixed the cause you must clear the lockout with:
+#   sudo systemctl reset-failed wz-server2
+StartLimitIntervalSec=600
+StartLimitBurst=5
 
 [Service]
 WorkingDirectory=/opt/reforger/server
+# Update the game before every start, so the server is never behind its
+# clients - a server on an older build than the players is unjoinable.
+#   leading "-"   = non-fatal; a Steam outage must never keep the server down
+#   no "validate" = that re-checks every file. Right for a manual repair, but
+#                   it would add minutes to every restart.
+# Both servers share ONE game install, so this line is harmless in both units -
+# whichever starts first does the update, the other finds nothing to do.
+ExecStartPre=-/usr/games/steamcmd +force_install_dir /opt/reforger/server +login anonymous +app_update 1874900 +quit
+# -maxFPS: BI recommends 60-120, and NEVER omitting it - uncapped, the server
+# will try to use every available CPU cycle. Raise to 120 on a strong box.
 ExecStart=/opt/reforger/server/ArmaReforgerServer -config /opt/reforger/configs/server2.json -profile /opt/reforger/profiles/server2 -addonDownloadDir /opt/reforger/workshop -maxFPS 60
-Restart=on-failure
+# "always", not "on-failure": the server can exit cleanly after failing to
+# initialise, and on-failure would not retry that at all.
+Restart=always
+RestartSec=15
+# A real game update takes longer than systemd's 90 s default and would be
+# killed mid-download without this.
+TimeoutStartSec=900
+TimeoutStopSec=30
+KillSignal=SIGINT
 User=youruser
 # Big box running 2+ servers? Uncomment to give this server its own cores
 # and a RAM safety cap. Core numbers differ per CPU — check with: lscpu -e

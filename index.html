@@ -584,7 +584,7 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
 <span class="p">sudo</span> chown -R $USER /opt/reforger
 
 <span class="p">steamcmd</span> +force_install_dir /opt/reforger/server +login anonymous +app_update 1874900 validate +quit</pre></div>
-    <div class="note tip"><div class="h">Game updated?</div><p>Whenever Reforger gets an official update, stop your servers and re-run that same <code class="inline">steamcmd</code> line. It only downloads what changed.</p></div>
+    <div class="note tip"><div class="h">Game updated?</div><p><strong>Updated for 1.8 &mdash; 2026-08-17:</strong> you no longer have to do this by hand. The service file from Part 2 runs SteamCMD before every start, so the server brings itself up to date each time it restarts. That matters because <strong>a server on an older build than its players is unjoinable</strong> &mdash; clients auto-update through Steam whether you do or not. Keep the command above for the first install, and for repairs (the <code class="inline">validate</code> flag re-checks every file &mdash; useful when something is corrupt, too slow to run on every restart).</p></div>
     <p>Drop in the ready-made config from the kit (Wasteland-Z is pre-listed in <code class="inline">mods</code> — it works as-is; open it in <code class="inline">nano</code> later to rename your server — save/exit with <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>):</p>
     <div class="code"><pre><span class="p">cp</span> /opt/wastelandz/server/server1.json.example /opt/reforger/configs/server1.json</pre></div>
     <p class="muted">Don&rsquo;t start it yet — it needs the database and gateway first (Steps 3&ndash;8). Step 9 does the first start.</p>
@@ -762,11 +762,38 @@ WantedBy=multi-user.target</pre></div>
     <div class="code"><pre><span class="p">sudo</span> chown -R youruser:youruser /opt/reforger</pre></div>
     <p class="muted">Then drop in the ready-made service file and set your username:</p>
     <div class="code"><pre><span class="p">sudo</span> cp /opt/wastelandz/server/wz-server1.service.example /etc/systemd/system/wz-server1.service
-<span class="p">sudo</span> nano /etc/systemd/system/wz-server1.service   <span class="c"># set User= to your Linux username (save: Ctrl+O, Enter, Ctrl+X)</span>
-<span class="p">sudo</span> systemctl daemon-reload
+<span class="p">sudo</span> nano /etc/systemd/system/wz-server1.service   <span class="c"># change User=youruser to YOUR username (save: Ctrl+O, Enter, Ctrl+X)</span></pre></div>
+
+    <p class="muted"><strong>Now check it before you start it.</strong> These two commands catch the
+    two mistakes that account for nearly every &ldquo;my service won&rsquo;t start&rdquo; report
+    (updated for 1.8 &mdash; 2026-08-17):</p>
+    <div class="code"><pre><span class="p">sudo</span> systemd-analyze verify /etc/systemd/system/wz-server1.service   <span class="c"># must print NOTHING</span>
+grep -n <span class="s">"User"</span> /etc/systemd/system/wz-server1.service              <span class="c"># must NOT still say youruser</span></pre></div>
+
+    <p class="muted"><strong>If <code>verify</code> prints <code>Missing '=', ignoring line</code></strong> a long line
+    got split when you pasted &mdash; almost always <code>ExecStart</code>, which must be
+    <strong>one unbroken line</strong>. Your editor wrapping it on screen is fine; a real
+    newline in the middle is not. This one is nasty because the server still
+    <em>starts</em> &mdash; systemd keeps the first half of the line and silently discards the
+    rest, so you lose <code>-maxFPS</code> and <code>-addonDownloadDir</code> without any error.</p>
+
+    <p class="muted"><strong>If it still says <code>youruser</code></strong> the server will fail with
+    <code>status=217/USER</code>. <code>verify</code> does <em>not</em> catch this &mdash; the syntax is
+    valid, the user just doesn&rsquo;t exist.</p>
+
+    <p class="muted">Both clean? Start it:</p>
+    <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
 <span class="p">sudo</span> systemctl enable --now wz-server1
 <span class="p">sudo</span> systemctl status wz-server1                   <span class="c"># look for "active (running)"</span></pre></div>
-    <p class="muted">The game server now starts on boot and restarts itself if it crashes — same as the gateway.</p>
+    <p class="muted">The game server now starts on boot, updates the game before every start, and
+    restarts itself if it crashes.</p>
+
+    <p class="muted"><strong>Any time you edit a unit file afterwards:</strong> run
+    <code>daemon-reload</code> <em>before</em> restarting. Without it systemd re-runs the version
+    it already had cached and your edit appears to have done nothing. And if a service
+    has failed repeatedly, systemd locks it out with
+    <code>start-limit-hit</code> &mdash; fix the cause, then clear the lockout with
+    <code>sudo systemctl reset-failed wz-server1</code> before starting again.</p>
   </div>
 
   <p class="muted"><b>Your three services:</b> <code class="inline">wz-server1</code> (the game server), <code class="inline">wz-gateway</code> (the gateway), and <code class="inline">mysql</code> (the database). Every command below works on <b>any</b> of them — just swap the name. After a reboot they start on their own; if you ever start them by hand, the order is <code class="inline">mysql</code> &rarr; <code class="inline">wz-gateway</code> &rarr; <code class="inline">wz-server1</code>.</p>
@@ -881,6 +908,11 @@ MemoryMax=32G</pre></div>
   <ul class="clean muted">
     <li><b>&ldquo;Database connection failed&rdquo;</b> — <code class="inline">DB_PASSWORD</code> in <code class="inline">config.py</code> doesn&rsquo;t match Step 4, or MySQL is stopped (<code class="inline">sudo systemctl status mysql</code>).</li>
     <li><b>Service won&rsquo;t start</b> — run <code class="inline">journalctl -u wz-gateway -e</code> to see why; usually a wrong path or username in the service file.</li>
+    <li><b><code class="inline">status=217/USER</code></b> — the service file still says <code class="inline">User=youruser</code>, or names a user that doesn&rsquo;t exist. Fix with <code class="inline">grep -n "User" /etc/systemd/system/wz-server1.service</code>. Note <code class="inline">systemd-analyze verify</code> does <i>not</i> catch this — the syntax is valid, the user simply isn&rsquo;t real.</li>
+    <li><b><code class="inline">Missing '=', ignoring line</code></b> — a long line got split when you pasted it, almost always <code class="inline">ExecStart</code>, which must be one unbroken line. systemd keeps the first half and silently discards the rest, so <b>the server still starts but loses <code class="inline">-maxFPS</code> and <code class="inline">-addonDownloadDir</code></b> with no error at all. Rejoin the line, then <code class="inline">daemon-reload</code> and restart.</li>
+    <li><b><code class="inline">start-limit-hit</code> / &ldquo;Start request repeated too quickly&rdquo;</b> — the service failed enough times that systemd stopped retrying. Fix the underlying cause first, then clear the lockout: <code class="inline">sudo systemctl reset-failed wz-server1</code>.</li>
+    <li><b>Your edit to a service file seems to do nothing</b> — you restarted without reloading. systemd caches unit files; always <code class="inline">sudo systemctl daemon-reload</code> <i>before</i> <code class="inline">restart</code>.</li>
+    <li><b>Server won&rsquo;t boot: <code class="inline">Failed to fetch addon details from workshop API</code></b> — one mod in your <code class="inline">mods</code> list has a new version the Workshop won&rsquo;t serve, and the server refuses to start rather than use the copy it already has. The line just above the error names the culprit (<code class="inline">Addon Download started &lt;id&gt; - &lt;name&gt;</code>). <b>Remove that mod&rsquo;s block from <code class="inline">mods</code> and restart.</b> If another mod depends on it, the engine still loads the working copy from disk, so you usually lose nothing. Put it back once the Workshop is serving it again. Note that <code class="inline">modsRequiredByDefault: false</code> does <i>not</i> rescue this case — that covers a failed download, whereas this fails earlier, at the version lookup, and kills the whole boot.</li>
     <li><b>Port 5000 in use</b> — change <code class="inline">port</code> in <code class="inline">config.py</code> and update <code class="inline">GATEWAY_URL</code>.</li>
     <li><b>Money/gear not saving</b> — <code class="inline">GATEWAY_URL</code> or <code class="inline">api_key</code> mismatch between the game server and <code class="inline">config.py</code>.</li>
     <li><b>Last location &amp; kept gear don&rsquo;t restore on relog (but money &amp; inventory DO)</b> — the game server&rsquo;s <code class="inline">SERVER_ID</code> (in <code class="inline">HFWastelandZ_server.conf</code>) doesn&rsquo;t match the <code class="inline">server_id</code> the gateway uses for it (its <code class="inline">SERVERS</code> entry / <code class="inline">SERVER_ID</code>). Money/inventory are hive-wide so they still work; only per-server data (position, kept-on-relog gear) needs the ids to match. Set <code class="inline">SERVER_ID</code> to the gateway&rsquo;s id and restart. The game log prints <code class="inline">SERVER_ID MISMATCH</code> with both values when it detects this — <code class="inline">grep -i "SERVER_ID MISMATCH"</code> your log.</li>
