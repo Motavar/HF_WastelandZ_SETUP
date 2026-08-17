@@ -847,6 +847,40 @@ and everything right of the players is local to the box — nothing exposed.</sp
     <li><b>Wire it:</b> in <code class="inline">/opt/reforger/profiles/server2/profile/hf_wastelandz/configs/</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
     <li><b>Service:</b> copy the kit&rsquo;s <code class="inline">/opt/wastelandz/server/wz-server2.service.example</code> to <code class="inline">/etc/systemd/system/wz-server2.service</code>, change <code class="inline">youruser</code>, then <code class="inline">sudo systemctl daemon-reload</code> and <code class="inline">sudo systemctl enable --now wz-server2</code>. If <code class="inline">ufw</code> is on, open UDP <b>2002</b> + <b>17778</b>.</li>
   </ul>
+
+  <div class="note warn"><div class="h">Each server has its OWN Wasteland-Z config &mdash; edit the right copy</div>
+  <p>This is the step people get wrong. Wasteland-Z keeps a <b>separate set of config files per
+  server</b>, inside that server&rsquo;s own profile folder. They are created on that
+  server&rsquo;s first start, so <b>boot server 2 once before you look for them</b>:</p>
+  <div class="code"><pre>/opt/reforger/profiles/<b>server1</b>/profile/hf_wastelandz/configs/HFWastelandZ_server.conf
+/opt/reforger/profiles/<b>server2</b>/profile/hf_wastelandz/configs/HFWastelandZ_server.conf</pre></div>
+
+  <p>Editing server 1&rsquo;s copy by mistake is the classic error &mdash; it makes server 1 start
+  writing its data as server 2. Three settings decide whether server 2 works:</p>
+
+  <p><b>1. <code class="inline">GATEWAY_URL</code></b> &mdash; in <code class="inline">HFWastelandZ_server.conf</code>. The <b>port</b> is how the gateway
+  knows which server is calling. Server 1 uses 5000, server 2 uses 5001. Trailing slash required.</p>
+  <div class="code"><pre><span class="c"># server 2's HFWastelandZ_server.conf</span>
+GATEWAY_URL http://127.0.0.1:5001/</pre></div>
+
+  <p><b>2. <code class="inline">SERVER_ID</code></b> &mdash; same file, and it <b>must differ</b> from server 1&rsquo;s. Money,
+  bank and inventory are shared hive-wide on purpose; position, placements and money drops are
+  split by <code class="inline">SERVER_ID</code>. Give both servers the same ID and players get the wrong
+  spawn location and kept gear when they hop between them.</p>
+
+  <p><b>3. <code class="inline">API_KEY</code></b> &mdash; in <code class="inline">HFWastelandZ_secrets.conf</code>, in that same folder. It must
+  match the <code class="inline">api_key</code> you set for that server in the gateway&rsquo;s <code class="inline">config.py</code>.</p>
+
+  <p>Check all three across both servers in one go &mdash; the <code class="inline">-H</code> prints which file each
+  line came from:</p>
+  <div class="code"><pre>grep -H GATEWAY_URL /opt/reforger/profiles/server*/profile/hf_wastelandz/configs/HFWastelandZ_server.conf
+grep -H SERVER_ID  /opt/reforger/profiles/server*/profile/hf_wastelandz/configs/HFWastelandZ_server.conf
+grep -H API_KEY    /opt/reforger/profiles/server*/profile/hf_wastelandz/configs/HFWastelandZ_secrets.conf</pre></div>
+
+  <p>You want server1 on <b>5000</b>, server2 on <b>5001</b>, and two <b>different</b>
+  <code class="inline">SERVER_ID</code> values. Then restart server 2 so it picks the changes up:</p>
+  <div class="code"><pre><span class="p">sudo</span> systemctl restart wz-server2</pre></div>
+  </div>
   <div class="note warn"><div class="h">One key per server</div><p>Each server gets its <b>own</b> gateway port and its <b>own</b> random <code class="inline">api_key</code> — that&rsquo;s how the gateway tells them apart. Never reuse a key across servers.</p></div>
   <div class="note tip"><div class="h">Will the box handle it?</div><p>Each Reforger server is heavy — roughly a few CPU cores and 4&ndash;8&nbsp;GB RAM per server under load. Two servers want a strong 8-core machine; three want more. The gateway and MySQL are lightweight by comparison.</p></div>
 
