@@ -38,6 +38,8 @@ import json
 import sys
 import os
 
+import migrate
+
 # --------------------------------------------------------
 # Load config
 # --------------------------------------------------------
@@ -85,7 +87,7 @@ app.config['JSON_SORT_KEYS'] = False
 # --------------------------------------------------------
 # Version
 # --------------------------------------------------------
-GATEWAY_VERSION = "0.7.1"
+GATEWAY_VERSION = "0.8.0"
 
 # --------------------------------------------------------
 # Server roster — multi-server hive.
@@ -138,6 +140,11 @@ def current_server_id():
 # Database connection helper
 # --------------------------------------------------------
 _db_pool = None
+
+# Highest applied migration, filled in at startup by the migration runner.
+# Reported in /api/ping so the mod can show mod / gateway / schema versions
+# together in the F8 SERVER tab instead of an admin inferring them.
+SCHEMA_VERSION = 0
 
 def _init_db_pool():
     """Initialize MySQL connection pool (called once at startup)."""
@@ -251,6 +258,7 @@ def ping():
     return jsonify({
         "status": "ok",
         "gateway_version": GATEWAY_VERSION,
+        "schema_version": SCHEMA_VERSION,
         "database": db_status,
         "server_id": current_server_id(),
         "hive_id": HIVE_ID,
@@ -288,6 +296,7 @@ def admin_health():
         "timestamp": datetime.now().isoformat(),
         "gateway": {
             "version": GATEWAY_VERSION,
+            "schema_version": SCHEMA_VERSION,
             "server_id": current_server_id(),
             "hive_id": HIVE_ID,
             "database": db_status,
@@ -1583,9 +1592,54 @@ if __name__ == "__main__":
     conn = get_db()
     if conn and conn.is_connected():
         print("[GATEWAY] Database connection: OK")
-        _close(conn)
     else:
         print("[GATEWAY] WARNING: Database connection FAILED — check config.py")
+
+    # ------------------------------------------------------------------
+    # SCHEMA MIGRATIONS — before a single listener binds.
+    #
+    # An admin updates the mod, updates the gateway, restarts. The database
+    # catches itself up here. No SQL by hand, ever.
+    #
+    # Destructive migrations (DROP / TRUNCATE / DELETE) are SKIPPED unless
+    # --allow-destructive is passed, and even then only after a successful
+    # mysqldump. Additive work still applies; only the destructive step is
+    # held, and everything after it is held too so ordering is preserved.
+    #
+    # A hard failure here does NOT bind listeners. Serving traffic against a
+    # half-migrated schema is how a rollout turns into data loss.
+    # ------------------------------------------------------------------
+    if conn and conn.is_connected():
+        allow_destructive = ("--allow-destructive" in sys.argv) or                             (os.environ.get("MIGRATE_ALLOW_DESTRUCTIVE") == "1")
+        if allow_destructive:
+            print("[MIGRATE] --allow-destructive is SET: destructive migrations may run (after a backup).")
+        try:
+            ok, _applied, _msg = migrate.run_migrations(
+                conn,
+                {
+                    "host": config.DB_HOST,
+                    "port": config.DB_PORT,
+                    "user": config.DB_USER,
+                    "password": config.DB_PASSWORD,
+                    "database": config.DB_NAME,
+                },
+                GATEWAY_VERSION,
+                allow_destructive=allow_destructive,
+            )
+            if not ok:
+                print("[GATEWAY] Migrations did not complete — refusing to start.")
+                _close(conn)
+                sys.exit(1)
+            SCHEMA_VERSION = migrate.current_schema_version(conn)
+        except Exception as e:
+            print(f"[GATEWAY] Migration runner crashed: {e}")
+            print("[GATEWAY] Refusing to start rather than serve an unknown schema.")
+            _close(conn)
+            sys.exit(1)
+    else:
+        print("[MIGRATE] Skipped — no database connection. Schema state is UNKNOWN.")
+
+    _close(conn)
 
     wsgi = DebuggedApplication(app, evalex=True) if FLASK_DEBUG else app
 
