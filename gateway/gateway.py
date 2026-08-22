@@ -1741,6 +1741,19 @@ def money_drops_wipe():
 # in the mod, next to the config file that sets it.
 # ============================================================
 
+def _csvsafe(value):
+    """Strip the row/field separators out of a value.
+
+    Addon titles and server names are admin-controlled free text. One stray
+    '~' or '|' would shift every later field in that row, and the F8 view
+    would quietly show a server's mod count in its map column. Replacing beats
+    escaping: the mod parses with a plain split, so there is nothing on the far
+    side that would honour an escape.
+    """
+    t = str(value if value is not None else "")
+    return t.replace("~", "-").replace("|", "/")
+
+
 SCOPE_HIVE = "@hive"
 SCOPE_SELF = "@self"
 
@@ -2033,6 +2046,41 @@ def hive_servers():
         for r in cursor.fetchall():
             r["last_seen"] = _iso(r.get("last_seen"))
             rows.append(r)
+        # FLAT TEXT for the mod (?format=csv).
+        #
+        # The mod parses responses with a flat scanner - ParseStringField finds
+        # the FIRST "field" and reads a string, so it cannot walk an array of
+        # objects whose keys repeat. Rather than hand-roll bracket matching in
+        # Enforce (where this class of bug lives and fails SILENTLY), the
+        # gateway formats the rows and the mod passes the string straight to
+        # the UI. Same reasoning as the resolved inventory row.
+        #
+        # Separators are '~' between fields and '|' between records - the same
+        # convention HEALTH_ENTRIES already uses.
+        #
+        # NOT control characters: jsonify escapes those as \u001f, and the mod's
+        # ParseStringField unescapes \" and \\ but NOT unicode escapes, so the
+        # UI would have been handed literal backslash-u text. Every field goes
+        # through _csvsafe() so a mod title containing a separator cannot shift
+        # the rest of the row.
+        if request.args.get("format") == "csv":
+            recs = []
+            for r in rows:
+                recs.append("~".join([
+                    _csvsafe(r.get("server_id")),
+                    _csvsafe(r.get("display_name")),
+                    _csvsafe(r.get("map_name")),
+                    _csvsafe(r.get("gear_group")),
+                    _csvsafe(r.get("garage_group")),
+                    _csvsafe(r.get("mod_version")),
+                    str(r.get("addon_count") or 0),
+                    _csvsafe(r.get("addon_hash")),
+                    str(r.get("players_online") or 0),
+                    str(r.get("seconds_ago") if r.get("seconds_ago") is not None else -1),
+                ]))
+            return jsonify({"status": "ok", "hive_id": HIVE_ID,
+                            "you": current_server_id(), "text": "|".join(recs)})
+
         return jsonify({"status": "ok", "hive_id": HIVE_ID,
                         "you": current_server_id(), "servers": rows})
     except mysql.connector.Error as err:
@@ -2097,6 +2145,22 @@ def hive_group(group_name):
             r["missing_here"]  = sorted(t or i for i, t in theirs.items() if i not in my_addons)
             members.append(r)
 
+        if request.args.get("format") == "csv":
+            recs = []
+            for m in members:
+                recs.append("~".join([
+                    _csvsafe(m.get("server_id")),
+                    _csvsafe(m.get("map_name")),
+                    str(m.get("addon_count") or 0),
+                    str(m.get("players_online") or 0),
+                    "1" if m.get("compliant") else "0",
+                    str(m.get("seconds_ago") if m.get("seconds_ago") is not None else -1),
+                    _csvsafe(", ".join(m.get("missing_there") or [])),
+                    _csvsafe(", ".join(m.get("missing_here") or [])),
+                ]))
+            return jsonify({"status": "ok", "group": group_name, "you": sid,
+                            "text": "|".join(recs)})
+
         return jsonify({"status": "ok", "group": group_name,
                         "you": sid, "your_addon_hash": my_hash, "members": members})
     except mysql.connector.Error as err:
@@ -2144,8 +2208,16 @@ def hive_share_groups():
                     "updated_by": None, "updated_at": "", "members": r["members"],
                 }
 
-        return jsonify({"status": "ok", "hive_id": HIVE_ID,
-                        "groups": sorted(described.values(), key=lambda g: g["group_name"])})
+        ordered = sorted(described.values(), key=lambda g: g["group_name"])
+        if request.args.get("format") == "csv":
+            recs = ["~".join([
+                _csvsafe(g.get("group_name")),
+                str(g.get("members") or 0),
+                _csvsafe(g.get("description")),
+            ]) for g in ordered]
+            return jsonify({"status": "ok", "hive_id": HIVE_ID, "text": "|".join(recs)})
+
+        return jsonify({"status": "ok", "hive_id": HIVE_ID, "groups": ordered})
     except mysql.connector.Error as err:
         return _db_error("hive_share_groups", err)
     except Exception as err:
