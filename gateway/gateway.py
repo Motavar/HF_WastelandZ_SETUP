@@ -367,27 +367,65 @@ def get_player(uid):
         player["current_server_id"] = sid
         player["arrival_grace"] = 1 if _arriving else int(prof.get("arrival_grace") or 0)
 
-        # Every candidate gear row for this player, across every server in the
-        # hive. The MOD picks which one to restore using its own share-group
-        # policy — the gateway deliberately does not know what GEAR_SHARE_GROUP
-        # means, so an admin changing it never needs a gateway update.
-        cursor.execute("""
-            SELECT server_id, share_group, map_name, format_ver, payload, updated_at
-              FROM player_data
-             WHERE player_uid = %s AND hive_id = %s AND namespace = 'inventory'
-             ORDER BY updated_at DESC
-        """, (uid, HIVE_ID))
-        player["inventory_candidates"] = [
-            {
-                "server_id":   c.get("server_id"),
-                "share_group": c.get("share_group"),
-                "map_name":    c.get("map_name") or "",
-                "format_ver":  c.get("format_ver"),
-                "payload":     c.get("payload"),
-                "updated_at":  _iso(c.get("updated_at")),
-            }
-            for c in cursor.fetchall()
-        ]
+        # ------------------------------------------------------------------
+        # RESOLVED GEAR ROW (2026-08-22)
+        #
+        # The mod sends the policy it wants applied — its gear group and its
+        # current map — and gets back ONE already-chosen row in the SAME flat
+        # `inventory` string field it has always parsed.
+        #
+        # WHY RESOLVE SERVER-SIDE. The alternative was shipping the full
+        # candidate list and letting the mod pick. That needs new nested-JSON
+        # parsing in Enforce: HFRestClient.ParseStringField finds the FIRST
+        # "field" and reads a flat string, so it cannot walk an array of
+        # objects whose keys repeat. Hand-rolled bracket matching is exactly
+        # where this class of bug lives, and getting it wrong silently returns
+        # the wrong player's gear.
+        #
+        # The gateway still does not DECIDE policy — it does not know what
+        # ALPHA means, cannot invent a group, and applies only the rule it is
+        # handed. The mod owns the config, the vocabulary and the choice; this
+        # is a filtered SELECT, which is what a data layer is for.
+        #
+        # The read rule, verbatim from the design:
+        #     share_group = mine  OR  (server_id = me AND map_name = my map)
+        # with '' matching any map, so rows written before map tracking (and
+        # the 0081 backfill) still resolve.
+        #
+        # BACKWARD COMPATIBLE: a mod that sends no gear_group falls back to the
+        # legacy players.inventory column, so an older mod against a newer
+        # gateway keeps working.
+        # ------------------------------------------------------------------
+        _gear_group = request.args.get("gear_group", "")
+        _my_map     = request.args.get("map", "")
+
+        if _gear_group:
+            cursor.execute("""
+                SELECT server_id, share_group, map_name, format_ver, payload, updated_at
+                  FROM player_data
+                 WHERE player_uid = %s AND hive_id = %s AND namespace = 'inventory'
+                   AND ( share_group = %s
+                         OR ( server_id = %s AND (map_name = %s OR map_name = '') ) )
+                 ORDER BY updated_at DESC
+                 LIMIT 1
+            """, (uid, HIVE_ID, _gear_group, sid, _my_map))
+            _win = cursor.fetchone()
+            if _win:
+                player["inventory"]              = _win.get("payload")
+                player["inventory_source"]       = _win.get("server_id")
+                player["inventory_group"]        = _win.get("share_group")
+                player["inventory_map"]          = _win.get("map_name") or ""
+                player["inventory_format_ver"]   = _win.get("format_ver")
+                print(f"[GATEWAY] gear resolved: {uid} <- {_win.get('server_id')} "
+                      f"group={_win.get('share_group')} map='{_win.get('map_name')}' "
+                      f"(asked group={_gear_group} map='{_my_map}')")
+            else:
+                # No candidate is NOT an error: a brand-new player, or a first
+                # visit to a server whose group has no rows yet. Faction
+                # defaults apply; nothing is logged as a fault.
+                player["inventory"]            = None
+                player["inventory_source"]     = ""
+                player["inventory_format_ver"] = 0
         player["first_join"] = _iso(prof.get("first_join"))
         player["last_seen"] = _iso(prof.get("last_seen"))
         if sess:
