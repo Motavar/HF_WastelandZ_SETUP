@@ -504,6 +504,23 @@ def save_player(uid):
             print(f"[GATEWAY] save rejected: {uid} owned by {_own[0]}, not {sid}")
             return jsonify({"status": "error", "message": "player owned by another server",
                             "current_server_id": _own[0]}), 409
+
+        # CONSUME the one-shot arrival grace. A save from the owning server means
+        # the player is in the world - they have spawned, so the free faction and
+        # spawn pick has been used. Cleared here rather than in the mod because
+        # the mod would need a separate call for it, and a missed call would
+        # leave the grace armed forever.
+        #
+        # Clearing on ANY owning save is deliberate: autosave, disconnect save
+        # and the post-spawn save all mean the same thing. Worst case the grace
+        # is consumed a moment early, which costs a free respawn. The other
+        # direction - a grace that never clears - hands out an unlimited faction
+        # and spawn reroll, which is the anti-battle-log rule defeated.
+        cursor.execute("UPDATE players SET arrival_grace = 0 "
+                       "WHERE player_uid = %s AND hive_id = %s AND arrival_grace <> 0",
+                       (uid, HIVE_ID))
+        if cursor.rowcount:
+            print(f"[GATEWAY] arrival grace consumed: {uid} on {sid}")
         if inventory is not None:
             cursor.execute("""
                 INSERT INTO players (player_uid, hive_id, display_name, money, faction,
@@ -1676,6 +1693,22 @@ def money_drops_wipe():
 # ============================================================
 
 SCOPE_HIVE = "@hive"
+SCOPE_SELF = "@self"
+
+
+def _resolve_scope(scope):
+    """'@self' means 'whatever THIS gateway calls the calling server'.
+
+    The mod sends @self rather than its own configured SERVER_ID on purpose.
+    The gateway identifies a server by the PORT the request arrived on, and if
+    a server's local SERVER_ID has drifted from that, sending the local value
+    would get every save refused 403. That drift is exactly the bug that caused
+    the cross-server gear loss in the first place; @self removes the second
+    source of truth instead of asking admins to keep two values in sync.
+    """
+    if scope == SCOPE_SELF:
+        return current_server_id()
+    return scope
 
 
 def _scope_writable(scope):
@@ -1730,6 +1763,7 @@ def data_get(uid, namespace, scope):
         return jsonify({"status": "error", "message": "unauthorized"}), 401
     if not _valid_namespace(namespace):
         return jsonify({"status": "error", "message": "bad namespace"}), 400
+    scope = _resolve_scope(scope)
 
     conn = get_db()
     if not conn:
@@ -1769,6 +1803,7 @@ def data_put(uid, namespace, scope):
         return jsonify({"status": "error", "message": "unauthorized"}), 401
     if not _valid_namespace(namespace):
         return jsonify({"status": "error", "message": "bad namespace"}), 400
+    scope = _resolve_scope(scope)
 
     if not _scope_writable(scope):
         # Refused, not silently redirected. A server trying to write another
@@ -1828,6 +1863,7 @@ def data_delete(uid, namespace, scope):
     """Delete one row. Same write rule as PUT."""
     if not check_auth("SAVE"):
         return jsonify({"status": "error", "message": "unauthorized"}), 401
+    scope = _resolve_scope(scope)
     if not _scope_writable(scope):
         return jsonify({"status": "error",
                         "message": "a server may only write its own scope"}), 403
