@@ -1450,7 +1450,7 @@ copy gateway.py.bak gateway.py</pre></div>
 
 <section><div class="wrap">
   <h3>When the update is more than one file</h3>
-  <p class="muted">Once in a while a release also changes other files &mdash; new Python packages (<code class="inline">requirements.txt</code>), the config template (<code class="inline">config.example.py</code>), or the database schema (<code class="inline">setup_database.sql</code>). The release notes call that out. When it happens, refresh the whole kit instead of one file:</p>
+  <p class="muted">Once in a while a release also changes other files &mdash; new Python packages (<code class="inline">requirements.txt</code>), the config template (<code class="inline">config.example.py</code>), or the database schema. The release notes call that out. When it happens, refresh the whole kit instead of one file &mdash; and note that the schema part needs nothing from you beyond the restart at the end, because the gateway applies it itself:</p>
   <div class="code"><pre><span class="c"># Linux — update the reference kit (the git clone), then copy the gateway across</span>
 cd /opt/wastelandz
 git pull
@@ -1463,7 +1463,11 @@ pip install -r requirements.txt
 
 sudo systemctl restart wz-gateway</pre></div>
   <div class="note danger"><div class="h">Your config.py is safe &mdash; leave it alone</div><p><code class="inline">config.py</code> holds your database password and gateway key and is never stored in the repo, so <code class="inline">git pull</code> and the single-file <code class="inline">curl</code> both leave it untouched. The <code class="inline">cp -r</code> above copies only the program files the kit ships &mdash; it does <b>not</b> contain a <code class="inline">config.py</code>, so your live one stays in place. Never overwrite it.</p></div>
-  <p class="muted">If a release ever needs a database change, its notes give the exact SQL to run &mdash; apply that separately. A normal gateway update never touches your data.</p>
+  <div class="note"><div class="h">Database changes apply themselves &mdash; you never run SQL</div>
+  <p>From gateway <b>0.8.0</b> onward the gateway keeps its own database up to date. On start it checks which schema updates have already been applied, runs any that are missing, and prints each one. Restarting it after an update is the whole procedure.</p>
+  <p>It records what it has applied in the database itself, so an update <b>cannot run twice</b> &mdash; there is no flag to reset and nothing to remember. A fresh install still runs <code class="inline">setup_database.sql</code> once; after that, the gateway takes over.</p>
+  <p>Two things it will refuse to do rather than risk your data. It will not run an update that <b>deletes</b> anything unless you deliberately start it with <code class="inline">--allow-destructive</code>, and even then only after it has taken its own backup first &mdash; if the backup fails, the update is refused. And if the database is <b>newer</b> than the gateway (you rolled the gateway back but not the data), it refuses to start rather than write a format it does not understand.</p>
+  <p class="muted">Watch the console on the first restart after an update. You will see a line per applied change, ending with the schema version. If nothing is pending it simply says the schema is up to date.</p></div>
 </div></section>
 </main>
 
