@@ -236,9 +236,54 @@ def ping():
     is_authed = check_auth("PING")
 
     db_status = "unknown"
+    reregister = False
     conn = get_db()
     try:
         db_status = "connected" if (conn and conn.is_connected()) else "disconnected"
+
+        # ------------------------------------------------------------------
+        # HIVE HEARTBEAT.
+        #
+        # The ping is already sent every 60s, so the volatile fields ride it
+        # rather than costing their own request: player count and the short
+        # addon fingerprint. The full addon LIST is far too big for a query
+        # string and stays on POST /api/hive/register.
+        #
+        # This is also what makes registration self-healing. Boot-state gateway
+        # calls do not retry, so a gateway started AFTER the game server would
+        # otherwise leave that server invisible in the hive forever - and an
+        # invisible server is one whose mod mismatch nobody can see until it
+        # eats a player's gear. If we have no row, or the fingerprint we hold
+        # disagrees with the one being pinged, we ask for a full re-register and
+        # the mod sends it within the minute.
+        # ------------------------------------------------------------------
+        if is_authed and conn and conn.is_connected():
+            _sid = current_server_id()
+            _hash = request.args.get("addon_hash", "")
+            _online = request.args.get("players", "")
+            try:
+                _cur = conn.cursor()
+                _cur.execute("SELECT addon_hash FROM hive_servers WHERE hive_id=%s AND server_id=%s",
+                             (HIVE_ID, _sid))
+                _row = _cur.fetchone()
+                if not _row:
+                    reregister = True
+                elif _hash and _row[0] and _row[0] != _hash:
+                    # The server's mod set changed since it registered. Its
+                    # stored addon list is now a lie, and the F8 compliance view
+                    # is only as good as that list.
+                    reregister = True
+                    print(f"[GATEWAY] {_sid} addon fingerprint changed -> asking for re-register")
+                else:
+                    _cur.execute(
+                        "UPDATE hive_servers SET players_online=%s WHERE hive_id=%s AND server_id=%s",
+                        (int(_online or 0), HIVE_ID, _sid))
+                    conn.commit()
+                _cur.close()
+            except mysql.connector.Error as err:
+                # A heartbeat must never take the ping down with it. The ping is
+                # how the mod decides the gateway is reachable at all.
+                print(f"[GATEWAY] hive heartbeat skipped: {err}")
     except Exception as e:
         db_status = f"error: {e}"
     finally:
@@ -259,6 +304,10 @@ def ping():
         "status": "ok",
         "gateway_version": GATEWAY_VERSION,
         "schema_version": SCHEMA_VERSION,
+        # INT, not a bool. The mod parses this with a flat scanner that reads
+        # quoted strings or digits; a bare JSON `true` matches neither and
+        # would silently never trigger a re-register.
+        "reregister": 1 if reregister else 0,
         "database": db_status,
         "server_id": current_server_id(),
         "hive_id": HIVE_ID,
