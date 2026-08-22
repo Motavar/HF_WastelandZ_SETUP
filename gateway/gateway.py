@@ -329,8 +329,31 @@ def get_player(uid):
 
         # Phase 3 anti-clobber: claim ownership for this server on load (join).
         # A later/stale save from a server the player has left is then rejected.
-        cursor.execute("UPDATE players SET current_server_id = %s WHERE player_uid = %s AND hive_id = %s",
-                       (sid, uid, HIVE_ID))
+        #
+        # ARRIVAL GRACE (2026-08-22). current_server_id was doing two
+        # contradictory jobs: "who owns this player right now" (overwritten on
+        # every load) and "where did they last play" (must survive a load). The
+        # claim won, so the second load of one arrival reported THIS server as
+        # the last server and the mod wiped the player's gear.
+        #
+        # arrival_grace splits them. Armed ONLY when the stored owner differs
+        # from this server; a same-server load leaves it untouched, which is
+        # exactly what makes it durable across repeated loads, deploy-screen
+        # reconnects and every dispatch site. The mod clears it on the first
+        # save after a successful spawn.
+        _prev_owner = prof.get("current_server_id")
+        _arriving = bool(_prev_owner) and _prev_owner != sid
+        if _arriving:
+            cursor.execute(
+                "UPDATE players SET current_server_id = %s, arrival_grace = 1 "
+                "WHERE player_uid = %s AND hive_id = %s",
+                (sid, uid, HIVE_ID))
+            print(f"[GATEWAY] arrival: {uid} {_prev_owner} -> {sid} (grace armed)")
+        else:
+            cursor.execute(
+                "UPDATE players SET current_server_id = %s "
+                "WHERE player_uid = %s AND hive_id = %s",
+                (sid, uid, HIVE_ID))
         conn.commit()
 
         cursor.execute("SELECT * FROM player_sessions WHERE player_uid = %s AND server_id = %s", (uid, sid))
@@ -342,6 +365,29 @@ def get_player(uid):
         # "same server -> restore last location + gear" (HFGameMode sameServer check).
         player["last_server_id"] = prof.get("current_server_id")
         player["current_server_id"] = sid
+        player["arrival_grace"] = 1 if _arriving else int(prof.get("arrival_grace") or 0)
+
+        # Every candidate gear row for this player, across every server in the
+        # hive. The MOD picks which one to restore using its own share-group
+        # policy — the gateway deliberately does not know what GEAR_SHARE_GROUP
+        # means, so an admin changing it never needs a gateway update.
+        cursor.execute("""
+            SELECT server_id, share_group, map_name, format_ver, payload, updated_at
+              FROM player_data
+             WHERE player_uid = %s AND hive_id = %s AND namespace = 'inventory'
+             ORDER BY updated_at DESC
+        """, (uid, HIVE_ID))
+        player["inventory_candidates"] = [
+            {
+                "server_id":   c.get("server_id"),
+                "share_group": c.get("share_group"),
+                "map_name":    c.get("map_name") or "",
+                "format_ver":  c.get("format_ver"),
+                "payload":     c.get("payload"),
+                "updated_at":  _iso(c.get("updated_at")),
+            }
+            for c in cursor.fetchall()
+        ]
         player["first_join"] = _iso(prof.get("first_join"))
         player["last_seen"] = _iso(prof.get("last_seen"))
         if sess:
@@ -1570,6 +1616,452 @@ def money_drops_wipe():
 # --------------------------------------------------------
 # Startup — bind a listener on every configured server port
 # --------------------------------------------------------
+
+# ============================================================
+# GENERIC NAMESPACED PLAYER DATA  (/api/data/...)
+# ============================================================
+# One table, one set of endpoints, every player-owned per-scope feature.
+# Adding a feature means picking a new `namespace` string in the MOD - no new
+# table, no migration, and no gateway release. That is the whole point: admins
+# distrust gateway updates, so the way to make them rare is a schema that does
+# not need to change.
+#
+# THE WRITE RULE IS ENFORCED HERE, NOT JUST DOCUMENTED. A server may write only
+# its own server_id, or the shared '@hive' scope. Every data-loss hazard in this
+# area came from one server overwriting a value another server owned; refusing
+# the write at the gateway makes that class impossible rather than merely
+# discouraged.
+#
+# The gateway does NOT know what a share_group means or which row the mod should
+# restore. It stores what it is given and returns every candidate. Policy lives
+# in the mod, next to the config file that sets it.
+# ============================================================
+
+SCOPE_HIVE = "@hive"
+
+
+def _scope_writable(scope):
+    """A server may write only its own rows, or the hive-wide scope."""
+    return scope == SCOPE_HIVE or scope == current_server_id()
+
+
+def _valid_namespace(ns):
+    return bool(ns) and len(ns) <= 32 and all(c.isalnum() or c in "_-" for c in ns)
+
+
+@app.route("/api/data/<uid>/<namespace>", methods=["GET"])
+def data_list(uid, namespace):
+    """Every row for this player in this namespace, across all scopes."""
+    if not check_auth("LOAD"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    if not _valid_namespace(namespace):
+        return jsonify({"status": "error", "message": "bad namespace"}), 400
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT server_id, share_group, map_name, format_ver, payload, updated_at
+              FROM player_data
+             WHERE player_uid = %s AND hive_id = %s AND namespace = %s
+             ORDER BY updated_at DESC
+        """, (uid, HIVE_ID, namespace))
+        rows = [{
+            "server_id":   r.get("server_id"),
+            "share_group": r.get("share_group"),
+            "map_name":    r.get("map_name") or "",
+            "format_ver":  r.get("format_ver"),
+            "payload":     r.get("payload"),
+            "updated_at":  _iso(r.get("updated_at")),
+        } for r in cursor.fetchall()]
+        return jsonify({"status": "ok", "namespace": namespace, "rows": rows})
+    except mysql.connector.Error as err:
+        return _db_error("data_list", err)
+    except Exception as err:
+        return _internal_error("data_list", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/data/<uid>/<namespace>/<scope>", methods=["GET"])
+def data_get(uid, namespace, scope):
+    """One row - this scope only."""
+    if not check_auth("LOAD"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    if not _valid_namespace(namespace):
+        return jsonify({"status": "error", "message": "bad namespace"}), 400
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT server_id, share_group, map_name, format_ver, payload, updated_at
+              FROM player_data
+             WHERE player_uid = %s AND hive_id = %s AND namespace = %s AND server_id = %s
+        """, (uid, HIVE_ID, namespace, scope))
+        r = cursor.fetchone()
+        if not r:
+            # Not an error. A first visit, or a namespace this player has never
+            # written. The mod decides what "nothing here" means.
+            return jsonify({"status": "ok", "namespace": namespace, "scope": scope, "row": None})
+        return jsonify({"status": "ok", "namespace": namespace, "scope": scope, "row": {
+            "server_id":   r.get("server_id"),
+            "share_group": r.get("share_group"),
+            "map_name":    r.get("map_name") or "",
+            "format_ver":  r.get("format_ver"),
+            "payload":     r.get("payload"),
+            "updated_at":  _iso(r.get("updated_at")),
+        }})
+    except mysql.connector.Error as err:
+        return _db_error("data_get", err)
+    except Exception as err:
+        return _internal_error("data_get", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/data/<uid>/<namespace>/<scope>", methods=["PUT", "POST"])
+def data_put(uid, namespace, scope):
+    """Upsert one row. A server may write only its OWN scope, or '@hive'."""
+    if not check_auth("SAVE"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    if not _valid_namespace(namespace):
+        return jsonify({"status": "error", "message": "bad namespace"}), 400
+
+    if not _scope_writable(scope):
+        # Refused, not silently redirected. A server trying to write another
+        # server's row is a bug worth surfacing loudly, and honouring it would
+        # reintroduce exactly the clobber class this design removes.
+        print(f"[GATEWAY] data_put REFUSED: {current_server_id()} tried to write scope '{scope}'")
+        return jsonify({"status": "error",
+                        "message": "a server may only write its own scope",
+                        "your_scope": current_server_id()}), 403
+
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"status": "error", "message": "JSON body required"}), 400
+
+    payload = data.get("payload")
+    if payload is None:
+        return jsonify({"status": "error", "message": "payload required"}), 400
+    if isinstance(payload, (list, dict)):
+        payload = json.dumps(payload, separators=(",", ":"))
+
+    share_group = (data.get("share_group") or "ALPHA")[:32]
+    map_name    = (data.get("map_name") or "")[:64]
+    format_ver  = int(data.get("format_ver") or 1)
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO player_data
+                (player_uid, hive_id, server_id, namespace, share_group, map_name, payload, format_ver)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                share_group = VALUES(share_group),
+                map_name    = VALUES(map_name),
+                payload     = VALUES(payload),
+                format_ver  = VALUES(format_ver)
+        """, (uid, HIVE_ID, scope, namespace, share_group, map_name, payload, format_ver))
+        conn.commit()
+        print(f"[GATEWAY] data saved: {uid} ns={namespace} scope={scope} "
+              f"group={share_group} map={map_name or '-'} ({len(payload)} chars)")
+        return jsonify({"status": "ok", "message": "saved"})
+    except mysql.connector.Error as err:
+        # A malformed payload is REJECTED by the JSON column rather than stored.
+        # That is deliberate: the previous good value surviving beats writing
+        # garbage over it.
+        return _db_error("data_put", err)
+    except Exception as err:
+        return _internal_error("data_put", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/data/<uid>/<namespace>/<scope>", methods=["DELETE"])
+def data_delete(uid, namespace, scope):
+    """Delete one row. Same write rule as PUT."""
+    if not check_auth("SAVE"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    if not _scope_writable(scope):
+        return jsonify({"status": "error",
+                        "message": "a server may only write its own scope"}), 403
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM player_data
+             WHERE player_uid = %s AND hive_id = %s AND namespace = %s AND server_id = %s
+        """, (uid, HIVE_ID, namespace, scope))
+        conn.commit()
+        return jsonify({"status": "ok", "deleted": cursor.rowcount})
+    except mysql.connector.Error as err:
+        return _db_error("data_delete", err)
+    except Exception as err:
+        return _internal_error("data_delete", err)
+    finally:
+        _close(conn)
+
+
+# ============================================================
+# HIVE REGISTRATION  (/api/hive/...)
+# ============================================================
+# A server announces itself once at OnGameStart (map + share groups + full addon
+# list) and refreshes the cheap volatile bits on its existing 60s ping.
+#
+# WHY THE ADDON LIST IS THE POINT: gear is stored as prefab paths, and on a
+# server missing the owning addon the item silently fails to restore and the
+# shrunken payload is written back over the profile. Registration lets an admin
+# SEE the mod delta BEFORE putting a server into a shared gear pool, instead of
+# discovering it when a player's rifle disappears.
+# ============================================================
+
+@app.route("/api/hive/register", methods=["POST"])
+def hive_register():
+    """Full startup announcement. Upsert - a restart just refreshes the row."""
+    if not check_auth("SAVE"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    sid = current_server_id()
+
+    data = request.get_json(force=True, silent=True) or {}
+    addon_list = data.get("addon_list")
+    if isinstance(addon_list, (list, dict)):
+        addon_list = json.dumps(addon_list, separators=(",", ":"))
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO hive_servers
+                (hive_id, server_id, display_name, map_name, gear_group, garage_group,
+                 mod_version, addon_count, addon_hash, addon_list, players_online,
+                 boot_session_id, started_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            ON DUPLICATE KEY UPDATE
+                display_name = VALUES(display_name),
+                map_name     = VALUES(map_name),
+                gear_group   = VALUES(gear_group),
+                garage_group = VALUES(garage_group),
+                mod_version  = VALUES(mod_version),
+                addon_count  = VALUES(addon_count),
+                addon_hash   = VALUES(addon_hash),
+                addon_list   = VALUES(addon_list),
+                players_online  = VALUES(players_online),
+                boot_session_id = VALUES(boot_session_id),
+                started_at      = VALUES(started_at)
+        """, (
+            HIVE_ID, sid,
+            (data.get("display_name") or "")[:128],
+            (data.get("map_name") or "")[:64],
+            (data.get("gear_group") or "")[:32],
+            (data.get("garage_group") or "")[:32],
+            (data.get("mod_version") or "")[:32],
+            int(data.get("addon_count") or 0),
+            (data.get("addon_hash") or "")[:64],
+            addon_list,
+            int(data.get("players_online") or 0),
+            (data.get("boot_session_id") or "")[:64],
+        ))
+        conn.commit()
+        print(f"[GATEWAY] hive register: {sid} map={data.get('map_name')} "
+              f"gear={data.get('gear_group')} addons={data.get('addon_count')}")
+        return jsonify({"status": "ok", "message": "registered", "server_id": sid})
+    except mysql.connector.Error as err:
+        return _db_error("hive_register", err)
+    except Exception as err:
+        return _internal_error("hive_register", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/hive/servers", methods=["GET"])
+def hive_servers():
+    """Every registered server in this hive, with its mod fingerprint."""
+    if not check_auth("LOAD"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT server_id, display_name, map_name, gear_group, garage_group,
+                   mod_version, addon_count, addon_hash, addon_list,
+                   players_online, last_seen,
+                   TIMESTAMPDIFF(SECOND, last_seen, NOW()) AS seconds_ago
+              FROM hive_servers
+             WHERE hive_id = %s
+             ORDER BY gear_group, server_id
+        """, (HIVE_ID,))
+        rows = []
+        for r in cursor.fetchall():
+            r["last_seen"] = _iso(r.get("last_seen"))
+            rows.append(r)
+        return jsonify({"status": "ok", "hive_id": HIVE_ID,
+                        "you": current_server_id(), "servers": rows})
+    except mysql.connector.Error as err:
+        return _db_error("hive_servers", err)
+    except Exception as err:
+        return _internal_error("hive_servers", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/hive/group/<group_name>", methods=["GET"])
+def hive_group(group_name):
+    """Members of one gear group, each flagged compliant against the CALLER.
+
+    Compliance is advisory. A mismatched server is flagged, never blocked -
+    hard-blocking risks locking an admin out over an addon they dropped on
+    purpose.
+    """
+    if not check_auth("LOAD"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    sid = current_server_id()
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT addon_hash, addon_list FROM hive_servers WHERE hive_id=%s AND server_id=%s",
+                       (HIVE_ID, sid))
+        me = cursor.fetchone() or {}
+        my_hash = me.get("addon_hash")
+        try:
+            # id -> title, so a mismatch can be reported by NAME. An admin
+            # reading "missing Nasty MP7" can act on it; "missing B2" is noise.
+            my_addons = {a.get("id"): a.get("title") for a in json.loads(me.get("addon_list") or "[]")}
+        except Exception:
+            my_addons = {}
+
+        cursor.execute("""
+            SELECT server_id, display_name, map_name, gear_group, garage_group,
+                   mod_version, addon_count, addon_hash, addon_list,
+                   players_online, last_seen,
+                   TIMESTAMPDIFF(SECOND, last_seen, NOW()) AS seconds_ago
+              FROM hive_servers
+             WHERE hive_id = %s AND gear_group = %s
+             ORDER BY server_id
+        """, (HIVE_ID, group_name))
+
+        members = []
+        for r in cursor.fetchall():
+            r["last_seen"] = _iso(r.get("last_seen"))
+            r["compliant"] = bool(my_hash) and r.get("addon_hash") == my_hash
+            try:
+                theirs = {a.get("id"): a.get("title") for a in json.loads(r.get("addon_list") or "[]")}
+            except Exception:
+                theirs = {}
+            # missing_there = addons WE have that THEY lack. That is the
+            # direction that loses gear: a player carrying one of these from
+            # here to there cannot have it restored.
+            # missing_here = the reverse, for the return trip.
+            r["missing_there"] = sorted(t or i for i, t in my_addons.items() if i not in theirs)
+            r["missing_here"]  = sorted(t or i for i, t in theirs.items() if i not in my_addons)
+            members.append(r)
+
+        return jsonify({"status": "ok", "group": group_name,
+                        "you": sid, "your_addon_hash": my_hash, "members": members})
+    except mysql.connector.Error as err:
+        return _db_error("hive_group", err)
+    except Exception as err:
+        return _internal_error("hive_group", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/hive/share_groups", methods=["GET"])
+def hive_share_groups():
+    """Group descriptions plus a live member count per group."""
+    if not check_auth("LOAD"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT g.group_name, g.description, g.updated_by, g.updated_at,
+                   (SELECT COUNT(*) FROM hive_servers s
+                     WHERE s.hive_id = g.hive_id AND s.gear_group = g.group_name) AS members
+              FROM hive_share_groups g
+             WHERE g.hive_id = %s
+             ORDER BY g.group_name
+        """, (HIVE_ID,))
+        described = {r["group_name"]: r for r in cursor.fetchall()}
+        for r in described.values():
+            r["updated_at"] = _iso(r.get("updated_at"))
+
+        # Groups in USE but never described still have to appear, or a group an
+        # admin joined without labelling would be invisible in the picker.
+        cursor.execute("""
+            SELECT gear_group AS group_name, COUNT(*) AS members
+              FROM hive_servers WHERE hive_id = %s AND gear_group IS NOT NULL AND gear_group <> ''
+             GROUP BY gear_group
+        """, (HIVE_ID,))
+        for r in cursor.fetchall():
+            if r["group_name"] not in described:
+                described[r["group_name"]] = {
+                    "group_name": r["group_name"], "description": None,
+                    "updated_by": None, "updated_at": "", "members": r["members"],
+                }
+
+        return jsonify({"status": "ok", "hive_id": HIVE_ID,
+                        "groups": sorted(described.values(), key=lambda g: g["group_name"])})
+    except mysql.connector.Error as err:
+        return _db_error("hive_share_groups", err)
+    except Exception as err:
+        return _internal_error("hive_share_groups", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/hive/share_groups/<group_name>", methods=["PUT", "POST"])
+def hive_share_group_set(group_name):
+    """Label a group. Admin-tier is checked MOD-side before this is called."""
+    if not check_auth("SAVE"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    data = request.get_json(force=True, silent=True) or {}
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO hive_share_groups (hive_id, group_name, description, updated_by)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                description = VALUES(description),
+                updated_by  = VALUES(updated_by)
+        """, (HIVE_ID, group_name[:32],
+              (data.get("description") or "")[:255],
+              (data.get("updated_by") or "")[:64]))
+        conn.commit()
+        return jsonify({"status": "ok", "message": "saved"})
+    except mysql.connector.Error as err:
+        return _db_error("hive_share_group_set", err)
+    except Exception as err:
+        return _internal_error("hive_share_group_set", err)
+    finally:
+        _close(conn)
+
+
 if __name__ == "__main__":
     from werkzeug.serving import make_server
     from werkzeug.debug import DebuggedApplication
