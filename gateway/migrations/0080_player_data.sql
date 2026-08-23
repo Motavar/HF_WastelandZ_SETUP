@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS player_data (
   namespace    VARCHAR(32)  NOT NULL,
   share_group  VARCHAR(32)  NOT NULL DEFAULT 'ALPHA',
   map_name     VARCHAR(64)  NOT NULL DEFAULT '',
-  payload      JSON         NOT NULL,
+  payload      MEDIUMTEXT   NOT NULL,   -- see 0087: JSON normalisation broke the mod parser
   format_ver   INT          NOT NULL DEFAULT 1,
   updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                             ON UPDATE CURRENT_TIMESTAMP,

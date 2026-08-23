@@ -258,7 +258,10 @@ CREATE TABLE IF NOT EXISTS player_data (
   namespace    VARCHAR(32)  NOT NULL,            -- 'inventory' | 'garage' | future
   share_group  VARCHAR(32)  NOT NULL DEFAULT 'ALPHA',
   map_name     VARCHAR(64)  NOT NULL DEFAULT '', -- '' = matches any map (legacy rows)
-  payload      JSON         NOT NULL,
+  payload      MEDIUMTEXT   NOT NULL,   -- NOT json: MySQL normalises a JSON
+                                        -- column (space after every colon, keys
+                                        -- sorted) and the mod parses this by hand,
+                                        -- whitespace- and order-sensitive. See 0087.
   format_ver   INT          NOT NULL DEFAULT 1,
   updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                             ON UPDATE CURRENT_TIMESTAMP,
