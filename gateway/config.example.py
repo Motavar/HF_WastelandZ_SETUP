@@ -29,6 +29,27 @@ DB_POOL_SIZE = 10              # Connections in the pool. Raise for a busy hive
 # debugger (remote code execution) on any unhandled error.
 FLASK_DEBUG = False
 
+# --- HTTP server ---
+# "auto"     use waitress if installed, otherwise werkzeug   (default)
+# "waitress" require waitress; refuse to start without it
+# "werkzeug" force the built-in development server
+#
+# werkzeug is a DEVELOPMENT server. It works, but it spawns a thread per
+# request and starts DROPPING them under concurrency - measured at 39 of 320
+# failing at 32 simultaneous requests. Steady state for a busy hive is only a
+# handful of requests per second, so that ceiling does not matter day to day.
+# A burst does: 128 players reconnecting after a restart hits it immediately.
+#
+# waitress is a production WSGI server - pure Python, no compiler, identical on
+# Linux and Windows. Upgrading is:
+#     pip install waitress
+# then restart. No config change needed; "auto" picks it up by itself.
+HTTP_SERVER  = "auto"
+
+# Worker threads per listener. 16 suits a 128-player server. Raise it if one
+# gateway fronts many servers.
+HTTP_THREADS = 16
+
 # --- Servers (multi-server hive) ---
 #
 # ============================================================================

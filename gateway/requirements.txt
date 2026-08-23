@@ -1,3 +1,7 @@
 flask>=3.0
 mysql-connector-python>=9.0
 psutil>=5.9
+# Optional but STRONGLY recommended for anything beyond one small server.
+# Without it the gateway falls back to werkzeug, which drops requests under
+# concurrency. Install and restart - no config change needed.
+waitress>=3.0

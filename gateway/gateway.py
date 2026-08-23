@@ -2330,10 +2330,48 @@ if __name__ == "__main__":
 
     wsgi = DebuggedApplication(app, evalex=True) if FLASK_DEBUG else app
 
+    # ------------------------------------------------------------------
+    # HTTP SERVER: waitress if available, werkzeug otherwise.
+    #
+    # werkzeug.serving is a DEVELOPMENT server - its own documentation says
+    # so. It spawns a thread per request and stops accepting under load.
+    # Measured on this box 2026-08-23: throughput plateaued at ~650 req/s and
+    # requests began FAILING at 32 concurrent (39 of 320 dropped). Steady
+    # state for a full hive is only ~9 req/s, so that ceiling is not the
+    # problem - a burst is. 128 players reconnecting after a restart puts far
+    # more than 32 requests in flight at once, and that is exactly where it
+    # drops them.
+    #
+    # waitress is a production WSGI server: pure Python, no compiler, same
+    # behaviour on Linux and Windows, and it QUEUES work across a fixed
+    # thread pool instead of spawning threads until it falls over.
+    #
+    # AUTO-DETECTED ON PURPOSE. An admin who never installs it keeps exactly
+    # the behaviour they have today - the upgrade is "pip install waitress"
+    # and a restart, with no config edit and nothing to get wrong. Set
+    # HTTP_SERVER in config.py to "waitress" or "werkzeug" to force one,
+    # which is also how you A/B the two on identical load.
+    # ------------------------------------------------------------------
+    _forced = getattr(config, "HTTP_SERVER", "auto").lower()
+    _waitress = None
+    if _forced in ("auto", "waitress"):
+        try:
+            from waitress import create_server as _waitress
+        except ImportError:
+            if _forced == "waitress":
+                print("[GATEWAY] HTTP_SERVER=waitress but waitress is NOT installed — run: pip install waitress")
+                sys.exit(1)
+
+    _threads_per = getattr(config, "HTTP_THREADS", 16)
+
     httpds = []
     for s in SERVERS:
         try:
-            srv = make_server(s["host"], s["port"], wsgi, threaded=True)
+            if _waitress:
+                srv = _waitress(wsgi, host=s["host"], port=s["port"],
+                                threads=_threads_per, clear_untrusted_proxy_headers=True)
+            else:
+                srv = make_server(s["host"], s["port"], wsgi, threaded=True)
             httpds.append((s, srv))
         except OSError as e:
             print(f"[GATEWAY] FAILED to bind {s['host']}:{s['port']} ({s['server_id']}) — {e}")
@@ -2342,9 +2380,18 @@ if __name__ == "__main__":
         print("[GATEWAY] No listeners bound — exiting.")
         sys.exit(1)
 
+    if _waitress:
+        print(f"[GATEWAY] HTTP server: waitress ({_threads_per} threads per listener)")
+    else:
+        print("[GATEWAY] HTTP server: werkzeug (DEVELOPMENT server)")
+        print("[GATEWAY]   Fine for a small server. For a busy hive install waitress:")
+        print("[GATEWAY]   pip install waitress   — then restart. Nothing else to change.")
+
     threads = []
     for s, srv in httpds:
-        t = threading.Thread(target=srv.serve_forever, daemon=True, name=f"gw-{s['server_id']}-{s['port']}")
+        # waitress exposes run(); werkzeug exposes serve_forever().
+        _entry = srv.run if _waitress else srv.serve_forever
+        t = threading.Thread(target=_entry, daemon=True, name=f"gw-{s['server_id']}-{s['port']}")
         t.start()
         threads.append(t)
         print(f"[GATEWAY] Listening {s['host']}:{s['port']} -> {s['server_id']}")
@@ -2358,6 +2405,12 @@ if __name__ == "__main__":
         print("\n[GATEWAY] Shutting down...")
         for s, srv in httpds:
             try:
-                srv.shutdown()
+                # werkzeug: shutdown(). waitress: close(). Try both rather than
+                # branching on a flag that could drift out of sync with the
+                # server actually in use.
+                if hasattr(srv, "shutdown"):
+                    srv.shutdown()
+                elif hasattr(srv, "close"):
+                    srv.close()
             except Exception:
                 pass
