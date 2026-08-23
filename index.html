@@ -1450,24 +1450,50 @@ copy gateway.py.bak gateway.py</pre></div>
 
 <section><div class="wrap">
   <h3>When the update is more than one file</h3>
-  <p class="muted">Once in a while a release also changes other files &mdash; new Python packages (<code class="inline">requirements.txt</code>), the config template (<code class="inline">config.example.py</code>), or the database schema. The release notes call that out. When it happens, refresh the whole kit instead of one file &mdash; and note that the schema part needs nothing from you beyond the restart at the end, because the gateway applies it itself:</p>
+  <p class="muted">Sometimes a release also changes the Python packages (<code class="inline">requirements.txt</code>), the config template (<code class="inline">config.example.py</code>), or the database schema. When that happens, refresh the whole kit rather than one file. <b>Always run the <code class="inline">pip install</code> step</b> &mdash; it is how new packages arrive, it is harmless when nothing changed, and skipping it is the most common way an upgrade half-lands. The schema needs nothing from you beyond the restart at the end; the gateway applies it itself.</p>
   <div class="code"><pre><span class="c"># Linux — update the reference kit (the git clone), then copy the gateway across</span>
 cd /opt/wastelandz
 git pull
 cp -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
 
-<span class="c"># if requirements changed, re-install inside the venv</span>
+<span class="c"># ALWAYS run this — installs any new packages, no-op if nothing changed</span>
 cd /opt/wastelandz-gateway
 source venv/bin/activate
 pip install -r requirements.txt
 
 sudo systemctl restart wz-gateway</pre></div>
+  <div class="code"><pre><span class="c"># Windows — same idea</span>
+cd D:\wastelandz
+git pull
+xcopy /E /Y D:\wastelandz\gateway D:\wastelandz-gateway\
+
+<span class="c"># ALWAYS run this</span>
+cd D:\wastelandz-gateway
+pip install -r requirements.txt
+
+<span class="c"># then restart the gateway window</span></pre></div>
   <div class="note danger"><div class="h">Your config.py is safe &mdash; leave it alone</div><p><code class="inline">config.py</code> holds your database password and gateway key and is never stored in the repo, so <code class="inline">git pull</code> and the single-file <code class="inline">curl</code> both leave it untouched. The <code class="inline">cp -r</code> above copies only the program files the kit ships &mdash; it does <b>not</b> contain a <code class="inline">config.py</code>, so your live one stays in place. Never overwrite it.</p></div>
   <div class="note"><div class="h">Database changes apply themselves &mdash; you never run SQL</div>
   <p>From gateway <b>0.8.0</b> onward the gateway keeps its own database up to date. On start it checks which schema updates have already been applied, runs any that are missing, and prints each one. Restarting it after an update is the whole procedure.</p>
   <p>It records what it has applied in the database itself, so an update <b>cannot run twice</b> &mdash; there is no flag to reset and nothing to remember. A fresh install still runs <code class="inline">setup_database.sql</code> once; after that, the gateway takes over.</p>
   <p>Two things it will refuse to do rather than risk your data. It will not run an update that <b>deletes</b> anything unless you deliberately start it with <code class="inline">--allow-destructive</code>, and even then only after it has taken its own backup first &mdash; if the backup fails, the update is refused. And if the database is <b>newer</b> than the gateway (you rolled the gateway back but not the data), it refuses to start rather than write a format it does not understand.</p>
   <p class="muted">Watch the console on the first restart after an update. You will see a line per applied change, ending with the schema version. If nothing is pending it simply says the schema is up to date.</p></div>
+  <div class="note tip"><div class="h">Speed &mdash; make sure <code class="inline">waitress</code> is installed</div>
+  <p>The gateway can serve HTTP two ways. Out of the box Python only gives it a <b>development</b> server, which works fine for one small server but starts <b>dropping requests</b> when several arrive at once &mdash; and a dropped request during a save is a lost write.</p>
+  <p><b>waitress</b> is a proper production server. It is pure Python, needs no compiler, and behaves identically on Linux and Windows. It is in <code class="inline">requirements.txt</code>, so the <code class="inline">pip install</code> step above installs it &mdash; which is why that step is not optional.</p>
+  <p>Nothing to configure. The gateway detects it and uses it automatically. Check the first lines after a restart:</p>
+  <div class="code"><pre><span class="c"># good</span>
+[GATEWAY] HTTP server: waitress (16 threads per listener)
+[GATEWAY] DB connection pool created (size=32)
+
+<span class="c"># waitress missing — still works, but will drop requests under load</span>
+[GATEWAY] HTTP server: werkzeug (DEVELOPMENT server)
+[GATEWAY]   Fine for a small server. For a busy hive install waitress:
+[GATEWAY]   pip install waitress   — then restart. Nothing else to change.</pre></div>
+  <p class="muted">Measured on a two-server hive: the development server plateaued around 620 requests/second and began failing at 32 simultaneous requests (65 of 640 dropped). With waitress and the default connection pool the same load ran <b>1000 requests/second with zero failures</b>. Day to day a busy hive only needs a handful of requests a second &mdash; the difference shows up in bursts, like everyone reconnecting after a restart.</p></div>
+  <div class="note"><div class="h">If you see &ldquo;database unavailable&rdquo; under load</div>
+  <p>That is the connection pool running out, not the database being down. The gateway keeps a fixed set of MySQL connections and lends one to each request; if more requests arrive at once than there are connections, the extras have nowhere to go.</p>
+  <p>It already retries briefly before giving up, and the defaults (<code class="inline">DB_POOL_SIZE = 32</code>, <code class="inline">HTTP_THREADS = 16</code>) are matched for a two-server gateway. If you run <b>more servers through one gateway</b>, either lower <code class="inline">HTTP_THREADS</code> or raise <code class="inline">DB_POOL_SIZE</code> &mdash; 32 is the maximum the MySQL connector allows. The gateway prints a warning at startup if these two do not line up, so you do not have to work it out yourself.</p></div>
 </div></section>
 </main>
 
