@@ -1391,7 +1391,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
   <h2>Only the gateway needs a manual update</h2>
   <ul class="clean muted">
     <li><b>The mod</b> (gameplay, menus, everything players see) &mdash; auto-downloads from the Workshop on server start. Nothing to do.</li>
-    <li><b>The database</b> &mdash; your data stays as it is. A release only touches the schema in rare cases, and its notes say so explicitly.</li>
+    <li><b>The database</b> &mdash; your data stays as it is. When a release does change the schema, the gateway applies it itself on the next restart and records what it applied, so it can never run twice. You never run SQL.</li>
     <li><b>The gateway</b> &mdash; the small Python program you run. New logic ships as an updated <code class="inline">gateway.py</code>. That&rsquo;s what this page covers.</li>
   </ul>
   <div class="note tip"><div class="h">The usual case is one file</div><p>Most gateway updates change only <code class="inline">gateway.py</code>. The steps below replace just that file and leave your <code class="inline">config.py</code> &mdash; your database password and gateway key &mdash; completely untouched.</p></div>
