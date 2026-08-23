@@ -217,6 +217,50 @@ def _close(conn):
 def _iso(value):
     return value.isoformat() if value else ""
 
+# MySQL error numbers worth retrying rather than failing the request.
+#   1213  ER_LOCK_DEADLOCK        - InnoDB picked this transaction as the victim
+#   1205  ER_LOCK_WAIT_TIMEOUT    - waited too long for a row lock
+# Both are TRANSIENT and both are caused by CONCURRENCY, not by bad data. MySQL
+# rolls the loser back and its own message says "try restarting transaction".
+_RETRYABLE_ERRNOS = (1213, 1205)
+
+
+def _is_retryable(err):
+    return getattr(err, "errno", None) in _RETRYABLE_ERRNOS
+
+
+def _db_retry(fn, tag, attempts=3):
+    """Run a DB operation, retrying transient lock failures.
+
+    Found by load test 2026-08-23: 128 players reconnecting at once produced
+        1213 Deadlock found when trying to get lock; try restarting transaction
+    in save_player, which returned HTTP 500. save_player touches `players`
+    twice and `player_sessions` once per request, so concurrent saves for
+    different players can still interleave into a deadlock on the shared
+    table's indexes.
+
+    A 500 there is a LOST SAVE. Retrying is the documented remedy - the losing
+    transaction was rolled back cleanly, so re-running it is safe and is not a
+    double-write.
+
+    Backoff is tiny and jittered: deadlocks resolve in microseconds, and
+    identical backoff across threads just re-collides them.
+    """
+    import random as _r
+    last = None
+    for attempt in range(attempts):
+        try:
+            return fn()
+        except mysql.connector.Error as err:
+            if not _is_retryable(err):
+                raise
+            last = err
+            if attempt < attempts - 1:
+                time.sleep(0.005 + _r.random() * 0.015)
+                print(f"[GATEWAY] {tag}: transient lock error ({err.errno}) — retry {attempt + 1}")
+    raise last
+
+
 def _db_error(tag, err):
     print(f"[GATEWAY] {tag} DB error: {err}")
     return jsonify({"status": "error", "message": "database error"}), 500
@@ -593,57 +637,68 @@ def save_player(uid):
         # is consumed a moment early, which costs a free respawn. The other
         # direction - a grace that never clears - hands out an unlimited faction
         # and spawn reroll, which is the anti-battle-log rule defeated.
-        cursor.execute("UPDATE players SET arrival_grace = 0 "
-                       "WHERE player_uid = %s AND hive_id = %s AND arrival_grace <> 0",
-                       (uid, HIVE_ID))
-        if cursor.rowcount:
-            print(f"[GATEWAY] arrival grace consumed: {uid} on {sid}")
-        if inventory is not None:
+        # RETRY ON DEADLOCK. This block touches `players` twice and
+        # `player_sessions` once, so concurrent saves can interleave and let
+        # InnoDB pick one as the victim - seen in the 2026-08-23 load test as
+        # 1213 during a 128-player reconnect burst, surfaced as HTTP 500.
+        #
+        # A 500 here is a LOST SAVE. The victim is rolled back cleanly, so
+        # re-running is safe and is not a double write - which is precisely
+        # what MySQL means by 'try restarting transaction'.
+        def _write():
+            cursor.execute("UPDATE players SET arrival_grace = 0 "
+                           "WHERE player_uid = %s AND hive_id = %s AND arrival_grace <> 0",
+                           (uid, HIVE_ID))
+            if cursor.rowcount:
+                print(f"[GATEWAY] arrival grace consumed: {uid} on {sid}")
+            if inventory is not None:
+                cursor.execute("""
+                    INSERT INTO players (player_uid, hive_id, display_name, money, faction,
+                                         weapon, inventory, bank, current_server_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        display_name = VALUES(display_name),
+                        money = VALUES(money),
+                        faction = VALUES(faction),
+                        weapon = VALUES(weapon),
+                        inventory = VALUES(inventory),
+                        bank = VALUES(bank),
+                        current_server_id = VALUES(current_server_id),
+                        last_seen = CURRENT_TIMESTAMP
+                """, (uid, HIVE_ID, display_name, money, faction, weapon, inventory, bank, sid))
+            else:
+                cursor.execute("""
+                    INSERT INTO players (player_uid, hive_id, display_name, money, faction,
+                                         weapon, bank, current_server_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        display_name = VALUES(display_name),
+                        money = VALUES(money),
+                        faction = VALUES(faction),
+                        weapon = VALUES(weapon),
+                        bank = VALUES(bank),
+                        current_server_id = VALUES(current_server_id),
+                        last_seen = CURRENT_TIMESTAMP
+                """, (uid, HIVE_ID, display_name, money, faction, weapon, bank, sid))
+
             cursor.execute("""
-                INSERT INTO players (player_uid, hive_id, display_name, money, faction,
-                                     weapon, inventory, bank, current_server_id)
+                INSERT INTO player_sessions (player_uid, server_id, map_name,
+                                             pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
-                    display_name = VALUES(display_name),
-                    money = VALUES(money),
-                    faction = VALUES(faction),
-                    weapon = VALUES(weapon),
-                    inventory = VALUES(inventory),
-                    bank = VALUES(bank),
-                    current_server_id = VALUES(current_server_id),
+                    map_name = VALUES(map_name),
+                    pos_x = VALUES(pos_x),
+                    pos_y = VALUES(pos_y),
+                    pos_z = VALUES(pos_z),
+                    rotation_yaw = VALUES(rotation_yaw),
+                    stance = VALUES(stance),
+                    is_alive = VALUES(is_alive),
                     last_seen = CURRENT_TIMESTAMP
-            """, (uid, HIVE_ID, display_name, money, faction, weapon, inventory, bank, sid))
-        else:
-            cursor.execute("""
-                INSERT INTO players (player_uid, hive_id, display_name, money, faction,
-                                     weapon, bank, current_server_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                    display_name = VALUES(display_name),
-                    money = VALUES(money),
-                    faction = VALUES(faction),
-                    weapon = VALUES(weapon),
-                    bank = VALUES(bank),
-                    current_server_id = VALUES(current_server_id),
-                    last_seen = CURRENT_TIMESTAMP
-            """, (uid, HIVE_ID, display_name, money, faction, weapon, bank, sid))
+            """, (uid, sid, map_name, pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive))
 
-        cursor.execute("""
-            INSERT INTO player_sessions (player_uid, server_id, map_name,
-                                         pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                map_name = VALUES(map_name),
-                pos_x = VALUES(pos_x),
-                pos_y = VALUES(pos_y),
-                pos_z = VALUES(pos_z),
-                rotation_yaw = VALUES(rotation_yaw),
-                stance = VALUES(stance),
-                is_alive = VALUES(is_alive),
-                last_seen = CURRENT_TIMESTAMP
-        """, (uid, sid, map_name, pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive))
+            conn.commit()
 
-        conn.commit()
+        _db_retry(_write, "save_player")
         print(f"[GATEWAY] Player saved: {uid} @ {sid} money={money} bank={bank} alive={is_alive}")
         return jsonify({"status": "ok", "message": "player saved"})
 
