@@ -229,7 +229,7 @@ def _is_retryable(err):
     return getattr(err, "errno", None) in _RETRYABLE_ERRNOS
 
 
-def _db_retry(fn, tag, attempts=3):
+def _db_retry(fn, tag, attempts=6):
     """Run a DB operation, retrying transient lock failures.
 
     Found by load test 2026-08-23: 128 players reconnecting at once produced
@@ -256,7 +256,10 @@ def _db_retry(fn, tag, attempts=3):
                 raise
             last = err
             if attempt < attempts - 1:
-                time.sleep(0.005 + _r.random() * 0.015)
+                # Exponential-ish with jitter. A flat 5-20ms was not always
+                # enough at high concurrency - the ramp test still produced a
+                # few 500s at 3 attempts, and each one is a lost save.
+                time.sleep((0.005 * (attempt + 1)) + _r.random() * 0.015)
                 print(f"[GATEWAY] {tag}: transient lock error ({err.errno}) — retry {attempt + 1}")
     raise last
 
