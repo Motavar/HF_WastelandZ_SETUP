@@ -1495,6 +1495,43 @@ pip install -r requirements.txt
   <p>That is the connection pool running out, not the database being down. The gateway keeps a fixed set of MySQL connections and lends one to each request; if more requests arrive at once than there are connections, the extras have nowhere to go.</p>
   <p>It already retries briefly before giving up, and the defaults (<code class="inline">DB_POOL_SIZE = 32</code>, <code class="inline">HTTP_THREADS = 16</code>) are matched for a two-server gateway. If you run <b>more servers through one gateway</b>, either lower <code class="inline">HTTP_THREADS</code> or raise <code class="inline">DB_POOL_SIZE</code> &mdash; 32 is the maximum the MySQL connector allows. The gateway prints a warning at startup if these two do not line up, so you do not have to work it out yourself.</p></div>
 </div></section>
+
+<section><div class="wrap">
+  <h3>What is in the database</h3>
+  <p class="muted">You never need to touch these &mdash; <code class="inline">setup_database.sql</code> creates them and the gateway keeps them current. This is here so you know what your server stores, and what a backup contains.</p>
+
+  <h4>Player data</h4>
+  <table class="t">
+    <tr><th>Table</th><th>Holds</th><th>Scope</th></tr>
+    <tr><td><code class="inline">players</code></td><td>Money, bank, faction, identity</td><td><b>Hive-wide</b> &mdash; follows the player to every server</td></tr>
+    <tr><td><code class="inline">player_data</code></td><td>Gear, and any future player-owned system</td><td><b>Per server</b>, shared per the gear group</td></tr>
+    <tr><td><code class="inline">player_sessions</code></td><td>Position, stance, alive state, <code class="inline">/recover</code> token</td><td>Per server &mdash; where you logged off</td></tr>
+    <tr><td><code class="inline">transactions</code></td><td>Every money movement, append-only</td><td>Audit trail</td></tr>
+    <tr><td><code class="inline">player_stats_daily</code></td><td>Kills, deaths, playtime</td><td>Per server, per day</td></tr>
+    <tr><td><code class="inline">player_marker_prefs</code></td><td>Map / HUD marker choices</td><td>Hive-wide</td></tr>
+  </table>
+
+  <h4>Server &amp; world</h4>
+  <table class="t">
+    <tr><th>Table</th><th>Holds</th></tr>
+    <tr><td><code class="inline">hive_servers</code></td><td>Each server&rsquo;s map, gear group, mod version and <b>full addon list</b> &mdash; what lets you spot a mod mismatch before it costs a player their gear</td></tr>
+    <tr><td><code class="inline">hive_share_groups</code></td><td>Labels for the A&ndash;Z gear groups</td></tr>
+    <tr><td><code class="inline">hf_placements</code></td><td>Player-placed objects and admin fixtures</td></tr>
+    <tr><td><code class="inline">hf_bases</code> / <code class="inline">hf_base_access</code></td><td>Base ownership and door access (schema only for now)</td></tr>
+    <tr><td><code class="inline">money_drops</code></td><td>Dropped cash &mdash; session-only, wiped on boot</td></tr>
+    <tr><td><code class="inline">blacklist</code> / <code class="inline">security_events</code></td><td>Bans and the audit log</td></tr>
+    <tr><td><code class="inline">schema_migrations</code></td><td>Which schema updates have been applied &mdash; what stops one running twice</td></tr>
+  </table>
+
+  <div class="note"><div class="h">Gear groups &mdash; one bank, several wardrobes</div>
+  <p>Money and bank live in <code class="inline">players</code> and are <b>always</b> shared across your whole hive. Gear lives in <code class="inline">player_data</code> and is shared according to a <b>gear group</b>, set per server and per map.</p>
+  <p>Every server defaults to group <b>ALPHA</b>, so out of the box the whole hive shares gear exactly as before. Put servers 1&ndash;3 in <code class="inline">ALPHA</code> and 4&ndash;6 in <code class="inline">BRAVO</code> and you get two independent gear pools that still share one bank. A server set to <code class="inline">PRIVATE</code> keeps its gear to itself.</p>
+  <p class="muted">Set it in <code class="inline">HFWastelandZ_server_&lt;MapName&gt;.conf</code>, or live from F8 &rarr; SERVER. It is per-map on purpose: a server that rotates to a different map may also run different mods, and gear from one mod set cannot be restored where those mods are missing.</p></div>
+
+  <div class="note warn"><div class="h">Servers sharing gear must share mods</div>
+  <p>Gear is stored as item references. If a player carries an item from a server that has a mod to one that does not, that item cannot be restored there. The gateway records every server&rsquo;s addon list precisely so you can compare them <b>before</b> putting servers in the same gear group.</p></div>
+</div></section>
+
 </main>
 
 <footer><div class="wrap">
