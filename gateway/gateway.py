@@ -37,6 +37,7 @@ from mysql.connector import pooling
 import json
 import sys
 import os
+import time
 
 import migrate
 
@@ -146,13 +147,28 @@ _db_pool = None
 # together in the F8 SERVER tab instead of an admin inferring them.
 SCHEMA_VERSION = 0
 
+def _pool_size():
+    """How many MySQL connections to pool.
+
+    Default raised from 10 to 32 (the connector's maximum) after measuring
+    this: with waitress serving 16 threads per listener, a two-server gateway
+    can have 32 requests in flight, and a pool of 10 meant the other 22 got
+    get_db() -> None -> HTTP 503. Under werkzeug the same overload was
+    invisible, because requests were dropped at the socket before they ever
+    reached the pool.
+
+    A 503 on a save is a LOST WRITE, which is exactly what must not happen.
+    """
+    return min(int(getattr(config, "DB_POOL_SIZE", 32)), 32)
+
+
 def _init_db_pool():
     """Initialize MySQL connection pool (called once at startup)."""
     global _db_pool
     try:
         _db_pool = pooling.MySQLConnectionPool(
             pool_name="gateway_pool",
-            pool_size=getattr(config, "DB_POOL_SIZE", 10),
+            pool_size=_pool_size(),
             pool_reset_session=True,
             host=config.DB_HOST,
             port=config.DB_PORT,
@@ -160,7 +176,7 @@ def _init_db_pool():
             password=config.DB_PASSWORD,
             database=config.DB_NAME
         )
-        print(f"[GATEWAY] DB connection pool created (size={getattr(config, 'DB_POOL_SIZE', 10)})")
+        print(f"[GATEWAY] DB connection pool created (size={_pool_size()})")
     except mysql.connector.Error as err:
         print(f"[GATEWAY] DB POOL ERROR: {err}")
         _db_pool = None
@@ -173,11 +189,23 @@ def get_db():
         _init_db_pool()
     if not _db_pool:
         return None
-    try:
-        return _db_pool.get_connection()
-    except mysql.connector.Error as err:
-        print(f"[GATEWAY] DB POOL GET ERROR: {err}")
-        return None
+    # Retry briefly rather than failing the request outright.
+    #
+    # An exhausted pool is a BURST, not an outage - the connections are busy,
+    # not broken, and one is usually free within milliseconds. Returning None
+    # immediately turns a 5 ms wait into an HTTP 503, and a 503 on a save is a
+    # lost write. Three quick attempts smooth a burst without hiding a real
+    # outage: if the pool is genuinely dead, this still gives up in ~60 ms.
+    last = None
+    for attempt in range(3):
+        try:
+            return _db_pool.get_connection()
+        except mysql.connector.Error as err:
+            last = err
+            if attempt < 2:
+                time.sleep(0.02)
+    print(f"[GATEWAY] DB POOL EXHAUSTED after 3 attempts: {last}")
+    return None
 
 def _close(conn):
     if conn is not None:
@@ -2379,6 +2407,16 @@ if __name__ == "__main__":
     if not httpds:
         print("[GATEWAY] No listeners bound — exiting.")
         sys.exit(1)
+
+    # Capacity sanity check. Worker threads that outnumber pooled connections
+    # means requests will queue on the DB and, at the edge, 503. Say so at
+    # startup rather than letting an admin discover it as random errors.
+    _max_inflight = _threads_per * len(httpds)
+    if _waitress and _max_inflight > _pool_size():
+        print(f"[GATEWAY] NOTE: {_threads_per} threads x {len(httpds)} listener(s) = {_max_inflight} "
+              f"possible concurrent requests, but the DB pool is {_pool_size()}.")
+        print(f"[GATEWAY]   Bursts will queue on the database. Either raise DB_POOL_SIZE "
+              f"(max 32) or lower HTTP_THREADS in config.py.")
 
     if _waitress:
         print(f"[GATEWAY] HTTP server: waitress ({_threads_per} threads per listener)")

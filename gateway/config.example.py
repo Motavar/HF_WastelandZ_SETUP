@@ -11,7 +11,11 @@ DB_PORT = 3306
 DB_USER = "wastelandz"
 DB_PASSWORD = "CHANGE_ME"
 DB_NAME = "wastelandz"
-DB_POOL_SIZE = 10              # Connections in the pool. Raise for a busy hive
+DB_POOL_SIZE = 32              # Pooled MySQL connections (max 32).
+                               # Must be >= HTTP_THREADS x number of servers, or
+                               # bursts queue on the database and can 503 - and a
+                               # 503 on a save is a lost write. The gateway warns
+                               # at startup if these do not line up.
                               # (more servers hitting one gateway). Max 32.
 
 # --- Gateway runtime ---
