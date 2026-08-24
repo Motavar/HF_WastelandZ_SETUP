@@ -181,7 +181,9 @@
   .view{display:none}
   body[data-view="server"] .view-server{display:block}
   body[data-view="mission"] .view-mission{display:block}
+  body[data-view="gateway"] .view-gateway{display:block}
   body[data-view="upgrade"] .view-upgrade{display:block}
+  body[data-view="trouble"] .view-trouble{display:block}
 
   /* ---- coming-soon pill ---- */
   .pill{display:inline-block;font-family:var(--font-display);font-weight:700;text-transform:uppercase;
@@ -209,7 +211,9 @@
   <div class="viewtabs" role="tablist" aria-label="Guide section">
     <button role="tab" data-view="server" aria-selected="true">Server Setup</button>
     <button role="tab" data-view="mission" aria-selected="false">Mission Setup</button>
+    <button role="tab" data-view="gateway" aria-selected="false">Update Gateway</button>
     <button role="tab" data-view="upgrade" aria-selected="false">Upgrade</button>
+    <button role="tab" data-view="trouble" aria-selected="false">Troubleshooting</button>
   </div>
 </div>
 
@@ -1379,7 +1383,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
 </main>
 
 <!-- ================= UPGRADE ================= -->
-<main class="view view-upgrade">
+<main class="view view-gateway">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Keeping current</div>
   <h1>Update the gateway.</h1>
@@ -1534,6 +1538,142 @@ pip install -r requirements.txt
 
 </main>
 
+<main class="view view-upgrade">
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">Wasteland-Z &middot; Keeping current</div>
+  <h1>Upgrade the game and the mod.</h1>
+  <p class="lede">Three moving parts, and only two of them are yours to move. The <b>mod</b> updates itself from the Workshop every time your server starts. The <b>game server</b> you update yourself, and it must be current or the mod will not load. The <b>gateway</b> has its own page.</p>
+</div></div>
+
+<section><div class="wrap">
+  <span class="section-tag">Who updates what</span>
+  <h2>Only one of these needs your hands</h2>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Part</th><th>Who updates it</th><th>What you do</th></tr>
+    <tr><td><b>The mod</b> (Wasteland-Z)</td><td>Reforger Workshop, on every server start</td><td>Nothing. Restart the server and you have the current build.</td></tr>
+    <tr><td><b>The game server</b> (Arma Reforger)</td><td>You, via SteamCMD</td><td>Run the update before you restart. See below.</td></tr>
+    <tr><td><b>The database</b></td><td>The gateway, on its own</td><td>Nothing. It applies schema changes itself and records what it applied, so it can never run twice.</td></tr>
+    <tr><td><b>The gateway</b></td><td>You, one file</td><td>See the <b>Update Gateway</b> tab.</td></tr>
+  </table></div>
+  <div class="note warn"><div class="h">Order matters: game first, then restart</div><p>The mod downloads on server start and is compiled against whatever game version it finds. Update the game <b>before</b> the restart that pulls the new mod, not after.</p></div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Game server</span><h2>Update Arma Reforger with SteamCMD</h2></div>
+  <p class="muted">App ID <code class="inline">1874900</code> is the dedicated server. This is the same command you used to install it &mdash; run it again and it updates in place, keeping your <code class="inline">.json</code> configs and profile folder.</p>
+
+  <div class="step"><span class="n">1</span>
+    <h4>Stop the server</h4>
+    <p>Updating files under a running server is how you get a half-patched install.</p>
+    <div class="code"><pre><span class="c"># Linux — systemd service</span>
+sudo systemctl stop wz-server
+
+<span class="c"># Windows — close the server window, or stop the service</span></pre></div>
+  </div>
+
+  <div class="step"><span class="n">2</span>
+    <h4>Run the update</h4>
+    <div class="code"><pre><span class="c"># Linux</span>
+steamcmd +force_install_dir /opt/reforger +login anonymous +app_update 1874900 validate +quit
+
+<span class="c"># Windows</span>
+steamcmd +force_install_dir C:\reforger +login anonymous +app_update 1874900 validate +quit</pre></div>
+    <p class="muted"><code class="inline">validate</code> re-checks every file against Steam&rsquo;s manifest. It is slower, and it is what repairs a partial download from a previous run.</p>
+  </div>
+
+  <div class="step"><span class="n">3</span>
+    <h4>Confirm the version</h4>
+    <p>The version prints in the first few lines of the server log on startup.</p>
+    <div class="code"><pre><span class="c"># Linux</span>
+grep -m1 "version" /opt/reforger/profile/logs/*/console.log
+
+<span class="c"># or just watch it boot</span>
+sudo journalctl -u wz-server -f</pre></div>
+    <p class="muted">You are looking for a line naming the build, e.g. <code class="inline">version 1.8.0.10</code>. If it is older than the version the current mod requires, the mod will not compile &mdash; see Troubleshooting.</p>
+  </div>
+
+  <div class="step"><span class="n">4</span>
+    <h4>Start the server &mdash; the mod updates itself here</h4>
+    <p>On start, Reforger pulls the current Wasteland-Z build from the Workshop before loading it. Watch for the mod appearing in the log with its version.</p>
+    <div class="code"><pre>sudo systemctl start wz-server</pre></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <span class="section-tag">Version requirements</span>
+  <h2>What each release expects</h2>
+  <p class="muted">A release note that raises a requirement says so at the top. These are the ones that have moved so far.</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>From</th><th>Requirement</th><th>If you skip it</th></tr>
+    <tr><td>2026-08-16 onward</td><td><b>Arma Reforger 1.8.0.10</b></td><td>The Game script module fails to compile and <b>the server does not start</b>. There is no 1.7-compatible build.</td></tr>
+    <tr><td>2026-07-16 onward</td><td><b>Gateway 0.7.1</b></td><td>Admin <code class="inline">/money</code> drops are not written to the database and vanish on restart. Everything else keeps working.</td></tr>
+    <tr><td>Current</td><td><b>Gateway 0.8.0</b> + <code class="inline">waitress</code></td><td>Without waitress the gateway falls back to a development web server that drops requests under a reconnect burst. A dropped save is a lost save.</td></tr>
+  </table></div>
+  <div class="note tip"><div class="h">Config files are never rewritten out from under you</div><p>New settings are added to your existing <code class="inline">.conf</code> files on first boot after an update, with defaults. Your values are kept. You do not need to delete anything, and there has never been a release that required you to.</p></div>
+</div></section>
+</main>
+
+<main class="view view-trouble">
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">Wasteland-Z &middot; When it goes wrong</div>
+  <h1>Troubleshooting.</h1>
+  <p class="lede">Real failures from real upgrades, with the symptom you will actually see first. If your server stopped starting right after an update, start at the top &mdash; that one accounts for most of it.</p>
+</div></div>
+
+<section><div class="wrap">
+  <span class="section-tag">Upgrade failures</span>
+  <h2>The server stops starting after an update</h2>
+
+  <div class="note warn"><div class="h">Symptom: <code class="inline">Can&rsquo;t compile "Game" script module!</code> and the server exits</div>
+  <p><b>Cause:</b> the game server is older than the mod requires. From the 2026-08-16 release the mod targets <b>Arma Reforger 1.8.0.10</b>. That version removed 137 script API members <b>with no deprecation cycle</b> &mdash; Bohemia&rsquo;s deprecation list was byte-identical to the previous version&rsquo;s, so nothing warned in advance. Three of those removals sat in mod code paths.</p>
+  <p><b>Fix:</b> update the game server (see the <b>Upgrade</b> tab) and restart. <b>There is no older-compatible build</b> to fall back to &mdash; the mod either compiles against the current game or the server does not start.</p></div>
+
+  <div class="note"><div class="h">Symptom: <code class="inline">GATEWAY VERSION MISMATCH</code> banner in the server console</div>
+  <p><b>Cause:</b> the gateway is older than the mod expects. The mod pings the gateway every 60 seconds and prints this until they line up.</p>
+  <p><b>Fix:</b> replace <code class="inline">gateway.py</code> and restart the gateway &mdash; see the <b>Update Gateway</b> tab. This is a <b>warning, not a block</b>: the game keeps running while you sort it out. Check the release note for that version to see what specifically is degraded in the meantime.</p></div>
+
+  <div class="note warn"><div class="h">Symptom: <code class="inline">gateway.py</code> is 0 bytes after an update</div>
+  <p><b>Cause:</b> a download that failed <i>after</i> the shell had already truncated the file. Redirecting output to a file empties it before the download runs, so a failed fetch leaves nothing behind.</p>
+  <p><b>Fix:</b> restore your backup &mdash; <code class="inline">cp gateway.py.bak gateway.py</code> (Windows: <code class="inline">copy gateway.py.bak gateway.py</code>) &mdash; then re-download using <code class="inline">curl -fL</code>. The <code class="inline">-f</code> is what makes curl fail loudly instead of saving an error page over your file.</p></div>
+</div></section>
+
+<section><div class="wrap">
+  <span class="section-tag">Gateway under load</span>
+  <h2>Saves failing, or the gateway falling behind</h2>
+
+  <div class="note warn"><div class="h">Symptom: requests fail in bursts &mdash; typically right after a restart</div>
+  <p><b>Cause:</b> <code class="inline">waitress</code> is not installed, so the gateway falls back to a development web server. Measured: it dropped 39 of 320 requests at 32 concurrent, where waitress dropped none. Day to day a busy hive only needs about 40 requests a second, so the ceiling never shows &mdash; until 128 players reconnect at once.</p>
+  <p><b>Fix:</b> <code class="inline">pip install waitress</code> and restart. It is auto-detected; there is no config change.</p></div>
+
+  <div class="note warn"><div class="h">Symptom: HTTP 503 <code class="inline">database unavailable</code> under load</div>
+  <p><b>Cause:</b> the connection pool is exhausted. The gateway lends one database connection per in-flight request.</p>
+  <p><b>Fix:</b> keep <code class="inline">HTTP_THREADS &times; number_of_servers &le; DB_POOL_SIZE</code>. With the maximum <code class="inline">DB_POOL_SIZE</code> of 32: 2 servers &rarr; 16 threads, 6 servers &rarr; 5, 10 servers &rarr; 3, 16+ &rarr; 2. The gateway warns at startup when these do not line up.</p></div>
+
+  <div class="note"><div class="h">Symptom: the gateway cannot connect to MySQL at all once you run several</div>
+  <p><b>Cause:</b> MySQL&rsquo;s default <code class="inline">max_connections</code> is 151, which allows roughly four gateway processes at a pool size of 32.</p>
+  <p><b>Fix:</b> raise it in <code class="inline">my.cnf</code>:</p>
+  <div class="code"><pre>[mysqld]
+max_connections = 500</pre></div></div>
+</div></section>
+
+<section><div class="wrap">
+  <span class="section-tag">After an update</span>
+  <h2>Gameplay changes that read as bugs</h2>
+
+  <div class="note"><div class="h">Symptom: a key stopped working, or now does two things</div>
+  <p>The 2026-08-21 release <b>brought two keybinds back</b> after the 2026-08-16 note said towing had none: <code class="inline">B</code> for sling pick-up and release (pilot seat, engine on or off) and <code class="inline">R</code> for helicopter engine start. Both appear in <b>Options &rarr; Controls</b> and are rebindable.</p>
+  <p><code class="inline">B</code> shipped as a <b>default, not a guarantee</b> &mdash; it was chosen because nothing of Bohemia&rsquo;s appeared to compete for it in a pilot seat, but that was never proven exhaustively. If players report a conflict, rebind it. Bohemia&rsquo;s own conflict detection in that menu will name the collision.</p></div>
+
+  <div class="note"><div class="h">Symptom: admin <code class="inline">/money</code> drops disappear on restart</div>
+  <p><b>Cause:</b> gateway 0.7.0 does not recognise the <code class="inline">admin_money</code> drop source and refuses the write, so the drop is never stored. It still spawns and can be picked up &mdash; it just cannot survive a restart. Each use also writes a CRIT line to the server log.</p>
+  <p><b>Fix:</b> gateway 0.7.1 or newer. No migration, no config change, and the gateway can be swapped without restarting the game server.</p></div>
+
+  <div class="note tip"><div class="h">Before you assume an update broke it</div>
+  <p>Check the release note for the version you moved to. Every entry lists what changed, any new config keys with their defaults, and a <b>Migration</b> section &mdash; which for most releases reads &ldquo;nothing to do&rdquo;. A change you did not expect is usually documented rather than accidental.</p></div>
+</div></section>
+</main>
+
+
 <footer><div class="wrap">
   <span class="credit">WASTELAND-Z &middot; Dedicated Server Setup</span>
   <span class="credit">By <b>Motavar</b> &middot; <a href="https://wasteland-z.com" style="color:inherit">Wasteland-Z.com</a> &middot; <a href="https://heavyforge.com" style="color:inherit">HeavyForge.com</a> &middot; <a href="mailto:Motavar@Judgement.net" style="color:inherit">Motavar@Judgement.net</a></span>
@@ -1543,7 +1683,7 @@ pip install -r requirements.txt
 <script>
 (function(){
   var body=document.body;
-  // Top-level view tabs (Server Setup / Mission Setup)
+  // Top-level view tabs (Server Setup / Mission Setup / Update Gateway / Upgrade / Troubleshooting)
   document.querySelectorAll('.viewtabs button').forEach(function(btn){
     btn.addEventListener('click',function(){
       body.setAttribute('data-view', btn.getAttribute('data-view'));
