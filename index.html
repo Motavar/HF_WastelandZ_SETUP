@@ -1501,6 +1501,51 @@ pip install -r requirements.txt
 </div></section>
 
 <section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Your settings</span><h2>Look after config.py</h2></div>
+  <p class="muted"><code class="inline">config.py</code> holds your database password and your gateway key. It is the one file in the folder that is <b>yours</b> and cannot be re-downloaded &mdash; everything else can.</p>
+
+  <div class="note tip"><div class="h">A normal update does not touch it</div>
+  <p>The download ships <code class="inline">config.example.py</code>, not <code class="inline">config.py</code>, so replacing files from the kit cannot overwrite yours by name. The one-file update on this page only replaces <code class="inline">gateway.py</code>.</p>
+  <p>Where it <i>can</i> go missing is if you update by deleting the folder and re-copying it, or by re-cloning the repository over the top. If that is your habit, keep a copy somewhere outside the gateway folder.</p></div>
+
+  <div class="step"><span class="n">1</span>
+    <h4>Back it up before you update</h4>
+    <p>One command, and it makes the worst case a thirty-second recovery instead of a password hunt.</p>
+    <div class="code"><pre><span class="c"># Linux</span>
+cp /opt/wastelandz-gateway/config.py ~/config.py.bak
+
+<span class="c"># Windows (Command Prompt)</span>
+copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
+    <p class="muted">Note the backup goes <b>outside</b> the gateway folder. A backup that lives in the folder you are about to delete is not a backup.</p>
+  </div>
+
+  <div class="step"><span class="n">2</span>
+    <h4>Put it back if it did go missing</h4>
+    <p>Copy the backup into place and restart. Nothing else needs doing &mdash; the gateway reads it on start.</p>
+    <div class="code"><pre><span class="c"># Linux</span>
+cp ~/config.py.bak /opt/wastelandz-gateway/config.py
+sudo systemctl restart wz-gateway
+
+<span class="c"># Windows</span>
+copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
+    <div class="note warn"><div class="h">No backup? You can rebuild it, but the key must match</div>
+    <p>Copy <code class="inline">config.example.py</code> to <code class="inline">config.py</code> and fill in your MySQL password. The <code class="inline">api_key</code> must be <b>character-for-character</b> the same as <code class="inline">API_KEY</code> in your game server&rsquo;s <code class="inline">hf_wastelandz\configs\HFWastelandZ_secrets.conf</code> &mdash; that file is the copy you can read it back from. If they differ the gateway rejects every request and money and gear stop saving, with the server otherwise looking healthy.</p></div>
+  </div>
+
+  <div class="step"><span class="n">3</span>
+    <h4>After a big update, check for new settings</h4>
+    <p>This is the part that actually catches people. An update never edits your <code class="inline">config.py</code>, so a release that <b>adds</b> a setting leaves yours without it. Missing settings fall back to their defaults, which is safe &mdash; but the default is not always what you want.</p>
+    <p class="muted">Compare your file against the shipped template and add anything you are missing:</p>
+    <div class="code"><pre><span class="c"># Linux — shows lines present in the template but not in yours</span>
+diff &lt;(grep -oE '^[A-Za-z_]+' config.example.py | sort -u) \
+     &lt;(grep -oE '^[A-Za-z_]+' config.py | sort -u)</pre></div>
+    <p class="muted">On Windows, open both in Notepad side by side &mdash; the template is short.</p>
+    <div class="note"><div class="h">Added in 0.8.0</div>
+    <p><code class="inline">HTTP_SERVER</code>, <code class="inline">HTTP_THREADS</code> and <code class="inline">DB_POOL_SIZE</code>. If your <code class="inline">config.py</code> predates that release it will not have them, and you will get the defaults &mdash; which are tuned for a <b>two-server</b> gateway. Running more servers than that through one gateway is exactly the case where you want to set them yourself.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
   <h3>What is in the database</h3>
   <p class="muted">You never need to touch these &mdash; <code class="inline">setup_database.sql</code> creates them and the gateway keeps them current. This is here so you know what your server stores, and what a backup contains.</p>
 
