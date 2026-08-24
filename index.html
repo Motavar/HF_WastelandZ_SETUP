@@ -1533,15 +1533,15 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
   </div>
 
   <div class="step"><span class="n">3</span>
-    <h4>After a big update, check for new settings</h4>
-    <p>This is the part that actually catches people. An update never edits your <code class="inline">config.py</code>, so a release that <b>adds</b> a setting leaves yours without it. Missing settings fall back to their defaults, which is safe &mdash; but the default is not always what you want.</p>
-    <p class="muted">Compare your file against the shipped template and add anything you are missing:</p>
-    <div class="code"><pre><span class="c"># Linux — shows lines present in the template but not in yours</span>
-diff &lt;(grep -oE '^[A-Za-z_]+' config.example.py | sort -u) \
-     &lt;(grep -oE '^[A-Za-z_]+' config.py | sort -u)</pre></div>
-    <p class="muted">On Windows, open both in Notepad side by side &mdash; the template is short.</p>
-    <div class="note"><div class="h">Added in 0.8.0</div>
-    <p><code class="inline">HTTP_SERVER</code>, <code class="inline">HTTP_THREADS</code> and <code class="inline">DB_POOL_SIZE</code>. If your <code class="inline">config.py</code> predates that release it will not have them, and you will get the defaults &mdash; which are tuned for a <b>two-server</b> gateway. Running more servers than that through one gateway is exactly the case where you want to set them yourself.</p></div>
+    <h4>After a big update, you do not have to do anything</h4>
+    <p>The gateway checks its own settings on every start. If a release added one your <code class="inline">config.py</code> does not have, it <b>writes it in for you</b> with that release&rsquo;s default and tells you it did &mdash; the same way the game server fills in new keys in its <code class="inline">.conf</code> files.</p>
+    <div class="code"><pre>[GATEWAY] config.py is missing 3 setting(s): DB_POOL_SIZE, HTTP_SERVER, HTTP_THREADS
+[GATEWAY]   written to config.py with this build's defaults
+[GATEWAY]   previous file saved as config.py.bak-20260824-081500</pre></div>
+    <p class="muted">Your own values are never edited or reordered &mdash; settings are only ever <b>added</b>. It backs the file up first, and the new entries arrive with a comment explaining each one, so you can read them and change your mind.</p>
+    <div class="note"><div class="h">It will not invent a password or a key</div>
+    <p><code class="inline">DB_PASSWORD</code>, <code class="inline">API_KEY</code> and <code class="inline">SERVERS</code> are never auto-filled. There is no safe default for a credential, and a generated key would not match your game server&rsquo;s <code class="inline">HFWastelandZ_secrets.conf</code> &mdash; the gateway would reject every request while looking perfectly healthy. If one of those is missing the gateway stops and says so, which is the right outcome.</p></div>
+    <p class="muted">If the file cannot be written &mdash; read-only, or the service runs as a user without write access &mdash; the gateway still runs correctly using the defaults for that session, and prints the exact lines to paste in yourself.</p>
   </div>
 </div></section>
 
