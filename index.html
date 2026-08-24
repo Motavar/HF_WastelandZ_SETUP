@@ -1656,21 +1656,6 @@ sudo journalctl -u wz-server -f</pre></div>
 max_connections = 500</pre></div></div>
 </div></section>
 
-<section><div class="wrap">
-  <span class="section-tag">After an update</span>
-  <h2>Gameplay changes that read as bugs</h2>
-
-  <div class="note"><div class="h">Symptom: a key stopped working, or now does two things</div>
-  <p>The 2026-08-21 release <b>brought two keybinds back</b> after the 2026-08-16 note said towing had none: <code class="inline">B</code> for sling pick-up and release (pilot seat, engine on or off) and <code class="inline">R</code> for helicopter engine start. Both appear in <b>Options &rarr; Controls</b> and are rebindable.</p>
-  <p><code class="inline">B</code> shipped as a <b>default, not a guarantee</b> &mdash; it was chosen because nothing of Bohemia&rsquo;s appeared to compete for it in a pilot seat, but that was never proven exhaustively. If players report a conflict, rebind it. Bohemia&rsquo;s own conflict detection in that menu will name the collision.</p></div>
-
-  <div class="note"><div class="h">Symptom: admin <code class="inline">/money</code> drops disappear on restart</div>
-  <p><b>Cause:</b> gateway 0.7.0 does not recognise the <code class="inline">admin_money</code> drop source and refuses the write, so the drop is never stored. It still spawns and can be picked up &mdash; it just cannot survive a restart. Each use also writes a CRIT line to the server log.</p>
-  <p><b>Fix:</b> gateway 0.7.1 or newer. No migration, no config change, and the gateway can be swapped without restarting the game server.</p></div>
-
-  <div class="note tip"><div class="h">Before you assume an update broke it</div>
-  <p>Check the release note for the version you moved to. Every entry lists what changed, any new config keys with their defaults, and a <b>Migration</b> section &mdash; which for most releases reads &ldquo;nothing to do&rdquo;. A change you did not expect is usually documented rather than accidental.</p></div>
-</div></section>
 </main>
 
 
