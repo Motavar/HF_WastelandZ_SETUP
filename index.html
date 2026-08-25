@@ -1762,14 +1762,14 @@ max_connections = 500</pre></div></div>
   <div class="part-head"><span class="part-badge">Server actions</span><h2>Wasteland-Z Server Action Commands</h2></div>
   <p class="lede">Perform low-level server functions from inside Wasteland-Z. You decide which ones.</p>
 
-  <h3>What it does</h3>
+  <h3>What this system does</h3>
 
   <div class="flow">
     <div class="fstep"><b>1 &middot; You</b><span>Write a list of commands in a config file.</span></div>
     <div class="fstep"><b>2 &middot; The mod</b><span>Reads your list on startup and shows it in F8 &rarr; SERVER.</span></div>
     <div class="fstep"><b>3 &middot; Your admin</b><span>Picks one from the list and submits it.</span></div>
     <div class="fstep"><b>4 &middot; The mod</b><span>Writes <code class="inline">SERVER_COMMAND.txt</code> and stops there.</span></div>
-    <div class="fstep"><b>5 &middot; Your script</b><span>Sees the file, deletes it, does the work.</span></div>
+    <div class="fstep"><b>5 &middot; Your watchdog script</b><span>Sees the file, deletes it, does the work.</span></div>
   </div>
 
   <p class="muted"><b>That is the whole system.</b> Wasteland-Z reads your list and writes one word to a file. Every action that actually happens is code you wrote, running as a user you chose.</p>
@@ -1827,15 +1827,8 @@ BY      Motavar (76561198...)
 AT      2026-08-24 09:14:22
 <b>END</b></pre></div>
 
-    <p><b>Your watchdog does four things:</b></p>
-    <ol class="clean muted">
-      <li><b>Looks for that exact filename</b> &mdash; <code class="inline">SERVER_COMMAND.txt</code>. Most of the time it is not there, and that is normal.</li>
-      <li><b>Checks the last line says <code class="inline">END</code></b>. If it does not, the file is still being written &mdash; leave it, look again in a few seconds.</li>
-      <li><b>Reads the second word of the <code class="inline">COMMAND</code> line</b>. That word is the one from your <code class="inline">.conf</code>. <code class="inline">BY</code> and <code class="inline">AT</code> are just for your logs.</li>
-      <li><b>Deletes the file, then does the work.</b> In that order.</li>
-    </ol>
-
-    <p class="muted">Nothing else. Pick a language below, change the paths, put it on a timer.</p>
+    <p class="muted">Your watchdog watches for that file, reads the <code class="inline">COMMAND</code> line, deletes it, and runs whatever you decided that command means. <b>How to read it &mdash; and why each step is there &mdash; is explained under the scripts below.</b></p>
+    <p class="muted">Pick a language below, change the paths, put it on a timer.</p>
   </div>
 </div></section>
 
@@ -1891,15 +1884,47 @@ if cmd in ACTIONS:
     subprocess.run(ACTIONS[cmd])</pre></div>
   <p class="muted">On Windows, swap the actions for <code class="inline">["powershell", "-c", "Restart-Service wz-server1"]</code> and run it from Task Scheduler.</p>
 
-  <h3>What each line is for</h3>
-  <div class="tablewrap"><table class="rtab">
-    <tr><th>Line</th><th>Why it is there</th></tr>
-    <tr><td>File missing &rarr; exit</td><td>Nothing has been submitted. This is the normal case, every time it runs.</td></tr>
-    <tr><td>No <code class="inline">END</code> &rarr; exit</td><td>The game writes the file in place, so you can catch it half-finished. No <code class="inline">END</code> means not finished &mdash; not broken.</td></tr>
-    <tr><td><code class="inline">tr -d '\\r'</code></td><td>If the file ever gets Windows line endings, the command becomes <code class="inline">REBOOT_SERVER</code> plus an invisible carriage return. It looks identical, matches nothing, and fails with no error at all.</td></tr>
-    <tr><td>Delete, <b>then</b> act</td><td>If you act first and the script dies, the command runs again next time. Losing a reboot is cheap. Repeating a database wipe is not.</td></tr>
-    <tr><td>Exact filename</td><td>Never <code class="inline">SERVER_COMMAND*</code>. That also matches the example file, which contains a real command.</td></tr>
-  </table></div>
+
+
+  <h3>How to read the file</h3>
+  <p class="muted">Five lines. Only one of them matters to your script:</p>
+
+  <div class="code"><pre><span class="c"># HF server command — consume and delete</span>   <span class="c">&lt;- comment, skip it</span>
+<b>COMMAND REBOOT_SERVER</b>                       <span class="c">&lt;- THIS is what you want</span>
+BY      Motavar (76561198...)                <span class="c">&lt;- who submitted it, for your logs</span>
+AT      2026-08-24 09:14:22                  <span class="c">&lt;- when, for your logs</span>
+<b>END</b>                                          <span class="c">&lt;- the file is finished</span></pre></div>
+
+  <p class="muted"><b>Getting the command</b> is one line in any language &mdash; find the line starting with <code class="inline">COMMAND</code>, take the second word:</p>
+  <div class="code"><pre><span class="c"># bash</span>
+CMD=$(awk '/^COMMAND/{print $2}' "$F" | tr -d '\r')
+
+<span class="c"># python</span>
+cmd = next(l.split()[1] for l in lines if l.startswith("COMMAND"))
+
+<span class="c"># windows batch</span>
+for /f "tokens=2" %%A in ('findstr /b /c:"COMMAND" "%FILE%"') do set "CMD=%%A"</pre></div>
+
+  <h4>Why you must check for <code class="inline">END</code> first</h4>
+  <p class="muted">Because the file is written <b>in place</b>, not swapped in finished.</p>
+  <p class="muted">Normally a program writes a temporary file and renames it over the top. Renaming is instant, so a reader sees either the old file or the complete new one &mdash; never a half-written one. <b>The game engine has no rename function</b>, so Wasteland-Z has to write the real file line by line.</p>
+  <p class="muted">If your watchdog looks during that write, it can read this:</p>
+  <div class="code"><pre>COMMAND REBOOT_SER</pre></div>
+  <p class="muted">&hellip;and act on a command that does not exist &mdash; or worse, one that happens to be a prefix of a real one. <code class="inline">END</code> is written <b>last</b>, so its presence is the file saying <b>&ldquo;I am complete, safe to read&rdquo;</b>.</p>
+  <p class="muted">No <code class="inline">END</code> means come back in a few seconds. The file is not broken; it is not finished.</p>
+
+  <h4>Why strip the carriage return</h4>
+  <p class="muted">If the file ever picks up Windows line endings, the command you read is <code class="inline">REBOOT_SERVER</code> followed by an invisible <code class="inline">\r</code>. It <b>prints identically</b>, compares unequal to <code class="inline">REBOOT_SERVER</code>, and matches nothing.</p>
+  <p class="muted">Nothing errors. The admin clicks the button, the file disappears, and the server does not reboot. One <code class="inline">tr -d</code> removes the entire problem.</p>
+  <p class="muted"><b>Windows batch does not need it</b> &mdash; <code class="inline">for /f</code> strips them itself. Bash and Python do.</p>
+
+  <h4>Why delete before doing the work</h4>
+  <p class="muted">If you act first and your script dies mid-reboot, the file is still sitting there and the command runs <b>again</b> next pass. Delete first, and a crash at the wrong moment loses one command instead.</p>
+  <p class="muted">Losing a reboot is a shrug. Repeating a database wipe is not.</p>
+  <p class="muted">If the delete <b>fails</b> &mdash; permissions, file locked &mdash; do nothing at all. A file you cannot remove gets picked up on every single pass, which reboots the machine in a loop.</p>
+
+  <h4>Match the exact filename</h4>
+  <p class="muted">Look for <code class="inline">SERVER_COMMAND.txt</code> exactly, never a wildcard like <code class="inline">SERVER_COMMAND*</code>. The example file sitting beside it contains a real command block, and a wildcard matches that too.</p>
 
   <h3>The full versions, if you want them</h3>
   <p class="muted">All three do the same job and ship in this download, in <code class="inline">server/</code>. They add logging, argument checking and clearer errors to the ten-line versions above &mdash; still no dependencies, still nothing fetched at runtime. Click to read before you run.</p>
@@ -2293,16 +2318,7 @@ python3 wz_watchdog.py /opt/reforger/profile/hf_wastelandz/configs --loop</pre><
   <p>They are run with <code class="inline">shell=False</code>, so nothing in the command file can ever be interpreted as shell syntax. That is the security boundary: even a malformed or hostile <code class="inline">SERVER_COMMAND.txt</code> cannot become a command injection, because no shell is involved to inject into.</p>
   <p>A command not listed in <code class="inline">ACTIONS</code> is logged and ignored. An unknown action should do nothing, never guess.</p></div>
 
-  <h3>How it parses the file, and why</h3>
-  <div class="tablewrap"><table class="rtab">
-    <tr><th>Step</th><th>Reason</th></tr>
-    <tr><td>No <code class="inline">END</code> line &rarr; stop, try again next pass</td><td>The engine cannot rename a file atomically, so the mod writes in place. A file without <code class="inline">END</code> is not corrupt &mdash; it is simply not finished.</td></tr>
-    <tr><td><code class="inline">rstrip("
-")</code> on every line</td><td>With Windows line endings the command becomes <code class="inline">REBOOT_SERVER
-</code>, which prints identically, compares unequal, and matches nothing. Nothing errors; the file just vanishes and nothing happens.</td></tr>
-    <tr><td>Take field 2 of the <code class="inline">COMMAND</code> line</td><td><code class="inline">BY</code> and <code class="inline">AT</code> are there for your logs, not for matching.</td></tr>
-    <tr><td>Delete the file, <b>then</b> act</td><td>Delete-first can lose a command if the watchdog dies between the two. Act-first can <b>repeat</b> one. A lost reboot is cheap; a repeated wipe is not.</td></tr>
-  </table></div>
+
 
   <div class="note warn"><div class="h">If the delete fails, it refuses to act</div>
   <p>A file it cannot remove would be picked up again on every single pass &mdash; rebooting the machine in a loop. It logs the failure and does nothing instead.</p></div>
