@@ -178,6 +178,21 @@
   .viewtabs button:hover{color:var(--ink);border-color:var(--rust)}
   .viewtabs button[aria-selected="true"]{background:linear-gradient(180deg,var(--rust),#e85f12);
     color:#1a1206;border-color:transparent}
+  details.src{border:1px solid var(--line);border-radius:6px;margin:10px 0;background:rgba(0,0,0,.15)}
+  details.src>summary{cursor:pointer;padding:10px 14px;font-family:var(--font-display);
+    font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:.82rem;
+    color:var(--ink);list-style:none}
+  details.src>summary::-webkit-details-marker{display:none}
+  details.src>summary::before{content:"\25B8  ";color:var(--rust)}
+  details.src[open]>summary::before{content:"\25BE  "}
+  details.src>summary:hover{color:var(--rust)}
+  details.src .code{margin:0 12px 12px}
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:14px 0}
+  .flow .fstep{flex:1 1 150px;min-width:140px;border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;background:rgba(0,0,0,.15)}
+  .flow .fstep b{display:block;font-family:var(--font-display);text-transform:uppercase;
+    letter-spacing:.06em;font-size:.72rem;color:var(--rust);margin-bottom:4px}
+  .flow .fstep span{font-size:.86rem;color:var(--muted)}
   .view{display:none}
   body[data-view="server"] .view-server{display:block}
   body[data-view="mission"] .view-mission{display:block}
@@ -1748,8 +1763,16 @@ max_connections = 500</pre></div></div>
   <p class="lede">Perform low-level server functions from inside Wasteland-Z. You decide which ones.</p>
 
   <h3>What it does</h3>
-  <p class="muted">An admin picks a command in the F8 menu. Wasteland-Z writes that command&rsquo;s name into a text file. A small script <b>you</b> wrote sees the file and does the work.</p>
-  <p class="muted">That is the whole system. Wasteland-Z never runs anything itself.</p>
+
+  <div class="flow">
+    <div class="fstep"><b>1 &middot; You</b><span>Write a list of commands in a config file.</span></div>
+    <div class="fstep"><b>2 &middot; The mod</b><span>Reads your list on startup and shows it in F8 &rarr; SERVER.</span></div>
+    <div class="fstep"><b>3 &middot; Your admin</b><span>Picks one from the list and submits it.</span></div>
+    <div class="fstep"><b>4 &middot; The mod</b><span>Writes <code class="inline">SERVER_COMMAND.txt</code> and stops there.</span></div>
+    <div class="fstep"><b>5 &middot; Your script</b><span>Sees the file, deletes it, does the work.</span></div>
+  </div>
+
+  <p class="muted"><b>That is the whole system.</b> Wasteland-Z reads your list and writes one word to a file. Every action that actually happens is code you wrote, running as a user you chose.</p>
 
   <h3>Why you would want it</h3>
   <p class="muted">Your gateway dies at 2am. Your Discord bot hangs. A process wedges and the server needs a real reboot. Right now that means finding a laptop, opening SSH or a control panel, and logging in &mdash; while your players sit there.</p>
@@ -1792,8 +1815,27 @@ SERVER_ACTIONS_MIN_TIER ADMIN   <span class="c"># OWNER, ADMIN or MOD</span></pr
   </div>
 
   <div class="step"><span class="n">3</span>
-    <h4>Write your watchdog</h4>
-    <p>Ten lines. Pick bash or Python below, change the paths, run it on a timer. That is the last step.</p>
+    <h4>Write your watchdog &mdash; and know what it is looking for</h4>
+
+    <p><b>When an admin submits a command, Wasteland-Z creates one file:</b></p>
+    <div class="code"><pre>&hellip;/hf_wastelandz/configs/<b>SERVER_COMMAND.txt</b></pre></div>
+
+    <p class="muted">Same folder as your other config files. It contains exactly this:</p>
+    <div class="code"><pre><span class="c"># HF server command — consume and delete</span>
+<b>COMMAND REBOOT_SERVER</b>
+BY      Motavar (76561198...)
+AT      2026-08-24 09:14:22
+<b>END</b></pre></div>
+
+    <p><b>Your watchdog does four things:</b></p>
+    <ol class="clean muted">
+      <li><b>Looks for that exact filename</b> &mdash; <code class="inline">SERVER_COMMAND.txt</code>. Most of the time it is not there, and that is normal.</li>
+      <li><b>Checks the last line says <code class="inline">END</code></b>. If it does not, the file is still being written &mdash; leave it, look again in a few seconds.</li>
+      <li><b>Reads the second word of the <code class="inline">COMMAND</code> line</b>. That word is the one from your <code class="inline">.conf</code>. <code class="inline">BY</code> and <code class="inline">AT</code> are just for your logs.</li>
+      <li><b>Deletes the file, then does the work.</b> In that order.</li>
+    </ol>
+
+    <p class="muted">Nothing else. Pick a language below, change the paths, put it on a timer.</p>
   </div>
 </div></section>
 
@@ -1858,6 +1900,348 @@ if cmd in ACTIONS:
     <tr><td>Delete, <b>then</b> act</td><td>If you act first and the script dies, the command runs again next time. Losing a reboot is cheap. Repeating a database wipe is not.</td></tr>
     <tr><td>Exact filename</td><td>Never <code class="inline">SERVER_COMMAND*</code>. That also matches the example file, which contains a real command.</td></tr>
   </table></div>
+
+  <h3>The full versions, if you want them</h3>
+  <p class="muted">All three do the same job and ship in this download, in <code class="inline">server/</code>. They add logging, argument checking and clearer errors to the ten-line versions above &mdash; still no dependencies, still nothing fetched at runtime. Click to read before you run.</p>
+  <details class="src"><summary>Bash / POSIX shell &mdash; full file (79 lines)</summary>
+  <p class="muted" style="margin:0 14px 8px">Uses only sh, grep, awk, tr and rm. Run from cron or a systemd timer, or with --loop. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/server/wz_watchdog.sh" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
+  <div class="code"><pre>#!/bin/sh
+# Wasteland-Z server action watchdog — POSIX shell.
+#
+#   ./wz_watchdog.sh /opt/reforger/profile/hf_wastelandz/configs
+#   ./wz_watchdog.sh /path/to/configs --loop
+#
+# Runs one pass and exits, so cron or a systemd timer can drive it. --loop
+# stays resident and checks every 5 seconds.
+#
+# EDIT ONE THING: the run_command() case block. Nothing else.
+#
+# No dependencies. Uses sh, grep, awk, tr and rm — all already on your server.
+
+CONFIG_DIR=&quot;$1&quot;
+[ -n &quot;$CONFIG_DIR&quot; ] || {
+    echo &quot;usage: $0 &lt;configs-folder&gt; [--loop]&quot; &gt;&amp;2
+    exit 1
+}
+FILE=&quot;$CONFIG_DIR/SERVER_COMMAND.txt&quot;
+
+log() { echo &quot;[wz-watchdog] $*&quot;; }
+
+# ---------------------------------------------------------------------------
+# EDIT HERE. Each command name from HFWastelandZ_server_action_commands.conf
+# gets a branch. Anything not listed is logged and ignored — an unknown command
+# should do nothing, never guess.
+# ---------------------------------------------------------------------------
+run_command() {
+    case &quot;$1&quot; in
+        REBOOT_SERVER)       systemctl restart wz-server1 ;;
+        RESTART_GATEWAY)     systemctl restart wz-gateway ;;
+        RESTART_DISCORD_BOT) systemctl restart wz-discord ;;
+        COLD_REBOOT_SERVER)  shutdown -r now ;;
+
+        # Your own — point at a script and put the logic there:
+        # MAP_LOAD_PLUNDER)  /opt/wz/load_map.sh plunder ;;
+        # DATABASE_MAINT)    /opt/wz/db_maint.sh ;;
+
+        *) log &quot;unknown command &#x27;$1&#x27; — ignored&quot; ; return 0 ;;
+    esac
+    log &quot;$1 finished with status $?&quot;
+}
+
+one_pass() {
+    [ -f &quot;$FILE&quot; ] || return 0
+
+    # No END line means the mod is still writing it. The game cannot rename a
+    # file atomically, so it writes in place and a fast poll can catch it
+    # half-finished. Not corrupt — just not done. Look again next pass.
+    grep -q &#x27;^END&#x27; &quot;$FILE&quot; || return 0
+
+    # tr -d &#x27;\r&#x27; is not optional. If the file ever picks up Windows line
+    # endings the command becomes &quot;REBOOT_SERVER&quot; plus a carriage return: it
+    # prints identically, matches nothing, and every branch falls through with
+    # no error at all.
+    cmd=$(awk &#x27;/^COMMAND/{print $2; exit}&#x27; &quot;$FILE&quot; | tr -d &#x27;\r&#x27;)
+
+    # DELETE BEFORE ACTING. If this script dies after acting but before
+    # deleting, the command runs again on the next pass. Losing a reboot is
+    # cheap; repeating a database wipe is not.
+    if ! rm -f &quot;$FILE&quot;; then
+        log &quot;could not delete $FILE — refusing to act, or it would repeat forever&quot;
+        return 1
+    fi
+
+    [ -n &quot;$cmd&quot; ] || { log &quot;no COMMAND line found — ignored&quot;; return 0; }
+    log &quot;running $cmd&quot;
+    run_command &quot;$cmd&quot;
+}
+
+if [ &quot;$2&quot; = &quot;--loop&quot; ]; then
+    log &quot;watching $FILE&quot;
+    while true; do
+        one_pass
+        sleep 5
+    done
+else
+    one_pass
+fi
+</pre></div>
+  </details>
+  <details class="src"><summary>Python 3 &mdash; full file (157 lines)</summary>
+  <p class="muted" style="margin:0 14px 8px">Standard library only - os, subprocess, sys, time. Same on Linux and Windows. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/server/wz_watchdog.py" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
+  <div class="code"><pre>#!/usr/bin/env python3
+&quot;&quot;&quot;Wasteland-Z server action watchdog.
+
+Watches for SERVER_COMMAND.txt, runs whatever YOU decide the command means,
+deletes the file. Works on Linux and Windows. Standard library only.
+
+    python3 wz_watchdog.py /path/to/profile/hf_wastelandz/configs
+
+Run it from cron, a systemd timer, or Task Scheduler - it does one pass and
+exits, so there is no daemon to babysit. Add --loop if you would rather it
+stay resident.
+
+WHAT THE MOD DOES
+    An admin picks an action in F8 -&gt; SERVER. The mod writes SERVER_COMMAND.txt
+    into the configs folder. That is all it does - it never runs anything. The
+    word it wrote means whatever this script decides it means.
+
+WHAT YOU EDIT
+    ACTIONS, below. Nothing else. Keep the keys identical to the COMMAND column
+    in HFWastelandZ_server_action_commands.conf.
+&quot;&quot;&quot;
+
+import os
+import subprocess
+import sys
+import time
+
+# ---------------------------------------------------------------------------
+# EDIT THIS. Keys must match the COMMAND column in the .conf exactly.
+# Anything not listed here is logged and ignored, which is the safe default:
+# an unknown command should do nothing, not guess.
+#
+# Values are argv LISTS, never strings, and are run WITHOUT a shell. That is
+# deliberate - with shell=False nothing in the file can be interpreted as shell
+# syntax, so a malformed or hostile command cannot become an injection.
+# ---------------------------------------------------------------------------
+ACTIONS = {
+    # --- Linux examples -----------------------------------------------------
+    &quot;REBOOT_SERVER&quot;:       [&quot;systemctl&quot;, &quot;restart&quot;, &quot;wz-server1&quot;],
+    &quot;RESTART_GATEWAY&quot;:     [&quot;systemctl&quot;, &quot;restart&quot;, &quot;wz-gateway&quot;],
+    &quot;RESTART_DISCORD_BOT&quot;: [&quot;systemctl&quot;, &quot;restart&quot;, &quot;wz-discord&quot;],
+    &quot;COLD_REBOOT_SERVER&quot;:  [&quot;shutdown&quot;, &quot;-r&quot;, &quot;now&quot;],
+
+    # --- Windows equivalents: swap the lines above for these ---------------
+    # &quot;REBOOT_SERVER&quot;:      [&quot;powershell&quot;, &quot;-c&quot;, &quot;Restart-Service wz-server1&quot;],
+    # &quot;RESTART_GATEWAY&quot;:    [&quot;powershell&quot;, &quot;-c&quot;, &quot;Restart-Service wz-gateway&quot;],
+    # &quot;COLD_REBOOT_SERVER&quot;: [&quot;shutdown&quot;, &quot;/r&quot;, &quot;/t&quot;, &quot;0&quot;],
+
+    # --- Your own: point at a script and put the logic there ---------------
+    # &quot;MAP_LOAD_PLUNDER&quot;:  [&quot;/opt/wz/load_map.sh&quot;, &quot;plunder&quot;],
+    # &quot;DATABASE_MAINT&quot;:    [&quot;/opt/wz/db_maint.sh&quot;],
+}
+
+FILENAME = &quot;SERVER_COMMAND.txt&quot;
+
+
+def log(msg):
+    print(f&quot;[wz-watchdog] {msg}&quot;, flush=True)
+
+
+def read_command(path):
+    &quot;&quot;&quot;Return the COMMAND word, or None if the file is not ready or not valid.
+
+    Two guards, both load-bearing:
+
+    1. NO &#x27;END&#x27; LINE MEANS STILL BEING WRITTEN. The game engine cannot rename a
+       file atomically, so the mod writes in place and a watchdog polling every
+       second can catch it half-finished. A file without END is not corrupt -
+       it is simply not done yet, so we leave it and look again next pass.
+
+    2. STRIP CARRIAGE RETURNS. If the file ever picks up Windows line endings,
+       the command becomes &quot;REBOOT_SERVER\\r&quot;, which prints identically to
+       &quot;REBOOT_SERVER&quot;, compares unequal to it, and silently matches nothing.
+       Nothing errors; the admin just watches their file vanish and nothing
+       happen. One strip removes the entire class of problem.
+    &quot;&quot;&quot;
+    try:
+        with open(path, &quot;r&quot;, encoding=&quot;utf-8&quot;, errors=&quot;replace&quot;) as fh:
+            lines = [ln.rstrip(&quot;\r\n&quot;) for ln in fh]
+    except OSError as exc:
+        log(f&quot;cannot read {path}: {exc}&quot;)
+        return None
+
+    if not any(ln.strip() == &quot;END&quot; for ln in lines):
+        return None                      # still being written
+
+    for ln in lines:
+        if ln.startswith(&quot;COMMAND&quot;):
+            parts = ln.split()
+            if len(parts) &gt;= 2:
+                return parts[1].strip()
+    return None
+
+
+def run_once(folder):
+    path = os.path.join(folder, FILENAME)
+    if not os.path.isfile(path):
+        return
+
+    cmd = read_command(path)
+    if cmd is None:
+        return                           # incomplete; try again next pass
+
+    # DELETE BEFORE ACTING, and the order matters.
+    #
+    # Delete-then-act can lose a command if this process dies in between.
+    # Act-then-delete can REPEAT one. For a reboot a repeat is survivable; for
+    # anything destructive it is not, and a lost command is always the cheaper
+    # mistake. The mod makes the same call when it disarms a pending wipe
+    # before performing it.
+    try:
+        os.remove(path)
+    except OSError as exc:
+        log(f&quot;could not delete {path} ({exc}) - refusing to act, or it would &quot;
+            f&quot;run again on every pass&quot;)
+        return
+
+    argv = ACTIONS.get(cmd)
+    if not argv:
+        log(f&quot;unknown command {cmd!r} - ignored. Add it to ACTIONS if you want it.&quot;)
+        return
+
+    log(f&quot;running {cmd}: {&#x27; &#x27;.join(argv)}&quot;)
+    try:
+        # shell=False (the default with a list) is the security boundary here.
+        result = subprocess.run(argv, shell=False, timeout=120)
+        log(f&quot;{cmd} exited {result.returncode}&quot;)
+    except subprocess.TimeoutExpired:
+        log(f&quot;{cmd} timed out after 120s&quot;)
+    except OSError as exc:
+        log(f&quot;{cmd} failed to start: {exc}&quot;)
+
+
+def main():
+    args = [a for a in sys.argv[1:] if a != &quot;--loop&quot;]
+    loop = &quot;--loop&quot; in sys.argv
+    if not args:
+        print(__doc__)
+        return 1
+
+    folder = args[0]
+    if not os.path.isdir(folder):
+        log(f&quot;not a folder: {folder}&quot;)
+        return 1
+
+    if not loop:
+        run_once(folder)
+        return 0
+
+    log(f&quot;watching {os.path.join(folder, FILENAME)}&quot;)
+    while True:
+        run_once(folder)
+        time.sleep(5)
+
+
+if __name__ == &quot;__main__&quot;:
+    sys.exit(main())
+</pre></div>
+  </details>
+  <details class="src"><summary>Windows batch &mdash; full file (89 lines)</summary>
+  <p class="muted" style="margin:0 14px 8px">Uses only findstr, del and net. Point Task Scheduler at it on a one-minute trigger. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/server/wz_watchdog.cmd" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
+  <div class="code"><pre>@echo off
+setlocal EnableDelayedExpansion
+rem ==========================================================================
+rem  Wasteland-Z server action watchdog - Windows batch.
+rem
+rem    wz_watchdog.cmd C:\reforger\profile\hf_wastelandz\configs
+rem
+rem  Runs one pass and exits. Point Task Scheduler at it on a 1-minute
+rem  trigger, or call it from a loop of your own.
+rem
+rem  EDIT ONE THING: the :run_command labels near the bottom. Nothing else.
+rem
+rem  No dependencies. Uses only findstr, del and net - all built in.
+rem ==========================================================================
+
+if &quot;%~1&quot;==&quot;&quot; (
+    echo usage: %~nx0 ^&lt;configs-folder^&gt;
+    exit /b 1
+)
+
+set &quot;CONFIG_DIR=%~1&quot;
+set &quot;FILE=%CONFIG_DIR%\SERVER_COMMAND.txt&quot;
+
+rem Nothing waiting. This is the normal case on almost every run.
+if not exist &quot;%FILE%&quot; exit /b 0
+
+rem No END line means the mod is still writing the file. The game cannot rename
+rem atomically, so it writes in place and a fast poll can catch it half done.
+rem Not corrupt - just not finished. Come back next time.
+findstr /b /c:&quot;END&quot; &quot;%FILE%&quot; &gt;nul 2&gt;&amp;1
+if errorlevel 1 exit /b 0
+
+rem Pull the second token off the COMMAND line.
+rem
+rem NOTE: &#x27;for /f&#x27; strips carriage returns by itself, so the CRLF problem that
+rem bites shell scripts does not arise here. Mentioned because the bash and
+rem Python versions need an explicit strip and someone comparing them will ask.
+set &quot;CMD=&quot;
+for /f &quot;tokens=2&quot; %%A in (&#x27;findstr /b /c:&quot;COMMAND&quot; &quot;%FILE%&quot;&#x27;) do set &quot;CMD=%%A&quot;
+
+rem DELETE BEFORE ACTING. If this script dies after acting but before deleting,
+rem the command runs again on the next pass. Losing a reboot is cheap;
+rem repeating a database wipe is not.
+del /f /q &quot;%FILE%&quot; &gt;nul 2&gt;&amp;1
+if exist &quot;%FILE%&quot; (
+    echo [wz-watchdog] could not delete &quot;%FILE%&quot; - refusing to act, or it would repeat forever
+    exit /b 1
+)
+
+if &quot;!CMD!&quot;==&quot;&quot; (
+    echo [wz-watchdog] no COMMAND line found - ignored
+    exit /b 0
+)
+
+echo [wz-watchdog] running !CMD!
+call :run_command &quot;!CMD!&quot;
+exit /b 0
+
+rem ==========================================================================
+rem  EDIT HERE. One block per command from
+rem  HFWastelandZ_server_action_commands.conf. Anything not listed is logged
+rem  and ignored - an unknown command should do nothing, never guess.
+rem ==========================================================================
+:run_command
+set &quot;C=%~1&quot;
+
+if /i &quot;%C%&quot;==&quot;REBOOT_SERVER&quot; (
+    net stop wz-server1 &amp; net start wz-server1
+    goto :eof
+)
+if /i &quot;%C%&quot;==&quot;RESTART_GATEWAY&quot; (
+    net stop wz-gateway &amp; net start wz-gateway
+    goto :eof
+)
+if /i &quot;%C%&quot;==&quot;RESTART_DISCORD_BOT&quot; (
+    net stop wz-discord &amp; net start wz-discord
+    goto :eof
+)
+if /i &quot;%C%&quot;==&quot;COLD_REBOOT_SERVER&quot; (
+    shutdown /r /t 0
+    goto :eof
+)
+
+rem Your own - point at a script and put the logic there:
+rem if /i &quot;%C%&quot;==&quot;MAP_LOAD_PLUNDER&quot; ( call C:\wz\load_map.cmd plunder &amp; goto :eof )
+rem if /i &quot;%C%&quot;==&quot;DATABASE_MAINT&quot;   ( call C:\wz\db_maint.cmd        &amp; goto :eof )
+
+echo [wz-watchdog] unknown command &quot;%C%&quot; - ignored
+goto :eof
+</pre></div>
+  </details>
+  <div class="note tip"><div class="h">Edit one thing in each</div>
+  <p>The command list &mdash; <code class="inline">run_command()</code> in bash, <code class="inline">ACTIONS</code> in Python, <code class="inline">:run_command</code> in batch. Every one is at the top or clearly marked. Nothing else needs touching.</p></div>
 
   <div class="note tip"><div class="h">A test file is waiting for you already</div>
   <p><code class="inline">SERVER_COMMAND.example</code> appears in the same folder on first start, with a real command block in it. Copy it to <code class="inline">SERVER_COMMAND.txt</code> to test your watchdog before anyone submits anything for real.</p></div>
