@@ -184,6 +184,7 @@
   body[data-view="gateway"] .view-gateway{display:block}
   body[data-view="upgrade"] .view-upgrade{display:block}
   body[data-view="trouble"] .view-trouble{display:block}
+  body[data-view="admin"] .view-admin{display:block}
 
   /* ---- coming-soon pill ---- */
   .pill{display:inline-block;font-family:var(--font-display);font-weight:700;text-transform:uppercase;
@@ -213,6 +214,7 @@
     <button role="tab" data-view="mission" aria-selected="false">Mission Setup</button>
     <button role="tab" data-view="gateway" aria-selected="false">Update Gateway</button>
     <button role="tab" data-view="upgrade" aria-selected="false">Upgrade</button>
+    <button role="tab" data-view="admin" aria-selected="false">Server Administration</button>
     <button role="tab" data-view="trouble" aria-selected="false">Troubleshooting</button>
   </div>
 </div>
@@ -1702,6 +1704,151 @@ max_connections = 500</pre></div></div>
 </div></section>
 
 </main>
+
+<main class="view view-admin">
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">Wasteland-Z &middot; Running the server</div>
+  <h1>Server administration.</h1>
+  <p class="lede">Things your admins do from inside the game &mdash; including rebooting the machine, swapping maps or restarting the gateway, without anyone alt-tabbing to a control panel or opening SSH.</p>
+</div></div>
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Server actions</span><h2>Out-of-band commands from F8</h2></div>
+  <p class="muted">An admin picks an action in game, and a small script you control does the work. Four moving parts, and the important one is how little the mod does.</p>
+
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Piece</th><th>Who owns it</th><th>What it does</th></tr>
+    <tr><td><code class="inline">SERVER_ACTIONS.conf</code></td><td>You</td><td>The menu &mdash; which actions exist and what each one means.</td></tr>
+    <tr><td>F8 &rarr; SERVER</td><td>The mod</td><td>Shows that list to approved admins and writes the choice out.</td></tr>
+    <tr><td><code class="inline">SERVER_COMMAND.txt</code></td><td>Mod writes, you consume</td><td>One pending command, waiting to be picked up.</td></tr>
+    <tr><td>Your watchdog</td><td>You</td><td>Spots the file, does the work, deletes it.</td></tr>
+  </table></div>
+
+  <div class="note tip"><div class="h">The mod never runs anything</div>
+  <p>It writes a word into a file. What that word <i>means</i> is entirely up to the script you write &mdash; which is why this works on any host, and why it adds no way for anyone to execute code on your machine. <code class="inline">COLD_REBOOT_SERVER</code> only reboots a machine because your watchdog chose to make it.</p></div>
+
+  <div class="note warn"><div class="h">Without a watchdog, nothing happens</div>
+  <p>The file gets written and sits there. F8 reports the command as <b>still pending</b> rather than as done, because the file being consumed is the only confirmation that exists. If you never write a watchdog, the feature is harmless and inert.</p></div>
+</div></section>
+
+<section><div class="wrap">
+  <span class="section-tag">The menu</span>
+  <h2>SERVER_ACTIONS.conf</h2>
+  <p class="muted">Created automatically on the first boot that finds it missing, in your profile&rsquo;s <code class="inline">configs</code> folder, with six worked examples. One line per action, three fields separated by <code class="inline">|</code>.</p>
+
+  <div class="code"><pre><span class="c"># COMMAND             | LABEL                             | DESCRIPTION</span>
+
+REBOOT_SERVER         | Reboot Server                     | Restarts the Arma process and restarts the game.
+RESTART_GATEWAY       | Restart Gateway                   | Restart the RESTful database hive gateway.
+DATABASE_MAINT        | Database Maintenance              | Perform SQL maintenance on the database.
+RESTART_DISCORD_BOT   | Restart Discord Bot Process       | Restart the failed Discord bot process.
+MAP_LOAD_PLUNDER      | Load Motavar's Plunder-World Map  | Shut down the game, kill the process, restart Arma and load Motavar's Plunder-World.
+COLD_REBOOT_SERVER    | Cold Reboot Server                | Hard reboot of the server hardware via sudo shutdown and a full restart.</pre></div>
+
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Field</th><th>Meaning</th></tr>
+    <tr><td><code class="inline">COMMAND</code></td><td>The word written to <code class="inline">SERVER_COMMAND.txt</code>. Your watchdog matches on this. No spaces.</td></tr>
+    <tr><td><code class="inline">LABEL</code></td><td>What the admin sees in the list.</td></tr>
+    <tr><td><code class="inline">DESCRIPTION</code></td><td>Shown when the entry is selected. Say what it really does, including who it disconnects.</td></tr>
+  </table></div>
+
+  <div class="note"><div class="h">Ordered least destructive to most</div>
+  <p>The examples run from a plain game restart down to a hardware reboot, so the action most likely to be wanted sits at the top and the two that end everyone&rsquo;s session are furthest from a mis-click. Worth keeping that habit as you add your own.</p></div>
+
+  <div class="note"><div class="h">A leading # disables an entry without deleting it</div>
+  <p>Same as a town. <code class="inline">#COLD_REBOOT_SERVER | &hellip;</code> stays listed in F8 as <b>OFF</b> and cannot be submitted, so you keep the description for when you want it back.</p></div>
+
+  <div class="note warn"><div class="h">This file is created once and never rewritten</div>
+  <p>Unlike your <code class="inline">.conf</code> settings files &mdash; which do get new keys added by an update &mdash; this one is left completely alone once it exists. Delete the examples, rename them, add your own; a later Wasteland-Z release will not put them back.</p>
+  <p>That is deliberate: it is a list <b>you</b> curate, and re-adding entries you removed would restore actions that reboot machines. If you want a fresh copy with the examples, delete the file and restart.</p></div>
+
+  <div class="note danger"><div class="h">The examples do nothing on their own</div>
+  <p>They are named for what a watchdog <i>should</i> do, not for anything Wasteland-Z performs. <code class="inline">DATABASE_MAINT</code> will not touch your database until you write the script that makes it.</p></div>
+</div></section>
+
+<section><div class="wrap">
+  <span class="section-tag">Turning it on and off</span>
+  <h2>Two settings in HFWastelandZ_server.conf</h2>
+  <div class="code"><pre>SERVER_ACTIONS_ENABLED 1
+SERVER_ACTIONS_MIN_TIER ADMIN</pre></div>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setting</th><th>Default</th><th>Effect</th></tr>
+    <tr><td><code class="inline">SERVER_ACTIONS_ENABLED</code></td><td><code class="inline">1</code></td><td><code class="inline">0</code> switches the whole thing off &mdash; the catalogue is not read at all and the section does not appear in F8.</td></tr>
+    <tr><td><code class="inline">SERVER_ACTIONS_MIN_TIER</code></td><td><code class="inline">ADMIN</code></td><td>Who may submit. <code class="inline">OWNER</code>, <code class="inline">ADMIN</code> or <code class="inline">MOD</code>. Anything below <code class="inline">MOD</code> is refused.</td></tr>
+  </table></div>
+  <p class="muted">Both are added to your config automatically on the next start, with these defaults, and your existing settings are left untouched.</p>
+  <div class="note warn"><div class="h">Below MOD is refused, not honoured</div>
+  <p>Setting <code class="inline">EVERYONE</code> would hand a machine reboot to every player on your server. It is rejected and logged, and the value stays at <code class="inline">ADMIN</code>. A typo must never widen access.</p></div>
+</div></section>
+
+<section><div class="wrap">
+  <span class="section-tag">The handoff</span>
+  <h2>SERVER_COMMAND.txt and your watchdog</h2>
+  <p class="muted">When an admin submits, the mod writes this next to your other config files:</p>
+  <div class="code"><pre><span class="c"># HF server command — consume and delete</span>
+COMMAND REBOOT_SERVER
+BY      Motavar (76561198...)
+AT      2026-08-24 09:14:22
+END</pre></div>
+
+  <div class="note warn"><div class="h">Wait for the END line &mdash; this one matters</div>
+  <p>The game engine cannot rename a file atomically, so a watchdog polling every second <b>can catch the file half-written</b>. Treat a file without a final <code class="inline">END</code> as still being written and check again on the next pass. That turns a possible garbled read into an impossible one.</p></div>
+
+  <div class="note"><div class="h">Delete the file, then do the work</div>
+  <p>In that order. If you act first and the watchdog dies before deleting, the command runs again on the next pass &mdash; survivable for a reboot, not for anything destructive. Deleting first can lose a command; repeating one can lose a lot more.</p></div>
+
+  <h3>A watchdog, in full</h3>
+  <div class="code"><pre><span class="c"># Linux — run from cron or a systemd timer</span>
+F="/opt/reforger/profile/hf_wastelandz/configs/SERVER_COMMAND.txt"
+[ -f "$F" ] || exit 0
+<span class="c"># still being written? come back next tick</span>
+grep -q '^END' "$F" || exit 0
+
+cmd=$(grep '^COMMAND' "$F" | awk '{print $2}' | tr -d '\r')
+rm -f "$F"          <span class="c"># delete BEFORE acting</span>
+
+case "$cmd" in
+  REBOOT_SERVER)       systemctl restart wz-server ;;
+  RESTART_GATEWAY)     systemctl restart wz-gateway ;;
+  COLD_REBOOT_SERVER)  shutdown -r now ;;
+  *)                   logger "unknown HF command: $cmd" ;;
+esac</pre></div>
+
+  <div class="code"><pre><span class="c"># Windows — run from Task Scheduler every minute</span>
+$F = "C:\reforger\profile\hf_wastelandz\configs\SERVER_COMMAND.txt"
+if (-not (Test-Path $F)) { exit }
+if (-not (Select-String '^END' $F)) { exit }
+
+$cmd = (Select-String '^COMMAND' $F).Line.Split()[1].Trim()
+Remove-Item $F -Force
+
+switch ($cmd) {
+  'REBOOT_SERVER'      { Restart-Service wz-server }
+  'RESTART_GATEWAY'    { Restart-Service wz-gateway }
+  'COLD_REBOOT_SERVER' { Restart-Computer -Force }
+  default              { Write-EventLog -LogName Application -Source HF -EventId 1 -Message "unknown: $cmd" }
+}</pre></div>
+
+  <div class="note warn"><div class="h">That <code class="inline">tr -d '\r'</code> is not decoration</div>
+  <p>If the file ever picks up Windows line endings, <code class="inline">$cmd</code> becomes <code class="inline">REBOOT_SERVER</code> plus an invisible carriage return. It <b>prints identically</b>, compares unequal, and every branch of your <code class="inline">case</code> falls through &mdash; so the admin clicks the button, the file disappears, and nothing happens. Nothing errors, which is what makes it hard to find. Strip it and the problem cannot occur.</p></div>
+
+  <div class="note"><div class="h">Permissions</div>
+  <p>Your watchdog has to be able to <b>delete</b> a file the game server created. Fine when both run as the same user; a real problem on Linux if the server runs as <code class="inline">arma</code> and your script does not.</p></div>
+</div></section>
+
+<section><div class="wrap">
+  <span class="section-tag">What to expect in game</span>
+  <h2>Submitting, cancelling, and what you are told</h2>
+  <ul class="clean muted">
+    <li><b>One command at a time.</b> If one is already pending, submitting another is refused until it is removed &mdash; so two admins cannot stack requests without knowing which one lands.</li>
+    <li><b>Cancel is best-effort.</b> REMOVE deletes the file, which works only if the watchdog has not already read it. Once it has, the reboot is coming and deleting the file changes nothing.</li>
+    <li><b>Confirmation is the file disappearing.</b> F8 says <i>waiting for the watchdog</i>, then warns if it is still pending after a minute. It never claims success it cannot verify.</li>
+  </ul>
+  <div class="note tip"><div class="h">Restarting the game does not need any of this</div>
+  <p>Wasteland-Z already restarts its own session with <code class="inline">/admin restart</code> &mdash; countdown announcements, an autosave at the end, no watchdog and no gateway involved. Server actions are for what that cannot reach: a hung process, the machine itself, a map swap, or an upgrade.</p></div>
+</div></section>
+</main>
+
 
 
 <footer><div class="wrap">
