@@ -1747,104 +1747,138 @@ max_connections = 500</pre></div></div>
   <div class="part-head"><span class="part-badge">Server actions</span><h2>Wasteland-Z Server Action Commands</h2></div>
   <p class="lede">Perform low-level server functions from inside Wasteland-Z. You decide which ones.</p>
 
-  <h3>What you can do with it</h3>
+  <h3>What it does</h3>
+  <p class="muted">An admin picks a command in the F8 menu. Wasteland-Z writes that command&rsquo;s name into a text file. A small script <b>you</b> wrote sees the file and does the work.</p>
+  <p class="muted">That is the whole system. Wasteland-Z never runs anything itself.</p>
+
+  <h3>Why you would want it</h3>
+  <p class="muted">Your gateway dies at 2am. Your Discord bot hangs. A process wedges and the server needs a real reboot. Right now that means finding a laptop, opening SSH or a control panel, and logging in &mdash; while your players sit there.</p>
+  <p class="muted">This lets a trusted admin fix it from inside the game, in about five seconds, without you handing anybody a shell account.</p>
+
+  <h3>What it can do</h3>
   <ul class="clean muted">
     <li>Reboot the game server</li>
     <li>Cold reboot the machine itself</li>
-    <li>Restart the gateway when it falls over</li>
+    <li>Restart the gateway</li>
     <li>Restart a crashed Discord bot</li>
-    <li>Run a database cleanup script</li>
+    <li>Run a database cleanup or backup script</li>
     <li>Load a different world or mission</li>
     <li>Anything else you can run from a command line</li>
   </ul>
-  <p class="muted">All of it from the F8 admin menu, without stopping play, opening a control panel, or logging in over SSH.</p>
-
-  <div class="note tip"><div class="h">You stay in control</div>
-  <p>Wasteland-Z never runs anything. It writes the name of the command into a small text file. <b>Your</b> script reads that file and does the work &mdash; so nothing happens that you did not write yourself.</p></div>
 </div></section>
 
 <section><div class="wrap">
-  <span class="section-tag">Setup</span>
-  <h2>Four steps</h2>
+  <span class="section-tag">How you set it up</span>
+  <h2>Three steps</h2>
 
   <div class="step"><span class="n">1</span>
-    <h4>List the commands you want</h4>
-    <p>Wasteland-Z creates the file for you on first start, with examples already in it:</p>
+    <h4>Pick your commands</h4>
+    <p>Wasteland-Z writes this file for you on first start, already filled in with examples:</p>
     <p class="muted"><code class="inline">&hellip;/hf_wastelandz/configs/HFWastelandZ_server_action_commands.conf</code></p>
-    <div class="code"><pre><span class="c"># COMMAND             | LABEL                             | DESCRIPTION</span>
+    <div class="code"><pre><span class="c"># COMMAND           | LABEL              | DESCRIPTION</span>
 
-REBOOT_SERVER         | Reboot Server                     | Restarts the Arma process and restarts the game.
-RESTART_GATEWAY       | Restart Gateway                   | Restart the RESTful database hive gateway.
-DATABASE_MAINT        | Database Maintenance              | Perform SQL maintenance on the database.
-RESTART_DISCORD_BOT   | Restart Discord Bot Process       | Restart the failed Discord bot process.
-MAP_LOAD_PLUNDER      | Load Motavar's Plunder-World Map  | Shut down the game, restart Arma and load Plunder-World.
-COLD_REBOOT_SERVER    | Cold Reboot Server                | Hard reboot of the server hardware.</pre></div>
-    <p class="muted">Edit it, delete what you do not want, add your own. Three fields per line: the <b>command word</b>, the <b>label</b> an admin sees, and a <b>description</b>. Put a <code class="inline">#</code> at the start of a line to switch that one off.</p>
+REBOOT_SERVER       | Reboot Server      | Restarts the Arma process and restarts the game.
+RESTART_GATEWAY     | Restart Gateway    | Restart the database hive gateway.
+DATABASE_MAINT      | Database Maintenance | Perform SQL maintenance on the database.
+COLD_REBOOT_SERVER  | Cold Reboot Server | Hard reboot of the server hardware.</pre></div>
+    <p class="muted">Keep what you want, delete the rest, add your own. <b>COMMAND</b> is the word your script matches on. <b>LABEL</b> is what the admin sees. <b>DESCRIPTION</b> explains it to them. A <code class="inline">#</code> at the start of a line switches that command off.</p>
   </div>
 
   <div class="step"><span class="n">2</span>
-    <h4>Check it is turned on</h4>
-    <p>In <code class="inline">HFWastelandZ_server.conf</code>. Both lines are added for you with these defaults:</p>
-    <div class="code"><pre>SERVER_ACTIONS_ENABLED 1        <span class="c"># 0 hides the whole thing</span>
-SERVER_ACTIONS_MIN_TIER ADMIN   <span class="c"># who can use it: OWNER, ADMIN or MOD</span></pre></div>
+    <h4>Check the two settings</h4>
+    <p>Added to <code class="inline">HFWastelandZ_server.conf</code> automatically, with these defaults:</p>
+    <div class="code"><pre>SERVER_ACTIONS_ENABLED 1        <span class="c"># 0 = feature off entirely</span>
+SERVER_ACTIONS_MIN_TIER ADMIN   <span class="c"># OWNER, ADMIN or MOD</span></pre></div>
   </div>
 
   <div class="step"><span class="n">3</span>
-    <h4>Set up your watchdog script</h4>
-    <p>One ships with this download &mdash; <code class="inline">server/wz_watchdog.py</code>. Point it at your configs folder:</p>
-    <div class="code"><pre>python3 wz_watchdog.py /opt/reforger/profile/hf_wastelandz/configs --loop</pre></div>
-    <p class="muted">Then edit the <code class="inline">ACTIONS</code> list at the top of that file so each command word runs what you want:</p>
-    <div class="code"><pre>ACTIONS = {
+    <h4>Write your watchdog</h4>
+    <p>Ten lines. Pick bash or Python below, change the paths, run it on a timer. That is the last step.</p>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <span class="section-tag">The watchdog</span>
+  <h2>Ten lines, and nothing to download</h2>
+
+  <div class="note tip"><div class="h">Read it, understand it, type it yourself</div>
+  <p>Both scripts below are short enough to read in under a minute and use nothing but what is already on your server &mdash; POSIX shell, or Python with two standard imports. <b>No packages to install, no URL to fetch, nothing downloaded at runtime.</b></p>
+  <p>You do not have to trust anything we shipped. Retype these into your own file and you have audited your entire supply chain.</p></div>
+
+  <h3>Bash</h3>
+  <div class="code"><pre>#!/bin/sh
+F=/opt/reforger/profile/hf_wastelandz/configs/SERVER_COMMAND.txt
+
+[ -f "$F" ] || exit 0                        <span class="c"># no command waiting, done</span>
+grep -q '^END' "$F" || exit 0                <span class="c"># still being written, come back later</span>
+
+CMD=$(awk '/^COMMAND/{print $2}' "$F" | tr -d '\r')
+rm -f "$F"                                   <span class="c"># delete BEFORE doing the work</span>
+
+case "$CMD" in
+  REBOOT_SERVER)      systemctl restart wz-server1 ;;
+  RESTART_GATEWAY)    systemctl restart wz-gateway ;;
+  COLD_REBOOT_SERVER) shutdown -r now ;;
+  *)                  logger "unknown HF command: $CMD" ;;
+esac</pre></div>
+  <p class="muted">Run it every 10 seconds from cron, or a <code class="inline">systemd</code> timer:</p>
+  <div class="code"><pre>* * * * * /opt/wz/watchdog.sh</pre></div>
+
+  <h3>Python</h3>
+  <div class="code"><pre>import os, subprocess
+
+F = "/opt/reforger/profile/hf_wastelandz/configs/SERVER_COMMAND.txt"
+
+ACTIONS = {
     "REBOOT_SERVER":      ["systemctl", "restart", "wz-server1"],
     "RESTART_GATEWAY":    ["systemctl", "restart", "wz-gateway"],
     "COLD_REBOOT_SERVER": ["shutdown", "-r", "now"],
-}</pre></div>
-  </div>
+}
 
-  <div class="step"><span class="n">4</span>
-    <h4>Use it</h4>
-    <p>In game: <b>F8 &rarr; SERVER</b>. Pick a command from the list, read the description, submit. Your watchdog picks it up within a few seconds and does the work.</p>
-  </div>
-</div></section>
+if not os.path.isfile(F):
+    raise SystemExit                                  <span class="c"># nothing waiting</span>
 
-<section><div class="wrap">
-  <span class="section-tag">Good to know</span>
-  <h2>A few small things</h2>
+lines = open(F, encoding="utf-8").read().splitlines()
+if "END" not in [l.strip() for l in lines]:
+    raise SystemExit                                  <span class="c"># still being written</span>
 
-  <div class="note"><div class="h">Nothing happens without a watchdog</div>
-  <p>Skip step 3 and the feature simply does nothing &mdash; the file is written and sits there. F8 tells you the command is still waiting rather than pretending it worked.</p></div>
+cmd = next((l.split()[1] for l in lines if l.startswith("COMMAND")), "")
+os.remove(F)                                          <span class="c"># delete BEFORE the work</span>
 
-  <div class="note"><div class="h">One command at a time</div>
-  <p>If a command is already waiting, submitting another is refused until you remove it. Two admins cannot stack requests.</p></div>
+if cmd in ACTIONS:
+    subprocess.run(ACTIONS[cmd])</pre></div>
+  <p class="muted">On Windows, swap the actions for <code class="inline">["powershell", "-c", "Restart-Service wz-server1"]</code> and run it from Task Scheduler.</p>
 
-  <div class="note warn"><div class="h">Cancel only works if you are quick</div>
-  <p>REMOVE deletes the file. If your watchdog already read it, the reboot is coming and deleting it changes nothing.</p></div>
-
-  <div class="note tip"><div class="h">You already have a restart command</div>
-  <p><code class="inline">/admin restart</code> restarts the game session with a countdown and a save, and needs none of this. Server actions are for what that cannot reach &mdash; the machine itself, a stuck process, a different world, or an upgrade.</p></div>
-</div></section>
-
-<section><div class="wrap">
-  <span class="section-tag">Reference</span>
-  <h2>The command file, if you are writing your own watchdog</h2>
-  <p class="muted">When an admin submits, this appears in the configs folder as <code class="inline">SERVER_COMMAND.txt</code>:</p>
-  <div class="code"><pre><span class="c"># HF server command — consume and delete</span>
-COMMAND REBOOT_SERVER
-BY      Motavar (76561198...)
-AT      2026-08-24 09:14:22
-END</pre></div>
-
-  <p class="muted">Read the <code class="inline">COMMAND</code> line, take the second word. Four rules, each of which exists because of a real failure:</p>
+  <h3>What each line is for</h3>
   <div class="tablewrap"><table class="rtab">
-    <tr><th>Rule</th><th>Why</th></tr>
-    <tr><td>No <code class="inline">END</code> line yet? Wait and check again.</td><td>The game writes the file in place, so you can catch it half-finished. No <code class="inline">END</code> means not done, not broken.</td></tr>
-    <tr><td>Strip carriage returns.</td><td>With Windows line endings the command becomes <code class="inline">REBOOT_SERVER\\r</code> &mdash; looks identical, matches nothing, fails silently.</td></tr>
-    <tr><td>Delete the file <b>before</b> doing the work.</td><td>If you act first and your script dies, the command runs again next time. Losing a reboot is cheap; repeating a wipe is not.</td></tr>
-    <tr><td>Match the exact filename.</td><td>Never <code class="inline">SERVER_COMMAND*</code> &mdash; that also matches the example file, which is in live format.</td></tr>
+    <tr><th>Line</th><th>Why it is there</th></tr>
+    <tr><td>File missing &rarr; exit</td><td>Nothing has been submitted. This is the normal case, every time it runs.</td></tr>
+    <tr><td>No <code class="inline">END</code> &rarr; exit</td><td>The game writes the file in place, so you can catch it half-finished. No <code class="inline">END</code> means not finished &mdash; not broken.</td></tr>
+    <tr><td><code class="inline">tr -d '\\r'</code></td><td>If the file ever gets Windows line endings, the command becomes <code class="inline">REBOOT_SERVER</code> plus an invisible carriage return. It looks identical, matches nothing, and fails with no error at all.</td></tr>
+    <tr><td>Delete, <b>then</b> act</td><td>If you act first and the script dies, the command runs again next time. Losing a reboot is cheap. Repeating a database wipe is not.</td></tr>
+    <tr><td>Exact filename</td><td>Never <code class="inline">SERVER_COMMAND*</code>. That also matches the example file, which contains a real command.</td></tr>
   </table></div>
 
-  <div class="note tip"><div class="h">An example file is created for you</div>
-  <p><code class="inline">SERVER_COMMAND.example</code> lands in the same folder on first start, containing a real command block. It shows you where the file appears and exactly what to look for, so you can build your watchdog before anyone submits anything.</p></div>
+  <div class="note tip"><div class="h">A test file is waiting for you already</div>
+  <p><code class="inline">SERVER_COMMAND.example</code> appears in the same folder on first start, with a real command block in it. Copy it to <code class="inline">SERVER_COMMAND.txt</code> to test your watchdog before anyone submits anything for real.</p></div>
+</div></section>
+
+<section><div class="wrap">
+  <span class="section-tag">Supporting it</span>
+  <h2>Running it day to day</h2>
+
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Question</th><th>Answer</th></tr>
+    <tr><td>Nothing happened when I submitted</td><td>Your watchdog is not running, or does not know that command. F8 says <b>still pending</b> rather than claiming success, and the file will still be sitting in the configs folder.</td></tr>
+    <tr><td>Can I cancel?</td><td>REMOVE deletes the file &mdash; but only helps if your watchdog has not read it yet.</td></tr>
+    <tr><td>Two admins submit at once</td><td>Cannot happen. One command waits at a time; the second is refused until the first is cleared.</td></tr>
+    <tr><td>Who can use it?</td><td><code class="inline">SERVER_ACTIONS_MIN_TIER</code>. Below MOD is refused &mdash; these reboot machines.</td></tr>
+    <tr><td>What runs as root?</td><td>Only what you choose. Your watchdog runs as whatever user you start it as; Wasteland-Z has no say in it.</td></tr>
+    <tr><td>I just want to restart the game</td><td><code class="inline">/admin restart</code> already does that, with a countdown and a save. None of this needed.</td></tr>
+  </table></div>
+
+  <div class="note"><div class="h">If you would rather not write one</div>
+  <p>A fuller version ships in this download at <code class="inline">server/wz_watchdog.py</code> &mdash; same logic, plus logging, timeouts and a <code class="inline">--loop</code> mode. Standard library only. The ten-line version above does the same job if you prefer something you can read at a glance.</p></div>
 </div></section>
 
 <section><div class="wrap">
