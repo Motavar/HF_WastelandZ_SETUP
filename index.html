@@ -1713,6 +1713,37 @@ max_connections = 500</pre></div></div>
 </div></div>
 
 <section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Hives</span><h2>One gateway, one database, several hives</h2></div>
+  <p class="muted">Two settings decide what your players carry between servers, and they are not the same thing. Getting them the wrong way round is how somebody opens an empty bank.</p>
+
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setting</th><th>Controls</th><th>Scope</th></tr>
+    <tr><td><b>Hive</b> (<code class="inline">hive_id</code>)</td><td><b>Money and bank.</b> The economy.</td><td>Everything a player owns, across every server in that hive.</td></tr>
+    <tr><td><b>Gear group</b> (<code class="inline">GEAR_SHARE_GROUP</code>)</td><td><b>Gear only.</b> A&ndash;Z, plus PRIVATE.</td><td>Within one hive. Garage has its own, separately.</td></tr>
+  </table></div>
+
+  <div class="note tip"><div class="h">The case almost everyone actually wants</div>
+  <p><b>One hive, different gear groups.</b> Servers 1&ndash;3 run one mod set in group ALPHA; servers 4&ndash;6 run a different mod set in BRAVO. All six share <b>one bank</b>. A player moves freely between them, keeps their money everywhere, and carries gear only where that gear can actually exist.</p>
+  <p class="muted">That last part is the whole point. Gear is stored as item references &mdash; an item whose mod is missing on the destination cannot be restored. Groups are how you draw that line before it costs somebody a loadout, and the F8 members list flags any server in your group whose mods differ.</p></div>
+
+  <p class="muted">A single gateway now serves <b>several hives at once</b> from one database. Each server entry names its own <code class="inline">hive_id</code>, so a hosting provider &mdash; or a few friends splitting a box &mdash; can run completely separate economies side by side. Servers that omit it join the gateway default, so nothing changes for a single-hive setup.</p>
+
+  <div class="note warn"><div class="h">Per-map hive is the other thing, and it moves the bank too</div>
+  <p>A map can point at a <b>different hive entirely</b> &mdash; its own gateway URL, port and password, which may well be a friend&rsquo;s server. Rotate to that map and you are in their economy: their bank, their gear pool.</p>
+  <p>That is a real and useful thing to do deliberately. It is <b>not</b> the way to vary loadouts per map, because a different hive means a different <b>wallet and bank</b>, and a player who rotates in and opens an empty ATM will report it as data loss. It is not &mdash; their money is sitting safely in the other hive &mdash; but you will spend the evening explaining that.</p>
+  <p class="muted">Use per-map hive for a test hive, a deliberately separate ruleset, or a shared event with another community. Use <b>gear groups</b> when you want one economy and different loadouts.</p></div>
+
+  <div class="note"><div class="h">What you can build with both</div>
+  <ul class="clean muted">
+    <li>Maps that run completely alone &mdash; group <code class="inline">PRIVATE</code>, nothing shared.</li>
+    <li>Maps that share gear with some of your servers and not others.</li>
+    <li>Maps that join an entirely different hive for the duration.</li>
+    <li>Garage on for one map, off for another, with its own sharing group.</li>
+  </ul>
+  <p class="muted">All of it set per map, so a rotation changes the rules with the world.</p></div>
+</div></section>
+
+<section><div class="wrap">
   <div class="part-head"><span class="part-badge">Server actions</span><h2>Out-of-band commands from F8</h2></div>
   <p class="muted">An admin picks an action in game, and a small script you control does the work. Four moving parts, and the important one is how little the mod does.</p>
 
