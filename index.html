@@ -1848,6 +1848,48 @@ switch ($cmd) {
 </div></section>
 
 <section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Ready-made</span><h2>A watchdog that ships with the kit</h2></div>
+  <p class="muted">You do not have to write one from scratch. <code class="inline">server/wz_watchdog.py</code> is in this download &mdash; standard library only, works on Linux and Windows, about 100 lines and most of that is comments.</p>
+
+  <div class="code"><pre><span class="c"># one pass, then exits — run it from cron, a systemd timer, or Task Scheduler</span>
+python3 wz_watchdog.py /opt/reforger/profile/hf_wastelandz/configs
+
+<span class="c"># or leave it resident, checking every 5 seconds</span>
+python3 wz_watchdog.py /opt/reforger/profile/hf_wastelandz/configs --loop</pre></div>
+
+  <p class="muted">You edit exactly one thing &mdash; the <code class="inline">ACTIONS</code> dictionary at the top. Keys must match the <code class="inline">COMMAND</code> column in your <code class="inline">.conf</code>:</p>
+
+  <div class="code"><pre>ACTIONS = {
+    "REBOOT_SERVER":       ["systemctl", "restart", "wz-server1"],
+    "RESTART_GATEWAY":     ["systemctl", "restart", "wz-gateway"],
+    "COLD_REBOOT_SERVER":  ["shutdown", "-r", "now"],
+
+    <span class="c"># Windows equivalents</span>
+    <span class="c"># "REBOOT_SERVER": ["powershell", "-c", "Restart-Service wz-server1"],</span>
+
+    <span class="c"># your own — point at a script and put the logic there</span>
+    <span class="c"># "MAP_LOAD_PLUNDER": ["/opt/wz/load_map.sh", "plunder"],</span>
+}</pre></div>
+
+  <div class="note tip"><div class="h">Why the values are lists, not strings</div>
+  <p>They are run with <code class="inline">shell=False</code>, so nothing in the command file can ever be interpreted as shell syntax. That is the security boundary: even a malformed or hostile <code class="inline">SERVER_COMMAND.txt</code> cannot become a command injection, because no shell is involved to inject into.</p>
+  <p>A command not listed in <code class="inline">ACTIONS</code> is logged and ignored. An unknown action should do nothing, never guess.</p></div>
+
+  <h3>How it parses the file, and why</h3>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Step</th><th>Reason</th></tr>
+    <tr><td>No <code class="inline">END</code> line &rarr; stop, try again next pass</td><td>The engine cannot rename a file atomically, so the mod writes in place. A file without <code class="inline">END</code> is not corrupt &mdash; it is simply not finished.</td></tr>
+    <tr><td><code class="inline">rstrip("
+")</code> on every line</td><td>With Windows line endings the command becomes <code class="inline">REBOOT_SERVER</code>, which prints identically, compares unequal, and matches nothing. Nothing errors; the file just vanishes and nothing happens.</td></tr>
+    <tr><td>Take field 2 of the <code class="inline">COMMAND</code> line</td><td><code class="inline">BY</code> and <code class="inline">AT</code> are there for your logs, not for matching.</td></tr>
+    <tr><td>Delete the file, <b>then</b> act</td><td>Delete-first can lose a command if the watchdog dies between the two. Act-first can <b>repeat</b> one. A lost reboot is cheap; a repeated wipe is not.</td></tr>
+  </table></div>
+
+  <div class="note warn"><div class="h">If the delete fails, it refuses to act</div>
+  <p>A file it cannot remove would be picked up again on every single pass &mdash; rebooting the machine in a loop. It logs the failure and does nothing instead.</p></div>
+</div></section>
+
+<section><div class="wrap">
   <span class="section-tag">What to expect in game</span>
   <h2>Submitting, cancelling, and what you are told</h2>
   <ul class="clean muted">
