@@ -1716,6 +1716,11 @@ max_connections = 500</pre></div></div>
   <div class="part-head"><span class="part-badge">Server actions</span><h2>Out-of-band commands from F8</h2></div>
   <p class="muted">An admin picks an action in game, and a small script you control does the work. Four moving parts, and the important one is how little the mod does.</p>
 
+  <div class="note tip"><div class="h">What this is really for: reaching past the mod</div>
+  <p>A game mod can restart its own session and tidy its own data. It cannot reboot the machine it runs on, kill a wedged process, load a different world from scratch, restart a gateway that has fallen over, bring a dead Discord bot back, or run a SQL job.</p>
+  <p>Those are the jobs that normally mean stopping play, alt-tabbing to a control panel, or opening SSH. This is a way to trigger them <b>from inside the game</b> &mdash; while keeping every one of them firmly on your side of the fence, because you write the script that does the work.</p>
+  <p class="muted">Anything you can run from a shell can sit behind a button: <code class="inline">REBOOT_SERVER</code>, <code class="inline">COLD_REBOOT_SERVER</code>, <code class="inline">RESTART_GATEWAY</code>, <code class="inline">RESTART_DISCORD_BOT</code>, <code class="inline">DATABASE_MAINT</code>, <code class="inline">MAP_LOAD_PLUNDER</code>, or anything you invent. Wasteland-Z never needs to know what they mean.</p></div>
+
   <div class="tablewrap"><table class="rtab">
     <tr><th>Piece</th><th>Who owns it</th><th>What it does</th></tr>
     <tr><td><code class="inline">HFWastelandZ_server_action_commands.conf</code></td><td>You</td><td>The menu &mdash; which actions exist and what each one means.</td></tr>
@@ -1880,7 +1885,8 @@ python3 wz_watchdog.py /opt/reforger/profile/hf_wastelandz/configs --loop</pre><
     <tr><th>Step</th><th>Reason</th></tr>
     <tr><td>No <code class="inline">END</code> line &rarr; stop, try again next pass</td><td>The engine cannot rename a file atomically, so the mod writes in place. A file without <code class="inline">END</code> is not corrupt &mdash; it is simply not finished.</td></tr>
     <tr><td><code class="inline">rstrip("
-")</code> on every line</td><td>With Windows line endings the command becomes <code class="inline">REBOOT_SERVER</code>, which prints identically, compares unequal, and matches nothing. Nothing errors; the file just vanishes and nothing happens.</td></tr>
+")</code> on every line</td><td>With Windows line endings the command becomes <code class="inline">REBOOT_SERVER
+</code>, which prints identically, compares unequal, and matches nothing. Nothing errors; the file just vanishes and nothing happens.</td></tr>
     <tr><td>Take field 2 of the <code class="inline">COMMAND</code> line</td><td><code class="inline">BY</code> and <code class="inline">AT</code> are there for your logs, not for matching.</td></tr>
     <tr><td>Delete the file, <b>then</b> act</td><td>Delete-first can lose a command if the watchdog dies between the two. Act-first can <b>repeat</b> one. A lost reboot is cheap; a repeated wipe is not.</td></tr>
   </table></div>
