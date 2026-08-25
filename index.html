@@ -1791,6 +1791,14 @@ BY      Motavar (76561198...)
 AT      2026-08-24 09:14:22
 END</pre></div>
 
+  <div class="note tip"><div class="h">A sample lands next to it so you can write your watchdog first</div>
+  <p>On first boot Wasteland-Z also writes <code class="inline">SERVER_COMMAND.example</code> into the same folder, containing a real <code class="inline">REBOOT_SERVER</code> block in exactly the live format. It shows you <b>where</b> the real file appears and <b>what to grep on</b>, so you can build and test a watchdog before anyone submits anything.</p>
+  <p class="muted">Created once if missing, never rewritten. Delete it if you do not want it &mdash; nothing reads it.</p></div>
+
+  <div class="note danger"><div class="h">Match the exact filename &mdash; never a wildcard</div>
+  <p>The sample is in <b>live format</b>, because a commented-out one would not show you the real thing. That means a watchdog matching <code class="inline">SERVER_COMMAND*</code> would pick up <code class="inline">SERVER_COMMAND.example</code> and reboot a machine nobody asked it to.</p>
+  <p>Match <code class="inline">SERVER_COMMAND.txt</code> exactly. Both sample scripts above do.</p></div>
+
   <div class="note tip"><div class="h">Why this file has no HFWastelandZ_ prefix</div>
   <p>Every config Wasteland-Z owns is named <code class="inline">HFWastelandZ_&hellip;</code>. This one deliberately is not, because it is an <b>interface</b> rather than a config &mdash; your watchdog should not have to know or care which mod produced it. A plain name says &ldquo;this one is for you&rdquo;.</p></div>
 
