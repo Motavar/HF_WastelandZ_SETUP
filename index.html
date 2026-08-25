@@ -1718,9 +1718,9 @@ max_connections = 500</pre></div></div>
 
   <div class="tablewrap"><table class="rtab">
     <tr><th>Piece</th><th>Who owns it</th><th>What it does</th></tr>
-    <tr><td><code class="inline">SERVER_ACTIONS.conf</code></td><td>You</td><td>The menu &mdash; which actions exist and what each one means.</td></tr>
+    <tr><td><code class="inline">HFWastelandZ_server_actions.conf</code></td><td>You</td><td>The menu &mdash; which actions exist and what each one means.</td></tr>
     <tr><td>F8 &rarr; SERVER</td><td>The mod</td><td>Shows that list to approved admins and writes the choice out.</td></tr>
-    <tr><td><code class="inline">SERVER_COMMAND.txt</code></td><td>Mod writes, you consume</td><td>One pending command, waiting to be picked up.</td></tr>
+    <tr><td><code class="inline">HFWastelandZ_server_command.txt</code></td><td>Mod writes, you consume</td><td>One pending command, waiting to be picked up.</td></tr>
     <tr><td>Your watchdog</td><td>You</td><td>Spots the file, does the work, deletes it.</td></tr>
   </table></div>
 
@@ -1733,7 +1733,7 @@ max_connections = 500</pre></div></div>
 
 <section><div class="wrap">
   <span class="section-tag">The menu</span>
-  <h2>SERVER_ACTIONS.conf</h2>
+  <h2>HFWastelandZ_server_actions.conf</h2>
   <p class="muted">Created automatically on the first boot that finds it missing, in your profile&rsquo;s <code class="inline">configs</code> folder, with six worked examples. One line per action, three fields separated by <code class="inline">|</code>.</p>
 
   <div class="code"><pre><span class="c"># COMMAND             | LABEL                             | DESCRIPTION</span>
@@ -1747,7 +1747,7 @@ COLD_REBOOT_SERVER    | Cold Reboot Server                | Hard reboot of the s
 
   <div class="tablewrap"><table class="rtab">
     <tr><th>Field</th><th>Meaning</th></tr>
-    <tr><td><code class="inline">COMMAND</code></td><td>The word written to <code class="inline">SERVER_COMMAND.txt</code>. Your watchdog matches on this. No spaces.</td></tr>
+    <tr><td><code class="inline">COMMAND</code></td><td>The word written to <code class="inline">HFWastelandZ_server_command.txt</code>. Your watchdog matches on this. No spaces.</td></tr>
     <tr><td><code class="inline">LABEL</code></td><td>What the admin sees in the list.</td></tr>
     <tr><td><code class="inline">DESCRIPTION</code></td><td>Shown when the entry is selected. Say what it really does, including who it disconnects.</td></tr>
   </table></div>
@@ -1783,7 +1783,7 @@ SERVER_ACTIONS_MIN_TIER ADMIN</pre></div>
 
 <section><div class="wrap">
   <span class="section-tag">The handoff</span>
-  <h2>SERVER_COMMAND.txt and your watchdog</h2>
+  <h2>HFWastelandZ_server_command.txt and your watchdog</h2>
   <p class="muted">When an admin submits, the mod writes this next to your other config files:</p>
   <div class="code"><pre><span class="c"># HF server command — consume and delete</span>
 COMMAND REBOOT_SERVER
@@ -1799,7 +1799,7 @@ END</pre></div>
 
   <h3>A watchdog, in full</h3>
   <div class="code"><pre><span class="c"># Linux — run from cron or a systemd timer</span>
-F="/opt/reforger/profile/hf_wastelandz/configs/SERVER_COMMAND.txt"
+F="/opt/reforger/profile/hf_wastelandz/configs/HFWastelandZ_server_command.txt"
 [ -f "$F" ] || exit 0
 <span class="c"># still being written? come back next tick</span>
 grep -q '^END' "$F" || exit 0
@@ -1815,7 +1815,7 @@ case "$cmd" in
 esac</pre></div>
 
   <div class="code"><pre><span class="c"># Windows — run from Task Scheduler every minute</span>
-$F = "C:\reforger\profile\hf_wastelandz\configs\SERVER_COMMAND.txt"
+$F = "C:\reforger\profile\hf_wastelandz\configs\HFWastelandZ_server_command.txt"
 if (-not (Test-Path $F)) { exit }
 if (-not (Select-String '^END' $F)) { exit }
 
