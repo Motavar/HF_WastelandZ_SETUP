@@ -30,17 +30,13 @@ Start: python gateway.py
 ============================================================
 """
 
-from flask import Flask, request, jsonify, has_request_context
+from flask import Flask, request, jsonify
 from datetime import datetime
 import mysql.connector
 from mysql.connector import pooling
 import json
 import sys
 import os
-import re
-import time
-
-import migrate
 
 # --------------------------------------------------------
 # Load config
@@ -53,431 +49,6 @@ except ImportError:
     print("Copy config.example.py to config.py and edit it.")
     print("=" * 60)
     sys.exit(1)
-
-
-# --------------------------------------------------------
-# SELF-HEALING CONFIG — write missing optional settings on startup.
-#
-# Same idea the mod uses for its .conf files: a release that ADDS a setting
-# should not leave an existing admin without it. Their config.py is never
-# rewritten by an update (the kit ships config.example.py, not config.py), so
-# without this the setting simply is not there and the fallback applies
-# silently — and a default tuned for a two-server gateway is exactly wrong for
-# the admin running six.
-#
-# RULES, in order of how badly each would hurt if broken:
-#
-#   1. APPEND ONLY. An existing value is never edited or reordered. Detection
-#      is hasattr() on the imported module, not a text search, so a setting
-#      that is present but commented out, or set in an unusual way, still
-#      counts as present — what matters is whether it resolves at runtime.
-#
-#   2. NOTHING SECRET IS INVENTED. DB_PASSWORD, API_KEY and SERVERS are
-#      deliberately absent from this list. There is no safe default for a
-#      credential, and generating an api_key would produce one that does not
-#      match the game server's HFWastelandZ_secrets.conf — the gateway would
-#      then reject every request while looking healthy. A missing credential
-#      must stop the gateway, not be papered over.
-#
-#   3. A FAILED WRITE IS NOT FATAL. Read-only file, wrong owner, running as a
-#      service user with no write access — all plausible. The values are
-#      applied IN MEMORY regardless, so this run behaves correctly, and the
-#      admin is told exactly what to paste in by hand.
-#
-#   4. THE CURRENT RUN USES THEM IMMEDIATELY. setattr on the module means no
-#      second restart to pick up what was just written.
-# --------------------------------------------------------
-CONFIG_AUTOFILL = [
-    ("HIVE_ID", "default",
-     "Which hive this gateway serves. Servers sharing a hive share money and\n"
-     "# bank. Leave alone unless you run more than one independent hive."),
-    ("DB_POOL_SIZE", 32,
-     "Pooled MySQL connections. 32 is the connector's maximum.\n"
-     "# Keep HTTP_THREADS x number_of_servers <= this, or bursts return 503 —\n"
-     "# and a 503 on a save is a lost save."),
-    ("HTTP_SERVER", "auto",
-     "auto | waitress | werkzeug. 'auto' uses waitress when installed and\n"
-     "# falls back to Flask's development server, which drops requests under a\n"
-     "# reconnect burst. pip install waitress."),
-    ("HTTP_THREADS", 16,
-     "Request threads per listening server. Lower this as you add servers —\n"
-     "# see DB_POOL_SIZE above. 2 servers -> 16, 6 -> 5, 10 -> 3, 16+ -> 2."),
-    ("FLASK_DEBUG", False,
-     "Never True on a live server: it exposes an interactive debugger."),
-    ("MONITORING_ENABLED", False,
-     "Enables /api/admin/health. Needs monitor.py present."),
-    ("PLAYER_ONLINE_WINDOW_SEC", 900,
-     "How recently a player must have been seen to count as online."),
-    ("LOG_FILE", "gateway.log",
-     "Rotating log file. Relative paths sit beside gateway.py.\n"
-     "# Set to \"\" to log to the console only."),
-    ("LOG_MAX_MB", 5,
-     "Roll over at this size. Total disk use is capped at\n"
-     "# LOG_MAX_MB x (LOG_BACKUPS + 1) and never grows past it - there are no\n"
-     "# per-day files to prune."),
-    ("LOG_BACKUPS", 3,
-     "How many rolled files to keep (gateway.log.2, .3, .4)."),
-    ("LOG_COLOR", True,
-     "Colour the console. Switched off automatically when output is not a\n"
-     "# terminal, or when NO_COLOR is set in the environment. The log FILE is\n"
-     "# always plain text either way."),
-]
-
-
-def ensure_config_defaults():
-    """Append settings this build expects but this config.py does not define."""
-    # Every name must be a legal Python identifier before it is written.
-    #
-    # Not paranoia - this exact failure shipped: a bulk rename across the file
-    # rewrote the string "HIVE_ID" in the table above into "current_hive_id()",
-    # hasattr() said the config lacked it (nothing is named that), and the
-    # autofill appended `current_hive_id() = 'default'` to config.py. The next
-    # start died on a SyntaxError in the ADMIN'S OWN file - a file this code is
-    # trusted to edit and they did not write.
-    #
-    # Refuse loudly and skip the entry. A missing setting falls back to its
-    # default; an unparseable config.py stops the gateway.
-    bad = [k for (k, _v, _c) in CONFIG_AUTOFILL if not k.isidentifier()]
-    if bad:
-        print(f"[GATEWAY] BUG: CONFIG_AUTOFILL has non-identifier key(s) {bad} — "
-              f"skipping them rather than writing an unparseable config.py")
-
-    missing = [(k, v, c) for (k, v, c) in CONFIG_AUTOFILL
-               if k.isidentifier() and not hasattr(config, k)]
-    if not missing:
-        return
-
-    # Apply in memory FIRST, so a write failure below cannot leave the process
-    # running without settings it is about to read.
-    for name, value, _ in missing:
-        setattr(config, name, value)
-
-    names = ", ".join(n for n, _, _ in missing)
-    print(f"[GATEWAY] config.py is missing {len(missing)} setting(s): {names}")
-
-    path = getattr(config, "__file__", None)
-    if not path:
-        print("[GATEWAY]   cannot locate config.py on disk — using defaults for this run only")
-        return
-
-    try:
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup = f"{path}.bak-{stamp}"
-        with open(path, "r", encoding="utf-8") as fh:
-            existing = fh.read()
-        with open(backup, "w", encoding="utf-8") as fh:
-            fh.write(existing)
-
-        lines = []
-        # A file not ending in a newline would glue our first line onto the
-        # admin's last one.
-        if existing and not existing.endswith("\n"):
-            lines.append("")
-        lines.append("")
-        lines.append("# " + "-" * 58)
-        lines.append(f"# Added automatically on {stamp} by the gateway, which found them missing.")
-        lines.append("# These are this build's defaults for settings your config.py did not")
-        lines.append("# define. Edit them freely — they are only ever added, never changed.")
-        lines.append("# " + "-" * 58)
-        for name, value, comment in missing:
-            lines.append("")
-            lines.append(f"# {comment}")
-            lines.append(f"{name} = {value!r}")
-        lines.append("")
-
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write("\n".join(lines))
-
-        print(f"[GATEWAY]   written to config.py with this build's defaults")
-        print(f"[GATEWAY]   previous file saved as {os.path.basename(backup)}")
-    except Exception as exc:
-        # Not fatal. The values are already live for this run.
-        print(f"[GATEWAY]   could NOT write config.py ({exc})")
-        print("[GATEWAY]   running with defaults; add these by hand to keep them:")
-        for name, value, _ in missing:
-            print(f"[GATEWAY]     {name} = {value!r}")
-
-
-ensure_config_defaults()
-
-
-# --------------------------------------------------------
-# LOGGING — timestamped console, plus a rotating file that maintains itself.
-#
-# WHY A TEE RATHER THAN 95 EDITED print() CALLS. Every existing print keeps
-# working untouched, and so does every print added later - nobody has to
-# remember a convention. It also catches what matters most: an unhandled
-# traceback goes to STDERR, so teeing that too means a crash leaves its stack
-# in the file instead of only in a console window that has already closed.
-#
-# WHY SIZE-CAPPED AND NOT PER-DAY. Daily files accumulate forever and become a
-# chore nobody does. This has a hard ceiling - LOG_MAX_MB x (LOG_BACKUPS + 1) -
-# and once it reaches it, it stays there. Nothing to prune, nothing to
-# schedule, and disk usage you can state in advance.
-#
-# The console is left exactly as it was. An admin watching the window sees the
-# same lines, now with a time in front.
-# --------------------------------------------------------
-_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
-
-
-def _strip_ansi(text):
-    """Escape codes are for a terminal, never for a file.
-
-    The startup banner already emitted BOLD/RESET before any of this existed,
-    so without stripping, the log filled with \x1b[1m litter that breaks grep
-    and makes every line awkward to read in an editor.
-    """
-    return _ANSI_RE.sub("", text)
-
-
-def _terminal_supports_colour():
-    """TERM tells you what the far end of an SSH session actually is.
-
-    isatty() only says "something interactive is attached" - it is true for a
-    dumb terminal, a serial console and a CI harness alike. TERM is what
-    distinguishes them, and it is the variable every other tool checks:
-
-      unset   - no terminal type advertised, assume nothing
-      dumb    - explicitly says it cannot do this
-
-    PuTTY, xterm, Windows Terminal and a plain SSH login all advertise
-    something real (xterm, xterm-256color, vt100) and handle the basic ANSI
-    set fine.
-    """
-    if os.name == "nt":
-        return True                  # decided by _enable_windows_ansi instead
-    term = os.environ.get("TERM", "")
-    return bool(term) and term != "dumb"
-
-
-def _enable_windows_ansi():
-    """Turn on virtual-terminal processing so Windows renders ANSI.
-
-    Windows 10+ supports it but does NOT enable it for a plain console by
-    default. Modern Terminal does; conhost often does not. Wrapped in a broad
-    except because on an old build, a redirected handle, or a non-Windows
-    Python this simply is not available - and colour is never worth an
-    exception on startup.
-    """
-    if os.name != "nt":
-        return True
-    try:
-        import ctypes
-        k = ctypes.windll.kernel32
-        # -11 = STD_OUTPUT_HANDLE. 7 = PROCESSED_OUTPUT | WRAP_AT_EOL |
-        # VIRTUAL_TERMINAL_PROCESSING.
-        return bool(k.SetConsoleMode(k.GetStdHandle(-11), 7))
-    except Exception:
-        return False
-
-
-class _Colour:
-    """Decides once whether colour is safe, then paints by line content.
-
-    Three ways to end up with no colour, all deliberate:
-      - LOG_COLOR = False in config.py
-      - NO_COLOR set in the environment (the de-facto convention)
-      - output is not a terminal, i.e. piped to a file or a service log,
-        where escape codes are noise rather than formatting
-    """
-
-    RESET = "\x1b[0m"
-
-    def __init__(self, enabled):
-        self.on = bool(enabled)
-
-    def paint(self, stamp, line):
-        if not self.on:
-            return f"{stamp} {line}"
-
-        # ORIGINAL ANSI ONLY - 30-37 plus bold/dim. The 90-97 "bright" range
-        # is an aixterm extension: xterm, PuTTY and Windows Terminal render
-        # it, a strict VT100 need not, and no colour here is worth a line of
-        # garbage on somebody's serial console.
-        body = ""
-        if "Traceback" in line or line.startswith("ERR ") or "Error" in line:
-            body = "\x1b[31m"                              # red
-        elif "WARN" in line or "WARNING" in line or "missing" in line:
-            body = "\x1b[33m"                              # yellow
-        elif line.startswith("[MIGRATE]"):
-            body = "\x1b[36m"                              # cyan
-        elif "OK" in line or "created" in line or "up." in line:
-            body = "\x1b[32m"                              # green
-
-        # Dim timestamp so the eye lands on the message. A terminal without
-        # dim ignores the code and prints normally, so no fallback is needed.
-        if not body:
-            return f"\x1b[2m{stamp}{self.RESET} {line}"
-        return f"\x1b[2m{stamp}{self.RESET} {body}{line}{self.RESET}"
-
-
-class _TeeStream:
-    """Line-buffered tee. BOTH console and file get a timestamp per line.
-
-    Buffers until a newline because print() emits the text and the "\n" as
-    SEPARATE writes - stamping every write would drop a timestamp into the
-    middle of a line. Whatever is left unterminated is flushed on exit.
-
-    The console is stamped as well as the file. It was not, briefly, on the
-    reasoning that an admin watching the window wanted it unchanged - which was
-    wrong. A console line with no time on it is the one you cannot correlate
-    with anything later, and "when did the pool come up" is exactly the
-    question a startup log gets asked.
-    """
-
-    def __init__(self, real, sink, tag, colour):
-        self._real = real
-        self._sink = sink
-        self._tag = tag
-        self._colour = colour
-        self._buf = ""
-
-    def _stamp(self):
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def _line(self, line):
-        # Full date AND time on the console, same as the file. A server
-        # window can stay open for weeks, so a bare clock time is ambiguous
-        # the moment you scroll back past midnight.
-        try:
-            self._real.write(self._colour.paint(self._stamp(), line) + "\n")
-        except Exception:
-            pass
-        if self._sink:
-            # Plain text to disk, always. Colour is a property of the terminal
-            # you are looking at, not of the event that happened.
-            self._sink.emit(self._tag, _strip_ansi(line))
-
-    def write(self, text):
-        self._buf += text
-        while "\n" in self._buf:
-            line, self._buf = self._buf.split("\n", 1)
-            self._line(line)
-
-    def flush(self):
-        if self._buf:
-            line, self._buf = self._buf, ""
-            self._line(line)
-        try:
-            self._real.flush()
-        except Exception:
-            pass
-
-    def isatty(self):
-        try:
-            return self._real.isatty()
-        except Exception:
-            return False
-
-
-class _RotatingSink:
-    """Append lines, roll over at a size cap, keep a fixed number of old files.
-
-    Deliberately not logging.handlers.RotatingFileHandler: that wants to OWN
-    formatting and levels, and everything here is already a formatted print.
-    This just needs "append a line, roll when big".
-    """
-
-    def __init__(self, path, max_bytes, backups):
-        self._path = path
-        self._max = max_bytes
-        self._backups = backups
-        self._fh = None
-        self._open()
-
-    def _open(self):
-        try:
-            d = os.path.dirname(self._path)
-            if d and not os.path.isdir(d):
-                os.makedirs(d, exist_ok=True)
-            self._fh = open(self._path, "a", encoding="utf-8", errors="replace")
-        except Exception as exc:
-            # Never take the gateway down over a log file. Console still works.
-            sys.__stderr__.write(f"[GATEWAY] log file unavailable ({exc}) — console only\n")
-            self._fh = None
-
-    def _roll(self):
-        """gateway.log -> .2, .2 -> .3, ... and the oldest is dropped.
-
-        Backups are numbered from 2 so the live file keeps its plain name -
-        an admin tailing gateway.log never has to think about which one is
-        current.
-
-        Walked OLDEST FIRST. Going the other way would rename .2 onto .3
-        before .3 had moved, destroying a file that should have survived.
-        """
-        try:
-            self._fh.close()
-        except Exception:
-            pass
-        try:
-            oldest = self._backups + 1        # e.g. backups=3 -> .4 is dropped
-            if os.path.exists(f"{self._path}.{oldest}"):
-                os.remove(f"{self._path}.{oldest}")
-
-            for i in range(oldest - 1, 1, -1):     # .3 -> .4, then .2 -> .3
-                src = f"{self._path}.{i}"
-                if os.path.exists(src):
-                    os.rename(src, f"{self._path}.{i + 1}")
-
-            if os.path.exists(self._path):         # live file -> .2
-                os.rename(self._path, f"{self._path}.2")
-        except Exception:
-            pass
-        self._open()
-
-    def emit(self, tag, line):
-        if not self._fh:
-            return
-        try:
-            stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self._fh.write(f"{stamp} {tag} {line}\n")
-            self._fh.flush()          # flush every line: a crash must not lose the last one
-            if self._max > 0 and self._fh.tell() >= self._max:
-                self._roll()
-        except Exception:
-            pass
-
-
-def _install_logging():
-    # LOG_FILE "" means CONSOLE ONLY - not "no timestamps". Returning early
-    # here skipped installing the tee altogether, so switching the file off
-    # also silently switched the timestamps off, which is not what the setting
-    # says and not what anyone would want.
-    path = str(getattr(config, "LOG_FILE", "gateway.log"))
-    sink = None
-    max_mb = 0
-    backups = 0
-    if path:
-        if not os.path.isabs(path):
-            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
-        max_mb = float(getattr(config, "LOG_MAX_MB", 5))
-        backups = int(getattr(config, "LOG_BACKUPS", 3))
-        sink = _RotatingSink(path, int(max_mb * 1024 * 1024), backups)
-
-    want = bool(getattr(config, "LOG_COLOR", True))
-    if os.environ.get("NO_COLOR"):
-        want = False
-    tty = False
-    try:
-        tty = sys.__stdout__.isatty()
-    except Exception:
-        tty = False
-    colour = _Colour(want and tty and _terminal_supports_colour()
-                     and _enable_windows_ansi())
-
-    sys.stdout = _TeeStream(sys.__stdout__, sink, "    ", colour)
-    sys.stderr = _TeeStream(sys.__stderr__, sink, "ERR ", colour)
-
-    if sink:
-        total = max_mb * (backups + 1)
-        print(f"[GATEWAY] logging to {path} (max {max_mb:g} MB x {backups + 1} files = {total:g} MB ceiling)")
-    else:
-        print("[GATEWAY] LOG_FILE is empty — console only, still timestamped")
-
-
-_install_logging()
 
 # --------------------------------------------------------
 # Load crypto module
@@ -514,7 +85,7 @@ app.config['JSON_SORT_KEYS'] = False
 # --------------------------------------------------------
 # Version
 # --------------------------------------------------------
-GATEWAY_VERSION = "0.9.0"
+GATEWAY_VERSION = "0.7.1"
 
 # --------------------------------------------------------
 # Server roster — multi-server hive.
@@ -522,7 +93,6 @@ GATEWAY_VERSION = "0.9.0"
 # Backward-compatible fallback: a single server from the legacy flat keys.
 # --------------------------------------------------------
 def _resolve_servers():
-    default_hive = str(getattr(config, "HIVE_ID", "default"))
     raw = getattr(config, "SERVERS", None)
     if raw:
         out = []
@@ -532,10 +102,6 @@ def _resolve_servers():
                 "port": int(s["port"]),
                 "host": str(s.get("host", "127.0.0.1")),
                 "api_key": str(s["api_key"]),
-                # Per-entry hive. Omit it and the entry joins the gateway-wide
-                # HIVE_ID, which is every existing config - so this is additive
-                # and nobody's hive changes by upgrading.
-                "hive_id": str(s.get("hive_id", default_hive)),
             })
         return out
     # Legacy single-server fallback
@@ -544,7 +110,6 @@ def _resolve_servers():
         "port": int(getattr(config, "GATEWAY_PORT", 5000)),
         "host": str(getattr(config, "GATEWAY_HOST", "127.0.0.1")),
         "api_key": str(getattr(config, "API_KEY", "")),
-        "hive_id": default_hive,
     }]
 
 def _key_is_usable(api_key):
@@ -582,33 +147,7 @@ def _validate_keys(servers):
 
 SERVERS = _resolve_servers()
 SERVERS_BY_PORT = {s["port"]: s for s in SERVERS}
-
-# DEFAULT hive for entries that name none. Still the only hive on a
-# single-tenant gateway, which is almost every gateway.
-#
-# NOT the hive for a request - use current_hive_id(). One gateway can now serve
-# several hives at once (a hosting provider giving each customer their own port
-# and key), and reading this global instead of the request's own hive would let
-# one customer read another's players. Every table is already hive-scoped; the
-# process was the only thing that was not.
 HIVE_ID = str(getattr(config, "HIVE_ID", "default"))
-
-
-def current_hive_id():
-    """The hive that owns THIS request, resolved from the listening port.
-
-    Falls back to the module-level default when there is no request, or when
-    the request arrived on a port that is not in SERVERS - which is the only
-    sensible answer, and is what every caller expects.
-
-    NOTE the fallback is HIVE_ID, the module global, NOT this function. It read
-    `return current_hive_id()` for one commit: the bulk rewrite that replaced
-    HIVE_ID with current_hive_id() across 62 lines also rewrote this function's
-    own fallback, making it call itself forever."""
-    srv = current_server()
-    if srv:
-        return srv["hive_id"]
-    return HIVE_ID
 
 # Flask web-service debug (gateway only — NOT the game server's DEV_MODE/HF_DEBUG).
 FLASK_DEBUG = getattr(config, "FLASK_DEBUG", getattr(config, "DEBUG", False))
@@ -617,18 +156,7 @@ FLASK_DEBUG = getattr(config, "FLASK_DEBUG", getattr(config, "DEBUG", False))
 # Per-request server identity (by the port the request arrived on)
 # --------------------------------------------------------
 def current_server():
-    """The configured server for the port this request arrived on, or None.
-
-    Returns None OUTSIDE a request rather than raising. `request` is a proxy
-    that throws "Working outside of request context" the moment it is touched
-    with no active request, so startup code touching this - a banner, a
-    migration, a warm-up query - would take the whole process down.
-
-    Callers already handle None (they fall back to the gateway-wide default),
-    so returning it is both safe and the honest answer: with no request there
-    is genuinely no "current" server."""
-    if not has_request_context():
-        return None
+    """The configured server for the port this request arrived on, or None."""
     try:
         port = int(request.environ.get("SERVER_PORT", 0))
     except (TypeError, ValueError):
@@ -644,33 +172,13 @@ def current_server_id():
 # --------------------------------------------------------
 _db_pool = None
 
-# Highest applied migration, filled in at startup by the migration runner.
-# Reported in /api/ping so the mod can show mod / gateway / schema versions
-# together in the F8 SERVER tab instead of an admin inferring them.
-SCHEMA_VERSION = 0
-
-def _pool_size():
-    """How many MySQL connections to pool.
-
-    Default raised from 10 to 32 (the connector's maximum) after measuring
-    this: with waitress serving 16 threads per listener, a two-server gateway
-    can have 32 requests in flight, and a pool of 10 meant the other 22 got
-    get_db() -> None -> HTTP 503. Under werkzeug the same overload was
-    invisible, because requests were dropped at the socket before they ever
-    reached the pool.
-
-    A 503 on a save is a LOST WRITE, which is exactly what must not happen.
-    """
-    return min(int(getattr(config, "DB_POOL_SIZE", 32)), 32)
-
-
 def _init_db_pool():
     """Initialize MySQL connection pool (called once at startup)."""
     global _db_pool
     try:
         _db_pool = pooling.MySQLConnectionPool(
             pool_name="gateway_pool",
-            pool_size=_pool_size(),
+            pool_size=getattr(config, "DB_POOL_SIZE", 10),
             pool_reset_session=True,
             host=config.DB_HOST,
             port=config.DB_PORT,
@@ -678,7 +186,7 @@ def _init_db_pool():
             password=config.DB_PASSWORD,
             database=config.DB_NAME
         )
-        print(f"[GATEWAY] DB connection pool created (size={_pool_size()})")
+        print(f"[GATEWAY] DB connection pool created (size={getattr(config, 'DB_POOL_SIZE', 10)})")
     except mysql.connector.Error as err:
         print(f"[GATEWAY] DB POOL ERROR: {err}")
         _db_pool = None
@@ -691,23 +199,11 @@ def get_db():
         _init_db_pool()
     if not _db_pool:
         return None
-    # Retry briefly rather than failing the request outright.
-    #
-    # An exhausted pool is a BURST, not an outage - the connections are busy,
-    # not broken, and one is usually free within milliseconds. Returning None
-    # immediately turns a 5 ms wait into an HTTP 503, and a 503 on a save is a
-    # lost write. Three quick attempts smooth a burst without hiding a real
-    # outage: if the pool is genuinely dead, this still gives up in ~60 ms.
-    last = None
-    for attempt in range(3):
-        try:
-            return _db_pool.get_connection()
-        except mysql.connector.Error as err:
-            last = err
-            if attempt < 2:
-                time.sleep(0.02)
-    print(f"[GATEWAY] DB POOL EXHAUSTED after 3 attempts: {last}")
-    return None
+    try:
+        return _db_pool.get_connection()
+    except mysql.connector.Error as err:
+        print(f"[GATEWAY] DB POOL GET ERROR: {err}")
+        return None
 
 def _close(conn):
     if conn is not None:
@@ -718,53 +214,6 @@ def _close(conn):
 
 def _iso(value):
     return value.isoformat() if value else ""
-
-# MySQL error numbers worth retrying rather than failing the request.
-#   1213  ER_LOCK_DEADLOCK        - InnoDB picked this transaction as the victim
-#   1205  ER_LOCK_WAIT_TIMEOUT    - waited too long for a row lock
-# Both are TRANSIENT and both are caused by CONCURRENCY, not by bad data. MySQL
-# rolls the loser back and its own message says "try restarting transaction".
-_RETRYABLE_ERRNOS = (1213, 1205)
-
-
-def _is_retryable(err):
-    return getattr(err, "errno", None) in _RETRYABLE_ERRNOS
-
-
-def _db_retry(fn, tag, attempts=6):
-    """Run a DB operation, retrying transient lock failures.
-
-    Found by load test 2026-08-23: 128 players reconnecting at once produced
-        1213 Deadlock found when trying to get lock; try restarting transaction
-    in save_player, which returned HTTP 500. save_player touches `players`
-    twice and `player_sessions` once per request, so concurrent saves for
-    different players can still interleave into a deadlock on the shared
-    table's indexes.
-
-    A 500 there is a LOST SAVE. Retrying is the documented remedy - the losing
-    transaction was rolled back cleanly, so re-running it is safe and is not a
-    double-write.
-
-    Backoff is tiny and jittered: deadlocks resolve in microseconds, and
-    identical backoff across threads just re-collides them.
-    """
-    import random as _r
-    last = None
-    for attempt in range(attempts):
-        try:
-            return fn()
-        except mysql.connector.Error as err:
-            if not _is_retryable(err):
-                raise
-            last = err
-            if attempt < attempts - 1:
-                # Exponential-ish with jitter. A flat 5-20ms was not always
-                # enough at high concurrency - the ramp test still produced a
-                # few 500s at 3 attempts, and each one is a lost save.
-                time.sleep((0.005 * (attempt + 1)) + _r.random() * 0.015)
-                print(f"[GATEWAY] {tag}: transient lock error ({err.errno}) — retry {attempt + 1}")
-    raise last
-
 
 def _db_error(tag, err):
     print(f"[GATEWAY] {tag} DB error: {err}")
@@ -842,54 +291,9 @@ def ping():
     is_authed = check_auth("PING")
 
     db_status = "unknown"
-    reregister = False
     conn = get_db()
     try:
         db_status = "connected" if (conn and conn.is_connected()) else "disconnected"
-
-        # ------------------------------------------------------------------
-        # HIVE HEARTBEAT.
-        #
-        # The ping is already sent every 60s, so the volatile fields ride it
-        # rather than costing their own request: player count and the short
-        # addon fingerprint. The full addon LIST is far too big for a query
-        # string and stays on POST /api/hive/register.
-        #
-        # This is also what makes registration self-healing. Boot-state gateway
-        # calls do not retry, so a gateway started AFTER the game server would
-        # otherwise leave that server invisible in the hive forever - and an
-        # invisible server is one whose mod mismatch nobody can see until it
-        # eats a player's gear. If we have no row, or the fingerprint we hold
-        # disagrees with the one being pinged, we ask for a full re-register and
-        # the mod sends it within the minute.
-        # ------------------------------------------------------------------
-        if is_authed and conn and conn.is_connected():
-            _sid = current_server_id()
-            _hash = request.args.get("addon_hash", "")
-            _online = request.args.get("players", "")
-            try:
-                _cur = conn.cursor()
-                _cur.execute("SELECT addon_hash FROM hive_servers WHERE hive_id=%s AND server_id=%s",
-                             (current_hive_id(), _sid))
-                _row = _cur.fetchone()
-                if not _row:
-                    reregister = True
-                elif _hash and _row[0] and _row[0] != _hash:
-                    # The server's mod set changed since it registered. Its
-                    # stored addon list is now a lie, and the F8 compliance view
-                    # is only as good as that list.
-                    reregister = True
-                    print(f"[GATEWAY] {_sid} addon fingerprint changed -> asking for re-register")
-                else:
-                    _cur.execute(
-                        "UPDATE hive_servers SET players_online=%s WHERE hive_id=%s AND server_id=%s",
-                        (int(_online or 0), current_hive_id(), _sid))
-                    conn.commit()
-                _cur.close()
-            except mysql.connector.Error as err:
-                # A heartbeat must never take the ping down with it. The ping is
-                # how the mod decides the gateway is reachable at all.
-                print(f"[GATEWAY] hive heartbeat skipped: {err}")
     except Exception as e:
         db_status = f"error: {e}"
     finally:
@@ -909,14 +313,9 @@ def ping():
     return jsonify({
         "status": "ok",
         "gateway_version": GATEWAY_VERSION,
-        "schema_version": SCHEMA_VERSION,
-        # INT, not a bool. The mod parses this with a flat scanner that reads
-        # quoted strings or digits; a bare JSON `true` matches neither and
-        # would silently never trigger a re-register.
-        "reregister": 1 if reregister else 0,
         "database": db_status,
         "server_id": current_server_id(),
-        "hive_id": current_hive_id(),
+        "hive_id": HIVE_ID,
         "authenticated": is_authed,
         "crypto_enabled": CRYPTO_AVAILABLE,
         "timestamp": datetime.now().isoformat()
@@ -951,9 +350,8 @@ def admin_health():
         "timestamp": datetime.now().isoformat(),
         "gateway": {
             "version": GATEWAY_VERSION,
-            "schema_version": SCHEMA_VERSION,
             "server_id": current_server_id(),
-            "hive_id": current_hive_id(),
+            "hive_id": HIVE_ID,
             "database": db_status,
             "crypto_enabled": CRYPTO_AVAILABLE,
         },
@@ -977,38 +375,15 @@ def get_player(uid):
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM players WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
+        cursor.execute("SELECT * FROM players WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
         prof = cursor.fetchone()
         if not prof:
             return jsonify({"status": "ok", "player": None, "new_player": True})
 
         # Phase 3 anti-clobber: claim ownership for this server on load (join).
         # A later/stale save from a server the player has left is then rejected.
-        #
-        # ARRIVAL GRACE (2026-08-22). current_server_id was doing two
-        # contradictory jobs: "who owns this player right now" (overwritten on
-        # every load) and "where did they last play" (must survive a load). The
-        # claim won, so the second load of one arrival reported THIS server as
-        # the last server and the mod wiped the player's gear.
-        #
-        # arrival_grace splits them. Armed ONLY when the stored owner differs
-        # from this server; a same-server load leaves it untouched, which is
-        # exactly what makes it durable across repeated loads, deploy-screen
-        # reconnects and every dispatch site. The mod clears it on the first
-        # save after a successful spawn.
-        _prev_owner = prof.get("current_server_id")
-        _arriving = bool(_prev_owner) and _prev_owner != sid
-        if _arriving:
-            cursor.execute(
-                "UPDATE players SET current_server_id = %s, arrival_grace = 1 "
-                "WHERE player_uid = %s AND hive_id = %s",
-                (sid, uid, current_hive_id()))
-            print(f"[GATEWAY] arrival: {uid} {_prev_owner} -> {sid} (grace armed)")
-        else:
-            cursor.execute(
-                "UPDATE players SET current_server_id = %s "
-                "WHERE player_uid = %s AND hive_id = %s",
-                (sid, uid, current_hive_id()))
+        cursor.execute("UPDATE players SET current_server_id = %s WHERE player_uid = %s AND hive_id = %s",
+                       (sid, uid, HIVE_ID))
         conn.commit()
 
         cursor.execute("SELECT * FROM player_sessions WHERE player_uid = %s AND server_id = %s", (uid, sid))
@@ -1020,86 +395,6 @@ def get_player(uid):
         # "same server -> restore last location + gear" (HFGameMode sameServer check).
         player["last_server_id"] = prof.get("current_server_id")
         player["current_server_id"] = sid
-        player["arrival_grace"] = 1 if _arriving else int(prof.get("arrival_grace") or 0)
-
-        # ------------------------------------------------------------------
-        # RESOLVED GEAR ROW (2026-08-22)
-        #
-        # The mod sends the policy it wants applied — its gear group and its
-        # current map — and gets back ONE already-chosen row in the SAME flat
-        # `inventory` string field it has always parsed.
-        #
-        # WHY RESOLVE SERVER-SIDE. The alternative was shipping the full
-        # candidate list and letting the mod pick. That needs new nested-JSON
-        # parsing in Enforce: HFRestClient.ParseStringField finds the FIRST
-        # "field" and reads a flat string, so it cannot walk an array of
-        # objects whose keys repeat. Hand-rolled bracket matching is exactly
-        # where this class of bug lives, and getting it wrong silently returns
-        # the wrong player's gear.
-        #
-        # The gateway still does not DECIDE policy — it does not know what
-        # ALPHA means, cannot invent a group, and applies only the rule it is
-        # handed. The mod owns the config, the vocabulary and the choice; this
-        # is a filtered SELECT, which is what a data layer is for.
-        #
-        # The read rule, verbatim from the design:
-        #     share_group = mine  OR  (server_id = me AND map_name = my map)
-        # with '' matching any map, so rows written before map tracking (and
-        # the 0081 backfill) still resolve.
-        #
-        # BACKWARD COMPATIBLE: a mod that sends no gear_group falls back to the
-        # legacy players.inventory column, so an older mod against a newer
-        # gateway keeps working.
-        # ------------------------------------------------------------------
-        _gear_group = request.args.get("gear_group", "")
-        _my_map     = request.args.get("map", "")
-
-        if _gear_group:
-            # ONE ROW, no ordering, no fallback clause (migration 0088).
-            #
-            # Gear is per HIVE per SHARED GEAR SET. Not per server, not per map -
-            # the same mods on a different map in the same hive and the same
-            # group are the same gear. The old query also matched on
-            # (server_id = me AND map_name = my map), which made exactly that
-            # case resolve as two different rows, and then needed
-            # ORDER BY updated_at DESC LIMIT 1 to pick between the candidates it
-            # had just manufactured.
-            #
-            # share_group is part of the primary key, so this is a point
-            # lookup that cannot return more than one row. `map` is still
-            # accepted and recorded, it just no longer decides anything.
-            #
-            # scope_map = '' pins the FULL five-column key rather than a
-            # prefix of it. GEAR IS DELIBERATELY NOT MAP-SCOPED: the same
-            # mods on a different map in the same hive and the same group
-            # are the same gear, so a map rotation is a config read and
-            # nothing more. Naming scope_map explicitly is what keeps this
-            # an exact-match point lookup instead of a range scan that a
-            # future map-scoped namespace could wander into.
-            cursor.execute("""
-                SELECT server_id, share_group, map_name, format_ver, payload, updated_at
-                  FROM player_data
-                 WHERE player_uid = %s AND hive_id = %s
-                   AND share_group = %s AND namespace = 'inventory'
-                   AND scope_map = ''
-            """, (uid, current_hive_id(), _gear_group))
-            _win = cursor.fetchone()
-            if _win:
-                player["inventory"]              = _win.get("payload")
-                player["inventory_source"]       = _win.get("server_id")
-                player["inventory_group"]        = _win.get("share_group")
-                player["inventory_map"]          = _win.get("map_name") or ""
-                player["inventory_format_ver"]   = _win.get("format_ver")
-                print(f"[GATEWAY] gear resolved: {uid} <- {_win.get('server_id')} "
-                      f"group={_win.get('share_group')} map='{_win.get('map_name')}' "
-                      f"(asked group={_gear_group} map='{_my_map}')")
-            else:
-                # No candidate is NOT an error: a brand-new player, or a first
-                # visit to a server whose group has no rows yet. Faction
-                # defaults apply; nothing is logged as a fault.
-                player["inventory"]            = None
-                player["inventory_source"]     = ""
-                player["inventory_format_ver"] = 0
         player["first_join"] = _iso(prof.get("first_join"))
         player["last_seen"] = _iso(prof.get("last_seen"))
         if sess:
@@ -1172,86 +467,58 @@ def save_player(uid):
         cursor = conn.cursor()
         # Phase 3 anti-clobber: reject a stale save from a server that no longer
         # owns this player (they have joined a different server in the hive).
-        cursor.execute("SELECT current_server_id FROM players WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
+        cursor.execute("SELECT current_server_id FROM players WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
         _own = cursor.fetchone()
         if _own and _own[0] is not None and _own[0] != sid:
             print(f"[GATEWAY] save rejected: {uid} owned by {_own[0]}, not {sid}")
             return jsonify({"status": "error", "message": "player owned by another server",
                             "current_server_id": _own[0]}), 409
-
-        # CONSUME the one-shot arrival grace. A save from the owning server means
-        # the player is in the world - they have spawned, so the free faction and
-        # spawn pick has been used. Cleared here rather than in the mod because
-        # the mod would need a separate call for it, and a missed call would
-        # leave the grace armed forever.
-        #
-        # Clearing on ANY owning save is deliberate: autosave, disconnect save
-        # and the post-spawn save all mean the same thing. Worst case the grace
-        # is consumed a moment early, which costs a free respawn. The other
-        # direction - a grace that never clears - hands out an unlimited faction
-        # and spawn reroll, which is the anti-battle-log rule defeated.
-        # RETRY ON DEADLOCK. This block touches `players` twice and
-        # `player_sessions` once, so concurrent saves can interleave and let
-        # InnoDB pick one as the victim - seen in the 2026-08-23 load test as
-        # 1213 during a 128-player reconnect burst, surfaced as HTTP 500.
-        #
-        # A 500 here is a LOST SAVE. The victim is rolled back cleanly, so
-        # re-running is safe and is not a double write - which is precisely
-        # what MySQL means by 'try restarting transaction'.
-        def _write():
-            cursor.execute("UPDATE players SET arrival_grace = 0 "
-                           "WHERE player_uid = %s AND hive_id = %s AND arrival_grace <> 0",
-                           (uid, current_hive_id()))
-            if cursor.rowcount:
-                print(f"[GATEWAY] arrival grace consumed: {uid} on {sid}")
-            if inventory is not None:
-                cursor.execute("""
-                    INSERT INTO players (player_uid, hive_id, display_name, money, faction,
-                                         weapon, inventory, bank, current_server_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE
-                        display_name = VALUES(display_name),
-                        money = VALUES(money),
-                        faction = VALUES(faction),
-                        weapon = VALUES(weapon),
-                        inventory = VALUES(inventory),
-                        bank = VALUES(bank),
-                        current_server_id = VALUES(current_server_id),
-                        last_seen = CURRENT_TIMESTAMP
-                """, (uid, current_hive_id(), display_name, money, faction, weapon, inventory, bank, sid))
-            else:
-                cursor.execute("""
-                    INSERT INTO players (player_uid, hive_id, display_name, money, faction,
-                                         weapon, bank, current_server_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE
-                        display_name = VALUES(display_name),
-                        money = VALUES(money),
-                        faction = VALUES(faction),
-                        weapon = VALUES(weapon),
-                        bank = VALUES(bank),
-                        current_server_id = VALUES(current_server_id),
-                        last_seen = CURRENT_TIMESTAMP
-                """, (uid, current_hive_id(), display_name, money, faction, weapon, bank, sid))
-
+        if inventory is not None:
             cursor.execute("""
-                INSERT INTO player_sessions (player_uid, server_id, map_name,
-                                             pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive)
+                INSERT INTO players (player_uid, hive_id, display_name, money, faction,
+                                     weapon, inventory, bank, current_server_id)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
-                    map_name = VALUES(map_name),
-                    pos_x = VALUES(pos_x),
-                    pos_y = VALUES(pos_y),
-                    pos_z = VALUES(pos_z),
-                    rotation_yaw = VALUES(rotation_yaw),
-                    stance = VALUES(stance),
-                    is_alive = VALUES(is_alive),
+                    display_name = VALUES(display_name),
+                    money = VALUES(money),
+                    faction = VALUES(faction),
+                    weapon = VALUES(weapon),
+                    inventory = VALUES(inventory),
+                    bank = VALUES(bank),
+                    current_server_id = VALUES(current_server_id),
                     last_seen = CURRENT_TIMESTAMP
-            """, (uid, sid, map_name, pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive))
+            """, (uid, HIVE_ID, display_name, money, faction, weapon, inventory, bank, sid))
+        else:
+            cursor.execute("""
+                INSERT INTO players (player_uid, hive_id, display_name, money, faction,
+                                     weapon, bank, current_server_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    display_name = VALUES(display_name),
+                    money = VALUES(money),
+                    faction = VALUES(faction),
+                    weapon = VALUES(weapon),
+                    bank = VALUES(bank),
+                    current_server_id = VALUES(current_server_id),
+                    last_seen = CURRENT_TIMESTAMP
+            """, (uid, HIVE_ID, display_name, money, faction, weapon, bank, sid))
 
-            conn.commit()
+        cursor.execute("""
+            INSERT INTO player_sessions (player_uid, server_id, map_name,
+                                         pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                map_name = VALUES(map_name),
+                pos_x = VALUES(pos_x),
+                pos_y = VALUES(pos_y),
+                pos_z = VALUES(pos_z),
+                rotation_yaw = VALUES(rotation_yaw),
+                stance = VALUES(stance),
+                is_alive = VALUES(is_alive),
+                last_seen = CURRENT_TIMESTAMP
+        """, (uid, sid, map_name, pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive))
 
-        _db_retry(_write, "save_player")
+        conn.commit()
         print(f"[GATEWAY] Player saved: {uid} @ {sid} money={money} bank={bank} alive={is_alive}")
         return jsonify({"status": "ok", "message": "player saved"})
 
@@ -1284,7 +551,7 @@ def save_inventory(uid):
     try:
         cursor = conn.cursor()
         # Phase 3 anti-clobber: reject a stale inventory save from a non-owner server.
-        cursor.execute("SELECT current_server_id FROM players WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
+        cursor.execute("SELECT current_server_id FROM players WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
         _own = cursor.fetchone()
         if _own and _own[0] is not None and _own[0] != sid:
             print(f"[GATEWAY] inventory save rejected: {uid} owned by {_own[0]}, not {sid}")
@@ -1296,7 +563,7 @@ def save_inventory(uid):
             ON DUPLICATE KEY UPDATE
                 inventory = VALUES(inventory),
                 last_seen = CURRENT_TIMESTAMP
-        """, (uid, current_hive_id(), inventory))
+        """, (uid, HIVE_ID, inventory))
         conn.commit()
         print(f"[GATEWAY] Inventory saved: {uid} ({len(inventory) if inventory else 0} chars)")
         return jsonify({"status": "ok", "message": "inventory saved"})
@@ -1384,7 +651,7 @@ def player_transaction(uid):
         cursor.execute("""
             INSERT INTO transactions (player_uid, hive_id, server_id, type, amount, balance_after, details)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (uid, current_hive_id(), sid, tx_type, amount, balance_after, details))
+        """, (uid, HIVE_ID, sid, tx_type, amount, balance_after, details))
         conn.commit()
         print(f"[GATEWAY] Transaction: {uid} @ {sid} {tx_type} {amount:+d} balance={balance_after}")
         return jsonify({"status": "ok", "transaction_type": tx_type, "amount": amount, "balance_after": balance_after})
@@ -1438,7 +705,7 @@ def save_player_stats(uid):
                 longest_life_sec = GREATEST(longest_life_sec, VALUES(longest_life_sec)),
                 hvt_kills = hvt_kills + VALUES(hvt_kills),
                 missions_completed = missions_completed + VALUES(missions_completed)
-        """, (uid, current_hive_id(), sid, kills, deaths, playtime_seconds,
+        """, (uid, HIVE_ID, sid, kills, deaths, playtime_seconds,
               money_earned, money_spent, distance_traveled, longest_life_sec, hvt_kills,
               missions_completed))
         conn.commit()
@@ -1495,7 +762,7 @@ def get_marker_prefs(uid):
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM player_marker_prefs WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
+        cursor.execute("SELECT * FROM player_marker_prefs WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
         row = cursor.fetchone()
         if row:
             row["updated_at"] = _iso(row.get("updated_at"))
@@ -1562,7 +829,7 @@ def save_marker_prefs(uid):
                 group_only = VALUES(group_only),
                 auto_vehicle_swap = VALUES(auto_vehicle_swap),
                 map_flags = VALUES(map_flags)
-        """, (uid, current_hive_id(), icon_idx, icon_size_px, marker_range_m,
+        """, (uid, HIVE_ID, icon_idx, icon_size_px, marker_range_m,
               markers_enabled, names_enabled, group_only, auto_vehicle_swap, map_flags))
         conn.commit()
         return jsonify({"status": "ok"})
@@ -1629,10 +896,10 @@ def get_stats_leaderboard():
             ORDER BY value DESC
             LIMIT %s
         """
-        params = (current_hive_id(),) + date_params + (limit,)
+        params = (HIVE_ID,) + date_params + (limit,)
         cursor.execute(sql, params)
         rows = cursor.fetchall()
-        return jsonify({"status": "ok", "metric": metric, "days": days_arg, "hive_id": current_hive_id(), "rows": rows})
+        return jsonify({"status": "ok", "metric": metric, "days": days_arg, "hive_id": HIVE_ID, "rows": rows})
     except mysql.connector.Error as err:
         return _db_error("get_stats_leaderboard", err)
     except Exception as err:
@@ -1655,13 +922,13 @@ def delete_player(uid):
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM transactions WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
+        cursor.execute("DELETE FROM transactions WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
         tx_deleted = cursor.rowcount
-        cursor.execute("DELETE FROM player_stats_daily WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
+        cursor.execute("DELETE FROM player_stats_daily WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
         stats_deleted = cursor.rowcount
         cursor.execute("DELETE FROM player_sessions WHERE player_uid = %s", (uid,))
         sessions_deleted = cursor.rowcount
-        cursor.execute("DELETE FROM players WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
+        cursor.execute("DELETE FROM players WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
         player_deleted = cursor.rowcount
         conn.commit()
 
@@ -1706,7 +973,7 @@ def bulk_money():
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT player_uid, display_name, money, bank FROM players WHERE hive_id = %s", (current_hive_id(),))
+        cursor.execute("SELECT player_uid, display_name, money, bank FROM players WHERE hive_id = %s", (HIVE_ID,))
         before = {r["player_uid"]: r for r in cursor.fetchall()}
 
         set_parts = []
@@ -1717,11 +984,11 @@ def bulk_money():
             set_parts.append(f"bank = bank + {int(amount)}" if amount > 0
                              else f"bank = GREATEST(0, bank + ({int(amount)}))")
 
-        cursor.execute(f"UPDATE players SET {', '.join(set_parts)} WHERE hive_id = %s", (current_hive_id(),))
+        cursor.execute(f"UPDATE players SET {', '.join(set_parts)} WHERE hive_id = %s", (HIVE_ID,))
         rows_affected = cursor.rowcount
         conn.commit()
 
-        cursor.execute("SELECT player_uid, display_name, money, bank FROM players WHERE hive_id = %s", (current_hive_id(),))
+        cursor.execute("SELECT player_uid, display_name, money, bank FROM players WHERE hive_id = %s", (HIVE_ID,))
         after = {r["player_uid"]: r for r in cursor.fetchall()}
 
         op = "give" if amount > 0 else "take"
@@ -1739,7 +1006,7 @@ def bulk_money():
             # Audit row — log the ACTUAL applied delta (GREATEST(0,...) can clamp a take).
             delta = (row["money"] - wallet_before) + (row["bank"] - bank_before)
             if delta != 0:
-                tx_rows.append((puid, current_hive_id(), sid, "admin_give", delta, row["money"],
+                tx_rows.append((puid, HIVE_ID, sid, "admin_give", delta, row["money"],
                                 f"bulk {op} {target} ${abs(amount):,}"))
 
         if tx_rows:
@@ -1748,7 +1015,7 @@ def bulk_money():
                 "VALUES (%s, %s, %s, %s, %s, %s, %s)", tx_rows)
             conn.commit()
 
-        print(f"[GATEWAY] Bulk {op}: ${abs(amount):,} to {target} for {rows_affected} players (hive {current_hive_id()}); {len(tx_rows)} audit rows")
+        print(f"[GATEWAY] Bulk {op}: ${abs(amount):,} to {target} for {rows_affected} players (hive {HIVE_ID}); {len(tx_rows)} audit rows")
         return jsonify({"status": "ok", "operation": op, "amount": abs(amount),
                         "target": target, "players_affected": rows_affected, "results": results})
     except mysql.connector.Error as err:
@@ -1782,9 +1049,9 @@ def get_all_players():
         """
         if search:
             cursor.execute(base + " AND (p.display_name LIKE %s OR p.player_uid LIKE %s) ORDER BY p.last_seen DESC",
-                           (sid, current_hive_id(), f"%{search}%", f"%{search}%"))
+                           (sid, HIVE_ID, f"%{search}%", f"%{search}%"))
         else:
-            cursor.execute(base + " ORDER BY p.last_seen DESC", (sid, current_hive_id()))
+            cursor.execute(base + " ORDER BY p.last_seen DESC", (sid, HIVE_ID))
         rows = cursor.fetchall()
         for row in rows:
             if row.get("last_seen"):
@@ -1809,28 +1076,28 @@ def server_summary():
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT COUNT(*) as total_players FROM players WHERE hive_id = %s", (current_hive_id(),))
+        cursor.execute("SELECT COUNT(*) as total_players FROM players WHERE hive_id = %s", (HIVE_ID,))
         total = cursor.fetchone()["total_players"]
         cursor.execute("""
             SELECT COUNT(*) as alive FROM player_sessions s
             JOIN players p ON p.player_uid = s.player_uid
             WHERE p.hive_id = %s AND s.is_alive = 1
-        """, (current_hive_id(),))
+        """, (HIVE_ID,))
         alive = cursor.fetchone()["alive"]
-        cursor.execute("SELECT COALESCE(SUM(money),0) as total_wallet, COALESCE(SUM(bank),0) as total_bank FROM players WHERE hive_id = %s", (current_hive_id(),))
+        cursor.execute("SELECT COALESCE(SUM(money),0) as total_wallet, COALESCE(SUM(bank),0) as total_bank FROM players WHERE hive_id = %s", (HIVE_ID,))
         economy = cursor.fetchone()
-        cursor.execute("SELECT display_name, (money + bank) as total_money FROM players WHERE hive_id = %s ORDER BY total_money DESC LIMIT 5", (current_hive_id(),))
+        cursor.execute("SELECT display_name, (money + bank) as total_money FROM players WHERE hive_id = %s ORDER BY total_money DESC LIMIT 5", (HIVE_ID,))
         top5 = cursor.fetchall()
-        cursor.execute("SELECT faction, COUNT(*) as count FROM players WHERE hive_id = %s AND faction IS NOT NULL AND faction != '' GROUP BY faction", (current_hive_id(),))
+        cursor.execute("SELECT faction, COUNT(*) as count FROM players WHERE hive_id = %s AND faction IS NOT NULL AND faction != '' GROUP BY faction", (HIVE_ID,))
         factions = {row["faction"]: row["count"] for row in cursor.fetchall()}
         tx_count = 0
         try:
-            cursor.execute("SELECT COUNT(*) as tx_count FROM transactions WHERE hive_id = %s AND timestamp >= NOW() - INTERVAL 1 DAY", (current_hive_id(),))
+            cursor.execute("SELECT COUNT(*) as tx_count FROM transactions WHERE hive_id = %s AND timestamp >= NOW() - INTERVAL 1 DAY", (HIVE_ID,))
             tx_count = cursor.fetchone()["tx_count"]
         except mysql.connector.Error:
             pass
         return jsonify({
-            "status": "ok", "hive_id": current_hive_id(),
+            "status": "ok", "hive_id": HIVE_ID,
             "total_players": total, "alive_players": alive,
             "total_wallet_economy": economy["total_wallet"], "total_bank_economy": economy["total_bank"],
             "total_economy": economy["total_wallet"] + economy["total_bank"],
@@ -1875,7 +1142,7 @@ def log_security_event():
             INSERT INTO security_events
                 (player_uid, server_id, hive_id, display_name, event_type, item_prefab, details, severity)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (player_uid, sid, current_hive_id(), display_name, event_type, item_prefab, details, severity))
+        """, (player_uid, sid, HIVE_ID, display_name, event_type, item_prefab, details, severity))
         conn.commit()
         event_id = cursor.lastrowid
         print(f"[SECURITY] Event #{event_id}: {player_uid} @ {sid} {event_type} severity={severity}")
@@ -1934,7 +1201,7 @@ def check_blacklist(uid):
                    OR (scope = 'server' AND server_id = %s))
             ORDER BY CASE scope WHEN 'global' THEN 1 WHEN 'hive' THEN 2 WHEN 'server' THEN 3 END
             LIMIT 1
-        """, (uid, current_hive_id(), sid))
+        """, (uid, HIVE_ID, sid))
         ban = cursor.fetchone()
         if ban:
             if ban.get("banned_at"):
@@ -1976,7 +1243,7 @@ def ban_player():
         return jsonify({"status": "error", "message": "scope must be server/hive/global"}), 400
 
     ban_server_id = sid if scope == "server" else None
-    ban_hive_id = current_hive_id() if scope in ("server", "hive") else None
+    ban_hive_id = HIVE_ID if scope in ("server", "hive") else None
 
     conn = get_db()
     if not conn:
@@ -2023,7 +1290,7 @@ def unban_player():
         if scope == "global":
             cursor.execute("UPDATE blacklist SET is_active = 0 WHERE player_uid = %s AND scope = 'global' AND is_active = 1", (player_uid,))
         elif scope == "hive":
-            cursor.execute("UPDATE blacklist SET is_active = 0 WHERE player_uid = %s AND scope = 'hive' AND hive_id = %s AND is_active = 1", (player_uid, current_hive_id()))
+            cursor.execute("UPDATE blacklist SET is_active = 0 WHERE player_uid = %s AND scope = 'hive' AND hive_id = %s AND is_active = 1", (player_uid, HIVE_ID))
         else:
             cursor.execute("UPDATE blacklist SET is_active = 0 WHERE player_uid = %s AND scope = 'server' AND server_id = %s AND is_active = 1", (player_uid, sid))
         affected = cursor.rowcount
@@ -2062,7 +1329,7 @@ def list_blacklist():
         if scope == "global":
             cursor.execute(f"SELECT {cols} FROM blacklist WHERE is_active = 1 AND scope = 'global' AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY banned_at DESC LIMIT %s", (limit,))
         elif scope == "hive":
-            cursor.execute(f"SELECT {cols} FROM blacklist WHERE is_active = 1 AND scope = 'hive' AND hive_id = %s AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY banned_at DESC LIMIT %s", (current_hive_id(), limit))
+            cursor.execute(f"SELECT {cols} FROM blacklist WHERE is_active = 1 AND scope = 'hive' AND hive_id = %s AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY banned_at DESC LIMIT %s", (HIVE_ID, limit))
         else:
             cursor.execute(f"SELECT {cols} FROM blacklist WHERE is_active = 1 AND scope = 'server' AND server_id = %s AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY banned_at DESC LIMIT %s", (sid, limit))
         rows = cursor.fetchall()
@@ -2114,7 +1381,7 @@ def placements_insert():
                 (hive_id, server_id, map_name, carry_class, prefab_path,
                  pos_x, pos_y, pos_z, yaw, pitch, roll, owner_uid, is_active)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)
-        """, (current_hive_id(), sid, map_name, int(carry_class), prefab_path,
+        """, (HIVE_ID, sid, map_name, int(carry_class), prefab_path,
               float(pos_x), float(pos_y), float(pos_z),
               float(yaw), float(pitch), float(roll), owner_uid))
         new_id = cursor.lastrowid
@@ -2275,7 +1542,7 @@ def money_drops_insert():
                 (hive_id, server_id, map_name, pos_x, pos_y, pos_z, amount,
                  drop_source, dropper_uid, dropper_name, expires_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (current_hive_id(), sid, map_name, float(pos_x), float(pos_y), float(pos_z),
+        """, (HIVE_ID, sid, map_name, float(pos_x), float(pos_y), float(pos_z),
               int(amount), drop_source, dropper_uid, dropper_name, expires_at))
         new_id = cursor.lastrowid
         conn.commit()
@@ -2356,657 +1623,6 @@ def money_drops_wipe():
 # --------------------------------------------------------
 # Startup — bind a listener on every configured server port
 # --------------------------------------------------------
-
-# ============================================================
-# GENERIC NAMESPACED PLAYER DATA  (/api/data/...)
-# ============================================================
-# One table, one set of endpoints, every player-owned per-scope feature.
-# Adding a feature means picking a new `namespace` string in the MOD - no new
-# table, no migration, and no gateway release. That is the whole point: admins
-# distrust gateway updates, so the way to make them rare is a schema that does
-# not need to change.
-#
-# THE WRITE RULE IS ENFORCED HERE, NOT JUST DOCUMENTED. A server may write only
-# its own server_id, or the shared '@hive' scope. Every data-loss hazard in this
-# area came from one server overwriting a value another server owned; refusing
-# the write at the gateway makes that class impossible rather than merely
-# discouraged.
-#
-# The gateway does NOT know what a share_group means or which row the mod should
-# restore. It stores what it is given and returns every candidate. Policy lives
-# in the mod, next to the config file that sets it.
-# ============================================================
-
-def _csvsafe(value):
-    """Strip the row/field separators out of a value.
-
-    Addon titles and server names are admin-controlled free text. One stray
-    '~' or '|' would shift every later field in that row, and the F8 view
-    would quietly show a server's mod count in its map column. Replacing beats
-    escaping: the mod parses with a plain split, so there is nothing on the far
-    side that would honour an escape.
-    """
-    t = str(value if value is not None else "")
-    return t.replace("~", "-").replace("|", "/")
-
-
-# ------------------------------------------------------------------
-# THE KEY IS THE SCOPE
-# ------------------------------------------------------------------
-# A row is addressed by exactly one thing: its key.
-#
-#     (player_uid, hive_id, share_group, namespace, scope_map)
-#
-# share_group carries the whole scope model, and the mod decides what to
-# put there. The gateway does not know or care what any of it MEANS:
-#
-#     '@hive'                 one row for the whole hive
-#     'ALPHA'..'ZULU'         a shared gear or vehicle set
-#     '@private:<server_id>'  a group of one - "sharing off"
-#
-# scope_map is '' for anything not map-scoped, which is gear, perks,
-# payments and most settings. It carries a map name only when a feature
-# genuinely differs per map.
-#
-# WHY THERE IS NO LONGER A '@self' SCOPE IN THE URL. The old endpoints
-# addressed a row by server_id and enforced "a server may write only its
-# own rows". Migration 0088 took server_id OUT of the key, which left
-# that check guarding something that was no longer identity: the read
-# still filtered on server_id and so could not address a row by group at
-# all, and could match several rows and pick between them with no
-# ORDER BY. Rows are per-GROUP now, and every server in a group is
-# supposed to write the same row - that is what sharing IS.
-#
-# server_id survives as an informational "last writer" column, and it is
-# now stamped from the LISTENING PORT on every write. The caller cannot
-# state it and therefore cannot get it wrong or lie about it. That is
-# strictly safer than accepting '@self' on trust, and it removes the
-# second source of truth that caused the original cross-server gear loss.
-#
-# The real tenant boundary was never this check anyway: it is the
-# per-server API key and the per-server hive_id, both resolved from the
-# port the request arrived on.
-# ------------------------------------------------------------------
-
-GROUP_HIVE = "@hive"
-
-
-def _valid_namespace(ns):
-    """Shape only. THERE IS NO LIST OF VALID NAMESPACES, and adding one
-    would destroy the property this whole table exists for: a new
-    player-owned feature is a new namespace string, with no gateway
-    release and no migration. Perks, payments, night-vision settings and
-    stored vehicles are all just labels."""
-    return bool(ns) and len(ns) <= 32 and all(c.isalnum() or c in "_-" for c in ns)
-
-
-def _valid_group(group):
-    """Shape only, same reasoning as _valid_namespace.
-
-    '@' and ':' are allowed because '@hive' and '@private:<server_id>'
-    are groups like any other - resolving them in the mod rather than
-    special-casing them here is what keeps ONE read rule for every case
-    instead of a branch per scope.
-    """
-    return bool(group) and len(group) <= 32 and all(
-        c.isalnum() or c in "_-@:." for c in group
-    )
-
-
-def _valid_scope_map(scope_map):
-    """'' is the normal value and always valid: most things are not
-    map-scoped."""
-    return len(scope_map) <= 64 and all(
-        c.isalnum() or c in "_-." for c in scope_map
-    )
-
-
-@app.route("/api/data/<uid>/<namespace>", methods=["GET"])
-def data_list(uid, namespace):
-    """Every row this player has in this namespace, across all groups.
-
-    Diagnostic and admin use. The mod reads a single row by key; this is
-    for answering "where IS their gear" when a player says it vanished -
-    which is almost always a group they are no longer in, with the row
-    sitting untouched exactly where they left it.
-    """
-    if not check_auth("LOAD"):
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
-    if not _valid_namespace(namespace):
-        return jsonify({"status": "error", "message": "bad namespace"}), 400
-
-    conn = get_db()
-    if not conn:
-        return jsonify({"status": "error", "message": "database unavailable"}), 503
-    try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT share_group, scope_map, server_id, map_name,
-                   format_ver, payload, updated_at
-              FROM player_data
-             WHERE player_uid = %s AND hive_id = %s AND namespace = %s
-             ORDER BY share_group, scope_map
-        """, (uid, current_hive_id(), namespace))
-        rows = [{
-            "share_group": r.get("share_group"),
-            "scope_map":   r.get("scope_map") or "",
-            "server_id":   r.get("server_id"),
-            "map_name":    r.get("map_name") or "",
-            "format_ver":  r.get("format_ver"),
-            "payload":     r.get("payload"),
-            "updated_at":  _iso(r.get("updated_at")),
-        } for r in cursor.fetchall()]
-        return jsonify({"status": "ok", "namespace": namespace, "rows": rows})
-    except mysql.connector.Error as err:
-        return _db_error("data_list", err)
-    except Exception as err:
-        return _internal_error("data_list", err)
-    finally:
-        _close(conn)
-
-
-@app.route("/api/data/<uid>/<namespace>/<group>", methods=["GET"])
-def data_get(uid, namespace, group):
-    """ONE row, addressed by its full key. ?map= supplies scope_map.
-
-    A point lookup on the primary key: no ORDER BY, no fallback clause,
-    no candidate list. It CANNOT match more than one row, so there is no
-    "which row wins" question to answer - the previous version filtered
-    on server_id, a column that is not in the key, and so could match
-    several rows and take an arbitrary one via fetchone().
-    """
-    if not check_auth("LOAD"):
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
-    if not _valid_namespace(namespace):
-        return jsonify({"status": "error", "message": "bad namespace"}), 400
-    if not _valid_group(group):
-        return jsonify({"status": "error", "message": "bad share_group"}), 400
-
-    scope_map = request.args.get("map", "")
-    if not _valid_scope_map(scope_map):
-        return jsonify({"status": "error", "message": "bad map"}), 400
-
-    conn = get_db()
-    if not conn:
-        return jsonify({"status": "error", "message": "database unavailable"}), 503
-    try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT share_group, scope_map, server_id, map_name,
-                   format_ver, payload, updated_at
-              FROM player_data
-             WHERE player_uid = %s AND hive_id = %s AND share_group = %s
-               AND namespace = %s AND scope_map = %s
-        """, (uid, current_hive_id(), group, namespace, scope_map))
-        r = cursor.fetchone()
-        if not r:
-            # NOT an error. A first visit, or a namespace this player has
-            # never written, or a group with no rows yet. The mod decides
-            # what "nothing here" means - for gear it means faction
-            # defaults, and it is emphatically not data loss.
-            return jsonify({"status": "ok", "namespace": namespace,
-                            "share_group": group, "scope_map": scope_map,
-                            "row": None})
-        return jsonify({"status": "ok", "namespace": namespace,
-                        "share_group": group, "scope_map": scope_map, "row": {
-            "share_group": r.get("share_group"),
-            "scope_map":   r.get("scope_map") or "",
-            "server_id":   r.get("server_id"),
-            "map_name":    r.get("map_name") or "",
-            "format_ver":  r.get("format_ver"),
-            "payload":     r.get("payload"),
-            "updated_at":  _iso(r.get("updated_at")),
-        }})
-    except mysql.connector.Error as err:
-        return _db_error("data_get", err)
-    except Exception as err:
-        return _internal_error("data_get", err)
-    finally:
-        _close(conn)
-
-
-@app.route("/api/data/<uid>/<namespace>/<group>", methods=["PUT", "POST"])
-def data_put(uid, namespace, group):
-    """Upsert ONE row, addressed by its full key.
-
-    server_id is stamped from the listening port and is NEVER taken from
-    the caller, so it cannot drift and cannot be forged. It is
-    informational - "last written by dev-01 on GM_Arland" - and decides
-    nothing.
-    """
-    if not check_auth("SAVE"):
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
-    if not _valid_namespace(namespace):
-        return jsonify({"status": "error", "message": "bad namespace"}), 400
-    if not _valid_group(group):
-        return jsonify({"status": "error", "message": "bad share_group"}), 400
-
-    data = request.get_json(force=True, silent=True)
-    if not data:
-        return jsonify({"status": "error", "message": "JSON body required"}), 400
-
-    payload = data.get("payload")
-    if payload is None:
-        return jsonify({"status": "error", "message": "payload required"}), 400
-    if isinstance(payload, (list, dict)):
-        payload = json.dumps(payload, separators=(",", ":"))
-
-    scope_map = (data.get("scope_map") or "")[:64]
-    if not _valid_scope_map(scope_map):
-        return jsonify({"status": "error", "message": "bad scope_map"}), 400
-
-    map_name   = (data.get("map_name") or "")[:64]
-    format_ver = int(data.get("format_ver") or 1)
-    sid = current_server_id()
-
-    conn = get_db()
-    if not conn:
-        return jsonify({"status": "error", "message": "database unavailable"}), 503
-    try:
-        cursor = conn.cursor()
-
-        # RETRY ON A TRANSIENT LOCK ERROR, same as save_player.
-        #
-        # Defence in depth, not a gap being closed: the mod already
-        # re-sends once on an error, and its dedupe cache only updates on
-        # a CONFIRMED write, so a payload that fails twice is still
-        # re-sent by the next ordinary save rather than being suppressed
-        # as "already stored". Absorbing a lock blip here just means that
-        # machinery never has to run.
-        #
-        # Safe to re-run: a single idempotent upsert of absolute values,
-        # so replaying it writes the same row - there is nothing to
-        # double.
-        def _write():
-            cursor.execute("""
-                INSERT INTO player_data
-                    (player_uid, hive_id, share_group, namespace, scope_map,
-                     server_id, map_name, payload, format_ver)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                    server_id   = VALUES(server_id),
-                    map_name    = VALUES(map_name),
-                    payload     = VALUES(payload),
-                    format_ver  = VALUES(format_ver)
-            """, (uid, current_hive_id(), group, namespace, scope_map,
-                  sid, map_name, payload, format_ver))
-            conn.commit()
-
-        _db_retry(_write, "data_put")
-        print(f"[GATEWAY] data saved: {uid} ns={namespace} group={group} "
-              f"map={scope_map or '-'} by={sid} ({len(payload)} chars)")
-        return jsonify({"status": "ok", "message": "saved"})
-    except mysql.connector.Error as err:
-        # A write that fails here leaves the PREVIOUS value in place,
-        # which is the outcome to want: stale gear beats garbage gear,
-        # and the mod re-sends on the next save anyway.
-        return _db_error("data_put", err)
-    except Exception as err:
-        return _internal_error("data_put", err)
-    finally:
-        _close(conn)
-
-
-@app.route("/api/data/<uid>/<namespace>/<group>", methods=["DELETE"])
-def data_delete(uid, namespace, group):
-    """Delete ONE row, addressed by its full key. ?map= supplies scope_map.
-
-    Deliberately narrow: it can only ever remove the single row named by
-    the key, so a mistake costs one namespace for one player in one
-    group, and never a whole table.
-    """
-    if not check_auth("SAVE"):
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
-    if not _valid_namespace(namespace):
-        return jsonify({"status": "error", "message": "bad namespace"}), 400
-    if not _valid_group(group):
-        return jsonify({"status": "error", "message": "bad share_group"}), 400
-
-    scope_map = request.args.get("map", "")
-    if not _valid_scope_map(scope_map):
-        return jsonify({"status": "error", "message": "bad map"}), 400
-
-    conn = get_db()
-    if not conn:
-        return jsonify({"status": "error", "message": "database unavailable"}), 503
-    try:
-        cursor = conn.cursor()
-        cursor.execute("""
-            DELETE FROM player_data
-             WHERE player_uid = %s AND hive_id = %s AND share_group = %s
-               AND namespace = %s AND scope_map = %s
-        """, (uid, current_hive_id(), group, namespace, scope_map))
-        conn.commit()
-        removed = cursor.rowcount
-        print(f"[GATEWAY] data deleted: {uid} ns={namespace} group={group} "
-              f"map={scope_map or '-'} ({removed} row)")
-        return jsonify({"status": "ok", "deleted": removed})
-    except mysql.connector.Error as err:
-        return _db_error("data_delete", err)
-    except Exception as err:
-        return _internal_error("data_delete", err)
-    finally:
-        _close(conn)
-
-
-# ============================================================
-# HIVE REGISTRATION  (/api/hive/...)
-# ============================================================
-# A server announces itself once at OnGameStart (map + share groups + full addon
-# list) and refreshes the cheap volatile bits on its existing 60s ping.
-#
-# WHY THE ADDON LIST IS THE POINT: gear is stored as prefab paths, and on a
-# server missing the owning addon the item silently fails to restore and the
-# shrunken payload is written back over the profile. Registration lets an admin
-# SEE the mod delta BEFORE putting a server into a shared gear pool, instead of
-# discovering it when a player's rifle disappears.
-# ============================================================
-
-@app.route("/api/hive/register", methods=["POST"])
-def hive_register():
-    """Full startup announcement. Upsert - a restart just refreshes the row."""
-    if not check_auth("SAVE"):
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
-    sid = current_server_id()
-
-    data = request.get_json(force=True, silent=True) or {}
-    addon_list = data.get("addon_list")
-    if isinstance(addon_list, (list, dict)):
-        addon_list = json.dumps(addon_list, separators=(",", ":"))
-
-    conn = get_db()
-    if not conn:
-        return jsonify({"status": "error", "message": "database unavailable"}), 503
-    try:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO hive_servers
-                (hive_id, server_id, display_name, map_name, gear_group, garage_group,
-                 mod_version, addon_count, addon_hash, addon_list, players_online,
-                 boot_session_id, started_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-            ON DUPLICATE KEY UPDATE
-                display_name = VALUES(display_name),
-                map_name     = VALUES(map_name),
-                gear_group   = VALUES(gear_group),
-                garage_group = VALUES(garage_group),
-                mod_version  = VALUES(mod_version),
-                addon_count  = VALUES(addon_count),
-                addon_hash   = VALUES(addon_hash),
-                addon_list   = VALUES(addon_list),
-                players_online  = VALUES(players_online),
-                boot_session_id = VALUES(boot_session_id),
-                started_at      = VALUES(started_at)
-        """, (
-            current_hive_id(), sid,
-            (data.get("display_name") or "")[:128],
-            (data.get("map_name") or "")[:64],
-            (data.get("gear_group") or "")[:32],
-            (data.get("garage_group") or "")[:32],
-            (data.get("mod_version") or "")[:32],
-            int(data.get("addon_count") or 0),
-            (data.get("addon_hash") or "")[:64],
-            addon_list,
-            int(data.get("players_online") or 0),
-            (data.get("boot_session_id") or "")[:64],
-        ))
-        conn.commit()
-        print(f"[GATEWAY] hive register: {sid} map={data.get('map_name')} "
-              f"gear={data.get('gear_group')} addons={data.get('addon_count')}")
-        return jsonify({"status": "ok", "message": "registered", "server_id": sid})
-    except mysql.connector.Error as err:
-        return _db_error("hive_register", err)
-    except Exception as err:
-        return _internal_error("hive_register", err)
-    finally:
-        _close(conn)
-
-
-@app.route("/api/hive/servers", methods=["GET"])
-def hive_servers():
-    """Every registered server in this hive, with its mod fingerprint."""
-    if not check_auth("LOAD"):
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
-
-    conn = get_db()
-    if not conn:
-        return jsonify({"status": "error", "message": "database unavailable"}), 503
-    try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT server_id, display_name, map_name, gear_group, garage_group,
-                   mod_version, addon_count, addon_hash, addon_list,
-                   players_online, last_seen,
-                   TIMESTAMPDIFF(SECOND, last_seen, NOW()) AS seconds_ago
-              FROM hive_servers
-             WHERE hive_id = %s
-             ORDER BY gear_group, server_id
-        """, (current_hive_id(),))
-        rows = []
-        for r in cursor.fetchall():
-            r["last_seen"] = _iso(r.get("last_seen"))
-            rows.append(r)
-        # FLAT TEXT for the mod (?format=csv).
-        #
-        # The mod parses responses with a flat scanner - ParseStringField finds
-        # the FIRST "field" and reads a string, so it cannot walk an array of
-        # objects whose keys repeat. Rather than hand-roll bracket matching in
-        # Enforce (where this class of bug lives and fails SILENTLY), the
-        # gateway formats the rows and the mod passes the string straight to
-        # the UI. Same reasoning as the resolved inventory row.
-        #
-        # Separators are '~' between fields and '|' between records - the same
-        # convention HEALTH_ENTRIES already uses.
-        #
-        # NOT control characters: jsonify escapes those as \u001f, and the mod's
-        # ParseStringField unescapes \" and \\ but NOT unicode escapes, so the
-        # UI would have been handed literal backslash-u text. Every field goes
-        # through _csvsafe() so a mod title containing a separator cannot shift
-        # the rest of the row.
-        if request.args.get("format") == "csv":
-            recs = []
-            for r in rows:
-                recs.append("~".join([
-                    _csvsafe(r.get("server_id")),
-                    _csvsafe(r.get("display_name")),
-                    _csvsafe(r.get("map_name")),
-                    _csvsafe(r.get("gear_group")),
-                    _csvsafe(r.get("garage_group")),
-                    _csvsafe(r.get("mod_version")),
-                    str(r.get("addon_count") or 0),
-                    _csvsafe(r.get("addon_hash")),
-                    str(r.get("players_online") or 0),
-                    str(r.get("seconds_ago") if r.get("seconds_ago") is not None else -1),
-                ]))
-            return jsonify({"status": "ok", "hive_id": current_hive_id(),
-                            "you": current_server_id(), "text": "|".join(recs)})
-
-        return jsonify({"status": "ok", "hive_id": current_hive_id(),
-                        "you": current_server_id(), "servers": rows})
-    except mysql.connector.Error as err:
-        return _db_error("hive_servers", err)
-    except Exception as err:
-        return _internal_error("hive_servers", err)
-    finally:
-        _close(conn)
-
-
-@app.route("/api/hive/group/<group_name>", methods=["GET"])
-def hive_group(group_name):
-    """Members of one gear group, each flagged compliant against the CALLER.
-
-    Compliance is advisory. A mismatched server is flagged, never blocked -
-    hard-blocking risks locking an admin out over an addon they dropped on
-    purpose.
-    """
-    if not check_auth("LOAD"):
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
-    sid = current_server_id()
-
-    conn = get_db()
-    if not conn:
-        return jsonify({"status": "error", "message": "database unavailable"}), 503
-    try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT addon_hash, addon_list FROM hive_servers WHERE hive_id=%s AND server_id=%s",
-                       (current_hive_id(), sid))
-        me = cursor.fetchone() or {}
-        my_hash = me.get("addon_hash")
-        try:
-            # id -> title, so a mismatch can be reported by NAME. An admin
-            # reading "missing Nasty MP7" can act on it; "missing B2" is noise.
-            my_addons = {a.get("id"): a.get("title") for a in json.loads(me.get("addon_list") or "[]")}
-        except Exception:
-            my_addons = {}
-
-        cursor.execute("""
-            SELECT server_id, display_name, map_name, gear_group, garage_group,
-                   mod_version, addon_count, addon_hash, addon_list,
-                   players_online, last_seen,
-                   TIMESTAMPDIFF(SECOND, last_seen, NOW()) AS seconds_ago
-              FROM hive_servers
-             WHERE hive_id = %s AND gear_group = %s
-             ORDER BY server_id
-        """, (current_hive_id(), group_name))
-
-        members = []
-        for r in cursor.fetchall():
-            r["last_seen"] = _iso(r.get("last_seen"))
-            r["compliant"] = bool(my_hash) and r.get("addon_hash") == my_hash
-            try:
-                theirs = {a.get("id"): a.get("title") for a in json.loads(r.get("addon_list") or "[]")}
-            except Exception:
-                theirs = {}
-            # missing_there = addons WE have that THEY lack. That is the
-            # direction that loses gear: a player carrying one of these from
-            # here to there cannot have it restored.
-            # missing_here = the reverse, for the return trip.
-            r["missing_there"] = sorted(t or i for i, t in my_addons.items() if i not in theirs)
-            r["missing_here"]  = sorted(t or i for i, t in theirs.items() if i not in my_addons)
-            # Their FULL mod list, sorted by title, for the F8 tab's per-server
-            # mod pane. Sorted here because a server reports its addons in load
-            # order, which differs between servers running the same set - the
-            # match test is already order-independent (sorted id hash), and a
-            # list a human reads should be too.
-            r["addon_titles"] = sorted((t or i) for i, t in theirs.items())
-            members.append(r)
-
-        if request.args.get("format") == "csv":
-            recs = []
-            for m in members:
-                recs.append("~".join([
-                    _csvsafe(m.get("server_id")),
-                    _csvsafe(m.get("map_name")),
-                    str(m.get("addon_count") or 0),
-                    str(m.get("players_online") or 0),
-                    "1" if m.get("compliant") else "0",
-                    str(m.get("seconds_ago") if m.get("seconds_ago") is not None else -1),
-                    _csvsafe(", ".join(m.get("missing_there") or [])),
-                    _csvsafe(", ".join(m.get("missing_here") or [])),
-                    # Field 9, appended 2026-08-23. Trailing on purpose: a mod
-                    # reading the first 8 fields is unaffected, so this needs no
-                    # coordinated mod+gateway rollout.
-                    _csvsafe(", ".join(m.get("addon_titles") or [])),
-                ]))
-            return jsonify({"status": "ok", "group": group_name, "you": sid,
-                            "text": "|".join(recs)})
-
-        return jsonify({"status": "ok", "group": group_name,
-                        "you": sid, "your_addon_hash": my_hash, "members": members})
-    except mysql.connector.Error as err:
-        return _db_error("hive_group", err)
-    except Exception as err:
-        return _internal_error("hive_group", err)
-    finally:
-        _close(conn)
-
-
-@app.route("/api/hive/share_groups", methods=["GET"])
-def hive_share_groups():
-    """Group descriptions plus a live member count per group."""
-    if not check_auth("LOAD"):
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
-
-    conn = get_db()
-    if not conn:
-        return jsonify({"status": "error", "message": "database unavailable"}), 503
-    try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT g.group_name, g.description, g.updated_by, g.updated_at,
-                   (SELECT COUNT(*) FROM hive_servers s
-                     WHERE s.hive_id = g.hive_id AND s.gear_group = g.group_name) AS members
-              FROM hive_share_groups g
-             WHERE g.hive_id = %s
-             ORDER BY g.group_name
-        """, (current_hive_id(),))
-        described = {r["group_name"]: r for r in cursor.fetchall()}
-        for r in described.values():
-            r["updated_at"] = _iso(r.get("updated_at"))
-
-        # Groups in USE but never described still have to appear, or a group an
-        # admin joined without labelling would be invisible in the picker.
-        cursor.execute("""
-            SELECT gear_group AS group_name, COUNT(*) AS members
-              FROM hive_servers WHERE hive_id = %s AND gear_group IS NOT NULL AND gear_group <> ''
-             GROUP BY gear_group
-        """, (current_hive_id(),))
-        for r in cursor.fetchall():
-            if r["group_name"] not in described:
-                described[r["group_name"]] = {
-                    "group_name": r["group_name"], "description": None,
-                    "updated_by": None, "updated_at": "", "members": r["members"],
-                }
-
-        ordered = sorted(described.values(), key=lambda g: g["group_name"])
-        if request.args.get("format") == "csv":
-            recs = ["~".join([
-                _csvsafe(g.get("group_name")),
-                str(g.get("members") or 0),
-                _csvsafe(g.get("description")),
-            ]) for g in ordered]
-            return jsonify({"status": "ok", "hive_id": current_hive_id(), "text": "|".join(recs)})
-
-        return jsonify({"status": "ok", "hive_id": current_hive_id(), "groups": ordered})
-    except mysql.connector.Error as err:
-        return _db_error("hive_share_groups", err)
-    except Exception as err:
-        return _internal_error("hive_share_groups", err)
-    finally:
-        _close(conn)
-
-
-@app.route("/api/hive/share_groups/<group_name>", methods=["PUT", "POST"])
-def hive_share_group_set(group_name):
-    """Label a group. Admin-tier is checked MOD-side before this is called."""
-    if not check_auth("SAVE"):
-        return jsonify({"status": "error", "message": "unauthorized"}), 401
-
-    data = request.get_json(force=True, silent=True) or {}
-    conn = get_db()
-    if not conn:
-        return jsonify({"status": "error", "message": "database unavailable"}), 503
-    try:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO hive_share_groups (hive_id, group_name, description, updated_by)
-            VALUES (%s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                description = VALUES(description),
-                updated_by  = VALUES(updated_by)
-        """, (current_hive_id(), group_name[:32],
-              (data.get("description") or "")[:255],
-              (data.get("updated_by") or "")[:64]))
-        conn.commit()
-        return jsonify({"status": "ok", "message": "saved"})
-    except mysql.connector.Error as err:
-        return _db_error("hive_share_group_set", err)
-    except Exception as err:
-        return _internal_error("hive_share_group_set", err)
-    finally:
-        _close(conn)
-
-
 if __name__ == "__main__":
     from werkzeug.serving import make_server
     from werkzeug.debug import DebuggedApplication
@@ -3015,16 +1631,7 @@ if __name__ == "__main__":
     RESET = "\033[0m"; BOLD = "\033[1m"
     print("=" * 60)
     print(f"  {BOLD}WastelandZ Gateway v{GATEWAY_VERSION}{RESET}")
-    _hives = []
-    for _s in SERVERS:
-        if _s["hive_id"] not in _hives:
-            _hives.append(_s["hive_id"])
-    if len(_hives) == 1:
-        print(f"  Hive ID:   {_hives[0]}")
-    else:
-        # One gateway can serve several hives now, so there is no single
-        # answer here - list them rather than picking one.
-        print(f"  Hives ({len(_hives)}): {', '.join(_hives)}")
+    print(f"  Hive ID:   {HIVE_ID}")
     print(f"  Database:  {config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}")
     print(f"  Crypto:    {'ENABLED' if CRYPTO_AVAILABLE else 'DISABLED (hf_crypto.py missing)'}")
     print(f"  Monitor:   {'ENABLED' if MONITOR_AVAILABLE else 'DISABLED'}")
@@ -3038,54 +1645,9 @@ if __name__ == "__main__":
     conn = get_db()
     if conn and conn.is_connected():
         print("[GATEWAY] Database connection: OK")
+        _close(conn)
     else:
         print("[GATEWAY] WARNING: Database connection FAILED — check config.py")
-
-    # ------------------------------------------------------------------
-    # SCHEMA MIGRATIONS — before a single listener binds.
-    #
-    # An admin updates the mod, updates the gateway, restarts. The database
-    # catches itself up here. No SQL by hand, ever.
-    #
-    # Destructive migrations (DROP / TRUNCATE / DELETE) are SKIPPED unless
-    # --allow-destructive is passed, and even then only after a successful
-    # mysqldump. Additive work still applies; only the destructive step is
-    # held, and everything after it is held too so ordering is preserved.
-    #
-    # A hard failure here does NOT bind listeners. Serving traffic against a
-    # half-migrated schema is how a rollout turns into data loss.
-    # ------------------------------------------------------------------
-    if conn and conn.is_connected():
-        allow_destructive = ("--allow-destructive" in sys.argv) or                             (os.environ.get("MIGRATE_ALLOW_DESTRUCTIVE") == "1")
-        if allow_destructive:
-            print("[MIGRATE] --allow-destructive is SET: destructive migrations may run (after a backup).")
-        try:
-            ok, _applied, _msg = migrate.run_migrations(
-                conn,
-                {
-                    "host": config.DB_HOST,
-                    "port": config.DB_PORT,
-                    "user": config.DB_USER,
-                    "password": config.DB_PASSWORD,
-                    "database": config.DB_NAME,
-                },
-                GATEWAY_VERSION,
-                allow_destructive=allow_destructive,
-            )
-            if not ok:
-                print("[GATEWAY] Migrations did not complete — refusing to start.")
-                _close(conn)
-                sys.exit(1)
-            SCHEMA_VERSION = migrate.current_schema_version(conn)
-        except Exception as e:
-            print(f"[GATEWAY] Migration runner crashed: {e}")
-            print("[GATEWAY] Refusing to start rather than serve an unknown schema.")
-            _close(conn)
-            sys.exit(1)
-    else:
-        print("[MIGRATE] Skipped — no database connection. Schema state is UNKNOWN.")
-
-    _close(conn)
 
     # ------------------------------------------------------------------
     # NOTHING BINDS A PORT WITHOUT A USABLE KEY.
@@ -3121,48 +1683,10 @@ if __name__ == "__main__":
 
     wsgi = DebuggedApplication(app, evalex=True) if FLASK_DEBUG else app
 
-    # ------------------------------------------------------------------
-    # HTTP SERVER: waitress if available, werkzeug otherwise.
-    #
-    # werkzeug.serving is a DEVELOPMENT server - its own documentation says
-    # so. It spawns a thread per request and stops accepting under load.
-    # Measured on this box 2026-08-23: throughput plateaued at ~650 req/s and
-    # requests began FAILING at 32 concurrent (39 of 320 dropped). Steady
-    # state for a full hive is only ~9 req/s, so that ceiling is not the
-    # problem - a burst is. 128 players reconnecting after a restart puts far
-    # more than 32 requests in flight at once, and that is exactly where it
-    # drops them.
-    #
-    # waitress is a production WSGI server: pure Python, no compiler, same
-    # behaviour on Linux and Windows, and it QUEUES work across a fixed
-    # thread pool instead of spawning threads until it falls over.
-    #
-    # AUTO-DETECTED ON PURPOSE. An admin who never installs it keeps exactly
-    # the behaviour they have today - the upgrade is "pip install waitress"
-    # and a restart, with no config edit and nothing to get wrong. Set
-    # HTTP_SERVER in config.py to "waitress" or "werkzeug" to force one,
-    # which is also how you A/B the two on identical load.
-    # ------------------------------------------------------------------
-    _forced = getattr(config, "HTTP_SERVER", "auto").lower()
-    _waitress = None
-    if _forced in ("auto", "waitress"):
-        try:
-            from waitress import create_server as _waitress
-        except ImportError:
-            if _forced == "waitress":
-                print("[GATEWAY] HTTP_SERVER=waitress but waitress is NOT installed — run: pip install waitress")
-                sys.exit(1)
-
-    _threads_per = getattr(config, "HTTP_THREADS", 16)
-
     httpds = []
     for s in SERVERS:
         try:
-            if _waitress:
-                srv = _waitress(wsgi, host=s["host"], port=s["port"],
-                                threads=_threads_per, clear_untrusted_proxy_headers=True)
-            else:
-                srv = make_server(s["host"], s["port"], wsgi, threaded=True)
+            srv = make_server(s["host"], s["port"], wsgi, threaded=True)
             httpds.append((s, srv))
         except OSError as e:
             print(f"[GATEWAY] FAILED to bind {s['host']}:{s['port']} ({s['server_id']}) — {e}")
@@ -3171,28 +1695,9 @@ if __name__ == "__main__":
         print("[GATEWAY] No listeners bound — exiting.")
         sys.exit(1)
 
-    # Capacity sanity check. Worker threads that outnumber pooled connections
-    # means requests will queue on the DB and, at the edge, 503. Say so at
-    # startup rather than letting an admin discover it as random errors.
-    _max_inflight = _threads_per * len(httpds)
-    if _waitress and _max_inflight > _pool_size():
-        print(f"[GATEWAY] NOTE: {_threads_per} threads x {len(httpds)} listener(s) = {_max_inflight} "
-              f"possible concurrent requests, but the DB pool is {_pool_size()}.")
-        print(f"[GATEWAY]   Bursts will queue on the database. Either raise DB_POOL_SIZE "
-              f"(max 32) or lower HTTP_THREADS in config.py.")
-
-    if _waitress:
-        print(f"[GATEWAY] HTTP server: waitress ({_threads_per} threads per listener)")
-    else:
-        print("[GATEWAY] HTTP server: werkzeug (DEVELOPMENT server)")
-        print("[GATEWAY]   Fine for a small server. For a busy hive install waitress:")
-        print("[GATEWAY]   pip install waitress   — then restart. Nothing else to change.")
-
     threads = []
     for s, srv in httpds:
-        # waitress exposes run(); werkzeug exposes serve_forever().
-        _entry = srv.run if _waitress else srv.serve_forever
-        t = threading.Thread(target=_entry, daemon=True, name=f"gw-{s['server_id']}-{s['port']}")
+        t = threading.Thread(target=srv.serve_forever, daemon=True, name=f"gw-{s['server_id']}-{s['port']}")
         t.start()
         threads.append(t)
         print(f"[GATEWAY] Listening {s['host']}:{s['port']} -> {s['server_id']}")
@@ -3206,12 +1711,6 @@ if __name__ == "__main__":
         print("\n[GATEWAY] Shutting down...")
         for s, srv in httpds:
             try:
-                # werkzeug: shutdown(). waitress: close(). Try both rather than
-                # branching on a flag that could drift out of sync with the
-                # server actually in use.
-                if hasattr(srv, "shutdown"):
-                    srv.shutdown()
-                elif hasattr(srv, "close"):
-                    srv.close()
+                srv.shutdown()
             except Exception:
                 pass
