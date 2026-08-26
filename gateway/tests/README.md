@@ -16,6 +16,33 @@ Two suites. One is safe to run anywhere; the other wipes a database.
 
 ---
 
+## `test_auth_keys.py` — safe
+
+```
+python tests/test_auth_keys.py
+```
+
+Proves a key nobody chose can never authenticate anybody.
+
+`check_auth()` compares the caller's key against the configured one, and an
+absent `api_key` parameter arrives as `""`. So a server configured with an
+empty key made `"" == ""` true and **answered every anonymous request** —
+the economy database open to anyone who found the port, with nothing in the
+log to suggest a problem.
+
+It was reachable: the legacy single-server fallback builds its key from
+`getattr(config, "API_KEY", "")`, so a config with neither a `SERVERS` list
+nor an `API_KEY` produced exactly that.
+
+Placeholders are refused too. Those strings are published in
+`config.example.py` and on the setup site, so running on one is running on a
+key an attacker already has.
+
+Read-only, and the ports it invents are never bound, so it is safe against a
+live database. It also asserts that **this** gateway's own `config.py` passes.
+
+---
+
 ## `test_endpoints.py` — safe
 
 ```

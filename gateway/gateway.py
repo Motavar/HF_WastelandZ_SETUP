@@ -547,6 +547,39 @@ def _resolve_servers():
         "hive_id": default_hive,
     }]
 
+def _key_is_usable(api_key):
+    """False for a key that must never authenticate anyone.
+
+    Empty, whitespace, or an obvious placeholder. Kept deliberately small
+    and dumb: this is a floor, not a password policy. Its only job is that
+    a key nobody chose can never be accepted, because the comparison in
+    check_auth() treats an absent api_key parameter as "" and would
+    otherwise match one.
+    """
+    if not api_key or not str(api_key).strip():
+        return False
+    lowered = str(api_key).strip().lower()
+    # Every placeholder shipped in config.example.py or quoted on the
+    # setup site. These are PUBLIC strings - running on one is running on
+    # a key an attacker already has.
+    for marker in ("change_me", "changeme", "your_key", "your-key",
+                   "example", "placeholder", "todo"):
+        if marker in lowered:
+            return False
+    return True
+
+
+def _validate_keys(servers):
+    """Names every server whose key cannot authenticate anyone.
+
+    Startup half of the check in check_auth(). Reported before any port is
+    bound, so an admin is told at boot rather than discovering it when
+    saves stop - or, in the empty-key case, never discovering it at all
+    because everything appears to work while being open to the internet.
+    """
+    return [s for s in servers if not _key_is_usable(s.get("api_key"))]
+
+
 SERVERS = _resolve_servers()
 SERVERS_BY_PORT = {s["port"]: s for s in SERVERS}
 
@@ -752,6 +785,35 @@ def check_auth(expected_verb=None):
         print("[GATEWAY] Auth: request on an unconfigured port")
         return False
     api_key = srv["api_key"]
+
+    # ------------------------------------------------------------------
+    # A SERVER WITH NO USABLE KEY AUTHENTICATES NOBODY.
+    #
+    # The comparison at the bottom of this function is `key == api_key`,
+    # where key defaults to "" when the caller sends no api_key at all. So
+    # a configured key of "" made "" == "" TRUE and the gateway answered
+    # every anonymous request - the economy database wide open, with
+    # nothing in the log to suggest anything was wrong.
+    #
+    # That was reachable: the legacy single-server fallback in
+    # _resolve_servers() builds its key from
+    # getattr(config, "API_KEY", ""), so a config with neither a SERVERS
+    # list nor an API_KEY produced exactly that.
+    #
+    # A placeholder is refused for the same reason. Example keys are
+    # published in config.example.py and on the setup site, so running on
+    # one is running on a key an attacker already has.
+    #
+    # Checked HERE, per request, rather than only at startup: this cannot
+    # be bypassed by import order, a reloaded config, or a code path that
+    # skips the boot checks. Startup refuses too - see _validate_keys() -
+    # but this is the one that is always in the way.
+    # ------------------------------------------------------------------
+    if not _key_is_usable(api_key):
+        print(f"[GATEWAY] Auth: REFUSED - server '{srv.get('server_id')}' has no "
+              f"usable api_key configured. Every request on port {srv.get('port')} "
+              f"is rejected until it is set.")
+        return False
 
     token = request.args.get("token", "")
     if token and CRYPTO_AVAILABLE:
@@ -3024,6 +3086,38 @@ if __name__ == "__main__":
         print("[MIGRATE] Skipped — no database connection. Schema state is UNKNOWN.")
 
     _close(conn)
+
+    # ------------------------------------------------------------------
+    # NOTHING BINDS A PORT WITHOUT A USABLE KEY.
+    #
+    # An empty key used to authenticate ANY caller, because check_auth
+    # compares against "" when no api_key is sent. A placeholder is just as
+    # bad in a different way: those strings are published in
+    # config.example.py and on the setup site.
+    #
+    # Refusing to start is the right answer rather than starting with that
+    # port disabled. A half-running gateway looks healthy while one server
+    # silently saves nothing, and the admin finds out from a player.
+    # ------------------------------------------------------------------
+    _bad_keys = _validate_keys(SERVERS)
+    if _bad_keys:
+        print("[GATEWAY] " + "=" * 62)
+        print("[GATEWAY] REFUSING TO START - server(s) with no usable api_key:")
+        for s in _bad_keys:
+            shown = (s.get("api_key") or "")
+            why = "empty" if not shown.strip() else f"placeholder ({shown[:20]}...)"
+            print(f"[GATEWAY]   {s.get('server_id')} on port {s.get('port')}: {why}")
+        print("[GATEWAY]")
+        print("[GATEWAY] An empty key would accept EVERY request, from anyone,")
+        print("[GATEWAY] with nothing in the log to say so. A placeholder is a")
+        print("[GATEWAY] key that is published in our own example file.")
+        print("[GATEWAY]")
+        print("[GATEWAY] Generate one per server:")
+        print('[GATEWAY]   python -c "import secrets; print(secrets.token_hex(32))"')
+        print("[GATEWAY] Put it in config.py SERVERS, and the SAME value in that")
+        print("[GATEWAY] server's HFWastelandZ_secrets.conf (API_KEY line).")
+        print("[GATEWAY] " + "=" * 62)
+        sys.exit(1)
 
     wsgi = DebuggedApplication(app, evalex=True) if FLASK_DEBUG else app
 
