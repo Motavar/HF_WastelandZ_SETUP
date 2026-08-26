@@ -278,6 +278,160 @@ def _run_sql(conn, sql):
         cur.close()
 
 
+def _upgrade_pre_0_7_0(conn, db_config, base_dir):
+    """Bring a PRE-0.7.0 database forward. Runs before any other migration.
+
+    WHY THIS EXISTS. Before the 2026-06-30 redesign, `players` was keyed
+    (player_uid, server_id) - one row per player PER SERVER, each with its
+    own money - and it also carried the world-position columns that later
+    moved to player_sessions. There was no hive_id at all.
+
+    The release note for that version told admins to apply it on a FRESH
+    database, so almost nobody should be here. But "almost nobody" is not
+    nobody, and the alternative was the gateway failing with
+
+        Unknown column 'p.hive_id' in 'field list'
+
+    which tells an admin nothing about what is wrong or what to do. A
+    database this old must either be brought forward properly or refused
+    with a real explanation. Silently half-working is not an option.
+
+    THE ONE THING THAT CANNOT BE DECIDED MECHANICALLY. Collapsing
+    (player_uid, server_id) into (player_uid, hive_id) means a player who
+    played on two servers has two wallets that must become one. Which
+    balance survives is a judgement about someone's money, not a
+    conversion, so this REFUSES rather than guesses - and names the
+    players so the admin can decide.
+
+    Returns (ok, message). ok=False means the gateway must not serve.
+    """
+    cur = conn.cursor()
+
+    # ---- detect -------------------------------------------------------
+    cur.execute(
+        """SELECT COUNT(*) FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'players'""")
+    if not int(cur.fetchone()[0]):
+        cur.close()
+        return True, "no players table yet - fresh install"
+
+    cur.execute(
+        """SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'players'
+              AND COLUMN_NAME = 'hive_id'""")
+    if int(cur.fetchone()[0]):
+        cur.close()
+        return True, "already 0.7.0 or newer"
+
+    print("[LEGACY] " + "=" * 62)
+    print("[LEGACY] This database predates the 2026-06-30 redesign.")
+    print("[LEGACY] Bringing it forward before anything else runs.")
+
+    # ---- the judgement call, checked before anything is touched -------
+    cur.execute(
+        """SELECT player_uid, COUNT(*) FROM players
+            GROUP BY player_uid HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC""")
+    clashes = cur.fetchall()
+    if clashes:
+        names = ", ".join(f"{r[0]} ({r[1]} rows)" for r in clashes[:5])
+        more = "" if len(clashes) <= 5 else f" and {len(clashes) - 5} more"
+        msg = (
+            f"{len(clashes)} player(s) have a separate wallet on more than one "
+            f"server, which this version cannot merge automatically: {names}{more}"
+        )
+        print("[LEGACY] REFUSING TO START - " + msg)
+        print("[LEGACY]")
+        print("[LEGACY] In your old database each player had ONE ROW PER SERVER,")
+        print("[LEGACY] each with its own money. The current version gives every")
+        print("[LEGACY] player ONE wallet for the whole hive, so those rows have")
+        print("[LEGACY] to become one - and choosing whose balance survives is a")
+        print("[LEGACY] decision about someone's money, not a conversion.")
+        print("[LEGACY]")
+        print("[LEGACY] Decide, then delete the rows you do not want to keep:")
+        print("[LEGACY]   SELECT player_uid, server_id, money, bank FROM players")
+        print("[LEGACY]    WHERE player_uid IN (...);")
+        print("[LEGACY]   DELETE FROM players WHERE player_uid = '...' AND server_id = '...';")
+        print("[LEGACY]")
+        print("[LEGACY] Back up first. Then restart the gateway and it continues.")
+        print("[LEGACY] " + "=" * 62)
+        cur.close()
+        return False, msg
+
+    # ---- a backup, because the primary key is about to change ---------
+    # Everything below is additive except the re-key, and the re-key is
+    # provably lossless because the check above found no duplicates. Take
+    # a backup anyway: this is the one place a very old database gets
+    # rewritten, and it is the last moment it exists in its old shape.
+    backup_path = _backup(db_config, os.path.join(base_dir, "backups"))
+    if not backup_path:
+        msg = ("could not take a backup before converting a pre-0.7.0 database, "
+               "so the conversion was refused")
+        print("[LEGACY] REFUSING TO START - " + msg)
+        print("[LEGACY] Make mysqldump available on PATH and try again.")
+        cur.close()
+        return False, msg
+
+    try:
+        # 1. hive_id, defaulted so every existing row joins the default hive.
+        cur.execute("ALTER TABLE players ADD COLUMN hive_id VARCHAR(64) "
+                    "NOT NULL DEFAULT 'default'")
+        print("[LEGACY]   added players.hive_id")
+
+        # 2. current_server_id, if the old schema predates it too.
+        cur.execute(
+            """SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'players'
+                  AND COLUMN_NAME = 'current_server_id'""")
+        if not int(cur.fetchone()[0]):
+            cur.execute("ALTER TABLE players ADD COLUMN current_server_id "
+                        "VARCHAR(64) DEFAULT NULL")
+            print("[LEGACY]   added players.current_server_id")
+
+        # 3. World position lived on `players` back then and belongs on
+        #    player_sessions now. Copy it across - do NOT drop the old
+        #    columns; they become harmless dead weight and leaving them
+        #    keeps this conversion non-destructive apart from the re-key.
+        cur.execute(
+            """SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'players'
+                  AND COLUMN_NAME = 'pos_x'""")
+        if int(cur.fetchone()[0]):
+            cur.execute("""
+                INSERT INTO player_sessions
+                    (player_uid, server_id, pos_x, pos_y, pos_z,
+                     rotation_yaw, stance, is_alive)
+                SELECT player_uid, server_id, pos_x, pos_y, pos_z,
+                       rotation_yaw, stance, is_alive
+                  FROM players
+                 WHERE pos_x IS NOT NULL
+                ON DUPLICATE KEY UPDATE player_uid = player_sessions.player_uid
+            """)
+            print(f"[LEGACY]   carried {cur.rowcount} last-known position(s) "
+                  f"into player_sessions")
+
+        # 4. The re-key. Lossless: the duplicate check above passed, so no
+        #    two rows can collide on the new key.
+        cur.execute("ALTER TABLE players DROP PRIMARY KEY, "
+                    "ADD PRIMARY KEY (player_uid, hive_id)")
+        print("[LEGACY]   re-keyed players to (player_uid, hive_id)")
+
+        conn.commit()
+    except mysql.connector.Error as err:
+        msg = f"pre-0.7.0 conversion FAILED: {err}"
+        print("[LEGACY] " + msg)
+        print(f"[LEGACY] Your database is backed up at: {backup_path}")
+        print("[LEGACY] Nothing was deleted. Restore that file if you want the")
+        print("[LEGACY] exact previous state back, and report this.")
+        cur.close()
+        return False, msg
+
+    cur.close()
+    print("[LEGACY] Done. Money, bank and gear were not touched - only the")
+    print("[LEGACY] shape around them changed.")
+    print("[LEGACY] " + "=" * 62)
+    return True, "pre-0.7.0 database converted"
+
+
 def apply_schema(conn, base_dir):
     """Apply setup_database.sql - THE schema - on every start.
 
@@ -512,6 +666,14 @@ def run_migrations(conn, db_config, gateway_version, allow_destructive=False, ba
     schema_ok, schema_msg = apply_schema(conn, base_dir)
     if not schema_ok:
         return False, 0, schema_msg
+
+    # ---- STEP 1b: a database older than 0.7.0 --------------------------
+    # Runs AFTER the schema, so player_sessions exists to receive the world
+    # position that used to live on `players`, and BEFORE any numbered
+    # migration, because those all assume players.hive_id exists.
+    legacy_ok, legacy_msg = _upgrade_pre_0_7_0(conn, db_config, base_dir)
+    if not legacy_ok:
+        return False, 0, legacy_msg
 
     # ---- STEP 2: numbered DATA migrations -------------------------------
     # These carry data transformations and deliberate removals ONLY. No

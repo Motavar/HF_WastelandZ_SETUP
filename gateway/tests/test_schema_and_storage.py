@@ -69,6 +69,7 @@ import migrate     # noqa: E402
 import mysql.connector  # noqa: E402
 
 FIXTURE = os.path.join(HERE, "fixtures", "published_0_7_1_schema.sql")
+FIXTURE_OLD = os.path.join(HERE, "fixtures", "pre_0_7_0_schema.sql")
 SCHEMA = os.path.join(GW, "setup_database.sql")
 
 DB = {
@@ -230,6 +231,58 @@ def main():
     load_sql(FIXTURE)
     okk, _, msg = start_gateway()
     check("gateway started with no flags", okk, True)
+    upgraded = snapshot()
+
+    # -- 2b. the OLDEST format anyone could still be on ----------------
+    # Pre-0.7.0: no hive_id anywhere, and `players` keyed
+    # (player_uid, server_id) so money was PER SERVER. The 2026-06-30
+    # note told admins to start fresh at 0.7.0, so almost nobody is here
+    # - but the alternative to converting it was failing with "Unknown
+    # column 'p.hive_id'", which tells an admin nothing.
+    print("\n-- 2b. Upgrade from the OLDEST format (pre-0.7.0), unattended --")
+    wipe()
+    load_sql(FIXTURE_OLD)
+    okk, _, msg = start_gateway()
+    check("gateway started with no flags", okk, True)
+    check("money survived the re-key",
+          scalar("SELECT money FROM players WHERE player_uid='TESTFIX-OLD-0001'"), 4242)
+    check("bank survived the re-key",
+          scalar("SELECT bank FROM players WHERE player_uid='TESTFIX-OLD-0001'"), 8484)
+    check("players re-keyed to (player_uid, hive_id)",
+          scalar("""SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX)
+                      FROM information_schema.STATISTICS
+                     WHERE TABLE_SCHEMA=%s AND TABLE_NAME='players'
+                       AND INDEX_NAME='PRIMARY'""", (DB["database"],)),
+          "player_uid,hive_id")
+    # Compared as a RANGE, not an exact value: pos_x is a FLOAT, so the
+    # stored 100.5 does not round-trip to an exact decimal and ROUND()
+    # on it is not worth asserting against. What matters is that the
+    # position moved from `players` to `player_sessions` at all.
+    _px = scalar("SELECT pos_x FROM player_sessions WHERE player_uid='TESTFIX-OLD-0001'")
+    check("last-known position carried into player_sessions",
+          _px is not None and 100.0 <= float(_px) <= 101.0, True)
+    check("gear copied into the namespace",
+          scalar("SELECT COUNT(*) FROM player_data "
+                 "WHERE player_uid='TESTFIX-OLD-0001' AND namespace='inventory'"), 1)
+    # These are the columns whose absence made an old database start
+    # cleanly and then fail at runtime. They are QUERIED, not decorative.
+    for tbl in ("player_stats_daily", "transactions"):
+        check(f"{tbl}.hive_id added",
+              scalar("""SELECT COUNT(*) FROM information_schema.COLUMNS
+                         WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s
+                           AND COLUMN_NAME='hive_id'""", (DB["database"], tbl)), 1)
+    try:
+        scalar("SELECT COUNT(*) FROM player_stats_daily WHERE hive_id='default'")
+        scalar("SELECT COUNT(*) FROM transactions WHERE hive_id='default'")
+        ok("the queries that used to fail now run")
+    except mysql.connector.Error as err:
+        bad("the queries that used to fail now run", str(err))
+
+    # Re-run the 0.7.1 case so the convergence gate below compares the
+    # right two databases.
+    wipe()
+    load_sql(FIXTURE)
+    start_gateway()
     upgraded = snapshot()
 
     print("\n-- 3. THE CONVERGENCE GATE: fresh == upgraded --")

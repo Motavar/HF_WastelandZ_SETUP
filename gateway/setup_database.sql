@@ -525,3 +525,73 @@ SET @ddl = IF(@c > 0,
     'ALTER TABLE player_marker_prefs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
     'SELECT "player_marker_prefs collation correct" AS msg');
 PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- hive_id on the tables that predate hives ------------------------
+-- A database old enough to predate the hive model has these tables
+-- ALREADY, so CREATE TABLE IF NOT EXISTS skips them and they keep their
+-- old shape. Both columns below are QUERIED - the leaderboard filters
+-- player_stats_daily on hive_id, and transactions is read by hive
+-- everywhere - so without these an old database starts cleanly and then
+-- fails at runtime with "Unknown column 'hive_id'".
+--
+-- Found by upgrading the OLDEST surviving backup and diffing the result
+-- against a fresh install, which is the only way this class of gap shows
+-- up: every one of them is a table that already existed.
+
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_stats_daily' AND COLUMN_NAME = 'hive_id');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_stats_daily ADD COLUMN hive_id VARCHAR(64) NOT NULL DEFAULT ''default''',
+    'SELECT "player_stats_daily.hive_id present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'transactions' AND COLUMN_NAME = 'hive_id');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE transactions ADD COLUMN hive_id VARCHAR(64) NOT NULL DEFAULT ''default''',
+    'SELECT "transactions.hive_id present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- later stat counters --------------------------------------------
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_stats_daily' AND COLUMN_NAME = 'hvt_kills');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_stats_daily ADD COLUMN hvt_kills INT DEFAULT 0',
+    'SELECT "player_stats_daily.hvt_kills present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_stats_daily' AND COLUMN_NAME = 'missions_completed');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_stats_daily ADD COLUMN missions_completed INT DEFAULT 0',
+    'SELECT "player_stats_daily.missions_completed present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- players.weapon widened 255 -> 256 -------------------------------
+-- Widening only. A prefab path that fits in 255 fits in 256, so no value
+-- can be truncated by this.
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'players' AND COLUMN_NAME = 'weapon'
+             AND CHARACTER_MAXIMUM_LENGTH < 256);
+SET @ddl = IF(@c > 0,
+    'ALTER TABLE players MODIFY weapon VARCHAR(256) DEFAULT NULL',
+    'SELECT "players.weapon already 256" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- the index that goes with player_stats_daily.hive_id -------------
+-- Guarded by NAME. An index that already exists under this name is left
+-- alone rather than replaced: rebuilding one would mean dropping it, and
+-- nothing in this file is allowed to drop anything.
+SET @c = (SELECT COUNT(*) FROM information_schema.STATISTICS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_stats_daily'
+             AND INDEX_NAME = 'idx_player_hive');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_stats_daily ADD INDEX idx_player_hive (player_uid, hive_id)',
+    'SELECT "player_stats_daily.idx_player_hive present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
