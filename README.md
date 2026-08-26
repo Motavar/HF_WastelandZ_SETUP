@@ -79,7 +79,9 @@ no ZIP needed.)
 |---|---|
 | `index.html` | The step-by-step setup guide (open it in a browser). |
 | `gateway/` | The gateway program — copy this folder to your server and run it. |
-| `gateway/setup_database.sql` | Builds every database table in one shot. |
+| `gateway/setup_database.sql` | Every database table, defined in one file. **The gateway applies it on every start**, so you never run SQL by hand and there is no separate first-time step. It only ever adds — running it again changes nothing, which is what makes a fresh install and an upgraded one end up identical. |
+| `gateway/migrate.py` | Applies the schema on start, then any pending data change. Records what it applied so nothing runs twice, and refuses to remove anything unless you deliberately pass `--allow-destructive`. |
+| `gateway/tests/` | The tests we run against the gateway, shipped so you can run them yourself. ⚠ One of them **wipes** the database it is pointed at — read [`gateway/tests/README.md`](gateway/tests/README.md) first. |
 | `gateway/config.example.py` | Settings template — copy to `config.py` and fill in. |
 | `gateway/start_gateway.bat` | Windows one-click start. |
 | `configs/` | Example server settings (loot, vehicles, towns, admins, loadouts…). [`configs/README.md`](configs/README.md) lists each file; every setting is documented inside its file. |

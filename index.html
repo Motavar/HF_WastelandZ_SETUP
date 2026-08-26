@@ -264,7 +264,9 @@
   <h3>What's in this download</h3>
   <div class="files"><dl>
     <dt>gateway/</dt><dd>The gateway program. Copy this whole folder to your server and run it.</dd>
-    <dt>gateway/setup_database.sql</dt><dd>Builds every database table in one shot. You run this once.</dd>
+    <dt>gateway/setup_database.sql</dt><dd>Every database table, defined in one file. <b>The gateway applies it on every start</b>, so you never run SQL by hand and there is no separate first-time step. It only ever adds &mdash; running it again changes nothing.</dd>
+    <dt>gateway/migrate.py</dt><dd>Applies the schema on start, then any pending data change. Records what it applied so nothing runs twice.</dd>
+    <dt>gateway/tests/</dt><dd>The tests we run against the gateway, shipped so you can run them yourself. One of them <b>wipes</b> a database and says so &mdash; read its README first.</dd>
     <dt>gateway/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
     <dt>gateway/start_gateway.bat</dt><dd>Windows one-click start.</dd>
     <dt>configs/</dt><dd><b>Reference copies</b> of the server settings (loot, vehicles, towns, admins&hellip;) &mdash; the server writes its own working copies on first start (see below), so these are for reading and optional pre-tuning, not required drop-ins. The README inside lists each file and which ones auto-create; every setting is documented inline.</dd>
@@ -424,10 +426,13 @@ FLUSH PRIVILEGES;</pre></div>
   </div>
 
   <div class="step"><span class="n">3</span>
-    <h4>Build the tables</h4>
-    <p>This fills the empty database with every table the game needs. Open a normal <b>Command Prompt</b>, go to the folder where you unzipped this download, and run:</p>
+    <h4>Check the login works</h4>
+    <p>Prove the database and password you just made actually work, before anything depends on them. Open a normal <b>Command Prompt</b>, go to the folder where you unzipped this download, and run:</p>
     <div class="code"><pre><span class="p">mysql</span> -u wastelandz -p wastelandz &lt; gateway\setup_database.sql</pre></div>
-    <p class="muted">It asks for the <code class="inline">wastelandz</code> password (from Step 2). No error message means it worked.</p>
+    <p class="muted">It asks for the <code class="inline">wastelandz</code> password (from Step 2). <b>No error message means it worked</b> &mdash; and it built the tables while it was there.</p>
+    <div class="note"><div class="h">You are not required to run this</div>
+    <p>The gateway applies <code class="inline">setup_database.sql</code> itself on <b>every</b> start, so the tables would appear on their own the first time you launch it. This step is here because a wrong password is much easier to understand <b>now</b>, on its own, than three steps later mixed in with everything else the gateway does at startup.</p>
+    <p class="muted">Running it and letting the gateway run it are the same thing &mdash; the file is written so that running it twice changes nothing. There is no first-time-only path to get wrong.</p></div>
   </div>
 
   <div class="step"><span class="n">4</span>
@@ -681,7 +686,8 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
 <span class="p">cp</span> -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
 
-<span class="c"># build the tables (logs in as the wastelandz user)</span>
+<span class="c"># check the login works (also builds the tables; the gateway would do</span>
+<span class="c"># this itself on first start, but a wrong password is easier to spot here)</span>
 <span class="p">cd</span> /opt/wastelandz-gateway
 <span class="p">mysql</span> -u wastelandz -p wastelandz &lt; setup_database.sql
 
@@ -693,7 +699,10 @@ FLUSH PRIVILEGES;</pre></div>
 
 <span class="c"># give the whole folder (incl. the venv) to the account the service will run as</span>
 <span class="p">sudo</span> chown -R youruser:youruser /opt/wastelandz-gateway</pre></div>
-    <p class="muted">The <code class="inline">mysql</code> line asks for the <code class="inline">wastelandz</code> password you set in Step 4, then builds the tables — no output means it worked. The script itself holds <b>no usernames or passwords</b>; you never edit it.</p>
+    <p class="muted">The <code class="inline">mysql</code> line asks for the <code class="inline">wastelandz</code> password you set in Step 4, then builds the tables &mdash; no output means it worked. The script itself holds <b>no usernames or passwords</b>; you never edit it.</p>
+    <div class="note"><div class="h">That <code class="inline">mysql</code> line is a check, not a requirement</div>
+    <p>The gateway applies <code class="inline">setup_database.sql</code> itself on <b>every</b> start, so the tables would appear on their own the first time you launch it. It is here because a wrong password is far easier to understand on its own line than buried in the gateway&rsquo;s startup output.</p>
+    <p class="muted">Running it yourself and letting the gateway run it are the same thing &mdash; the file is written so that running it again changes nothing, and so it can only ever add. A fresh install and a five-year-old one end up with the same database because both run the same file. There is no first-time-only path to get wrong.</p></div>
     <div class="note warn"><div class="h">Ownership — replace <code class="inline">youruser</code></div><p>Change <b>both</b> <code class="inline">youruser</code> parts to your Linux <b>username</b> and <b>group</b> (it&rsquo;s <code class="inline">username:group</code>). This must be the same user you&rsquo;ll put in the service&rsquo;s <code class="inline">User=</code> line in Part 2.</p>
     <p><b>Not sure what yours are?</b> Run these two:</p>
     <div class="code"><pre><span class="p">whoami</span>        <span class="c"># prints your username       (e.g. motavar)</span>
