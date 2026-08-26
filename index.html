@@ -309,10 +309,10 @@
 
   <h3>What's in this download</h3>
   <div class="files"><dl>
-    <dt>gateway-1.0.16/</dt><dd>The gateway program for the current release. Copy this whole folder to your server and run it. <b>Use this folder, not <code class="inline">gateway/</code></b> &mdash; that one holds the next release, which is still in testing.</dd>
-    <dt>gateway-1.0.16/setup_database.sql</dt><dd>Every database table, defined in one file. <b>You run it once, by hand</b>, when you first set up the database &mdash; step 3 below. It only ever adds, so running it again changes nothing.</dd>
-    <dt>gateway-1.0.16/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
-    <dt>gateway-1.0.16/start_gateway.bat</dt><dd>Windows one-click start.</dd>
+    <dt>gateway/</dt><dd>The gateway program. Copy this whole folder to your server and run it.</dd>
+    <dt>gateway/setup_database.sql</dt><dd>Every database table, defined in one file. <b>You run it once, by hand</b>, when you first set up the database &mdash; step 3 below. It only ever adds, so running it again changes nothing.</dd>
+    <dt>gateway/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
+    <dt>gateway/start_gateway.bat</dt><dd>Windows one-click start.</dd>
     <dt>configs/</dt><dd><b>Reference copies</b> of the server settings (loot, vehicles, towns, admins&hellip;) &mdash; the server writes its own working copies on first start (see below), so these are for reading and optional pre-tuning, not required drop-ins. The README inside lists each file and which ones auto-create; every setting is documented inline.</dd>
     <dt>missions/</dt><dd>Reward templates for the mission system, plus a guide to authoring missions in-game.</dd>
     <dt>server/</dt><dd>Game-server kit — SteamCMD install script, example <code class="inline">server1.json</code>, and the start/stop batch files (auto-restart loop included).</dd>
@@ -329,8 +329,7 @@
   <p class="muted">After setup you have three top-level folders (Linux <code class="inline">/opt/</code> shown below; Windows mirrors this under <code class="inline">C:\reforger\</code> plus your gateway folder). The spot that trips people up: HF&rsquo;s live config files sit under the profile&rsquo;s extra <b><code class="inline">profile/</code></b> subfolder.</p>
   <div class="code"><pre>/opt/
 ├── wastelandz/                <span class="c"># THIS KIT (git clone) — reference copies, read-only</span>
-│   ├── gateway-1.0.16/          <span class="c"># CURRENT RELEASE gateway + setup_database.sql + config.example.py</span>
-│   ├── gateway/                 <span class="c"># next release (0.9.0) — in testing, do NOT use yet</span>
+│   ├── gateway/                 <span class="c"># gateway program + setup_database.sql + config.example.py</span>
 │   ├── configs/                 <span class="c"># reference *.example HF settings (optional pre-tuning)</span>
 │   ├── missions/                <span class="c"># mission reward templates + in-game authoring guide</span>
 │   └── server/                  <span class="c"># systemd + server1/2.json examples + SteamCMD script</span>
@@ -472,7 +471,7 @@ FLUSH PRIVILEGES;</pre></div>
   <div class="step"><span class="n">3</span>
     <h4>Check the login works</h4>
     <p>Prove the database and password you just made actually work, before anything depends on them. Open a normal <b>Command Prompt</b>, go to the folder where you unzipped this download, and run:</p>
-    <div class="code"><pre><span class="p">mysql</span> -u wastelandz -p wastelandz &lt; gateway-1.0.16\setup_database.sql</pre></div>
+    <div class="code"><pre><span class="p">mysql</span> -u wastelandz -p wastelandz &lt; gateway\setup_database.sql</pre></div>
     <p class="muted">It asks for the <code class="inline">wastelandz</code> password (from Step 2). <b>No error message means it worked</b> &mdash; and it built the tables while it was there.</p>
     <div class="note"><div class="h">You are not required to run this</div>
     <p>On this release the gateway does <b>not</b> create tables, so this step is required &mdash; it is what builds them. Running it twice is harmless: the file only ever adds.</p>
@@ -728,7 +727,7 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="c"># the running copy gets its own folder</span>
 <span class="p">sudo</span> mkdir -p /opt/wastelandz-gateway
 <span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
-<span class="p">cp</span> -r /opt/wastelandz/gateway-1.0.16/. /opt/wastelandz-gateway/
+<span class="p">cp</span> -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
 
 <span class="c"># build the tables and check the login works in one go</span>
 <span class="p">cd</span> /opt/wastelandz-gateway
@@ -1550,7 +1549,7 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <p>Everything in this kit is one GitHub repo. Two ways to get it onto the Linux box — pick one:</p>
     <p><b>Option A — git (recommended).</b> One command pulls the whole kit straight onto the server; updating later is one more command. On the server:</p>
     <div class="code"><pre><span class="p">sudo</span> apt install -y git
-<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz
+<span class="p">sudo</span> git clone -b beta https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz
 <span class="p">sudo</span> chown -R $USER /opt/wastelandz</pre></div>
     <p class="muted">Get updates later with: <code class="inline">cd /opt/wastelandz</code> then <code class="inline">git pull</code></p>
     <p><b>Option B — WinSCP (drag &amp; drop).</b> On your PC: open the repo page on GitHub &rarr; green <b>Code</b> button &rarr; <b>Download ZIP</b> &rarr; unzip it. Make the target folder on the server first:</p>
@@ -2716,27 +2715,27 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
   <div class="tablewrap"><table class="rtab">
     <tr><th>File</th><th>What it is</th><th>What it can reach</th></tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/gateway.py">gateway.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/gateway.py">gateway.py</a></td>
       <td>The whole program. A Flask web service: it listens on the ports you configure and answers the game server&rsquo;s requests about players, money, gear and bans.</td>
       <td>Your MySQL database, and the ports in your <code class="inline">config.py</code>. <b>It makes no outbound connections</b> &mdash; nothing phones home, and there is no update check.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/setup_database.sql">setup_database.sql</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/setup_database.sql">setup_database.sql</a></td>
       <td>Every table, defined once. <b>You run it by hand</b> when you first set up the database.</td>
       <td>Your database only. It is written so that it can <b>only add</b> &mdash; there is no <code class="inline">DROP</code> or <code class="inline">DELETE</code> anywhere in it, and the gateway refuses to start if one ever appears.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/hf_crypto.py">hf_crypto.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/hf_crypto.py">hf_crypto.py</a></td>
       <td>Verifies the signed tokens the game server sends, so a stranger who finds your port cannot write to your database.</td>
       <td>Nothing external. Pure computation on the key already in your <code class="inline">config.py</code>.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/requirements.txt">requirements.txt</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/requirements.txt">requirements.txt</a></td>
       <td>The Python packages. Three, all mainstream: Flask, the MySQL connector, psutil.</td>
       <td>PyPI, at install time only.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/config.example.py">config.example.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/config.example.py">config.example.py</a></td>
       <td>The template you copy to <code class="inline">config.py</code>. Every setting is commented.</td>
       <td>Nothing. It is a template and holds no real credentials.</td>
     </tr>
@@ -2749,7 +2748,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
   <div class="code"><pre>Review this file for anything malicious or risky before I run it
 on a server that holds a database password.
 
-https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway-1.0.16/gateway.py
+https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway/gateway.py
 
 Specifically tell me:
  - does it make any outbound network connections, and to where?
@@ -2808,10 +2807,10 @@ git pull</pre></div>
     <h4>Copy the gateway files across</h4>
     <p>Copies every program file the kit ships. It cannot touch your <code class="inline">config.py</code> &mdash; there isn&rsquo;t one in the repo to copy.</p>
     <div class="code"><pre><span class="c"># Linux</span>
-cp -r /opt/wastelandz/gateway-1.0.16/. /opt/wastelandz-gateway/
+cp -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
 
 <span class="c"># Windows</span>
-xcopy /E /Y D:\wastelandz\gateway-1.0.16 D:\wastelandz-gateway\</pre></div>
+xcopy /E /Y D:\wastelandz\gateway D:\wastelandz-gateway\</pre></div>
   </div>
 
   <div class="step"><span class="n">4</span>
@@ -2845,7 +2844,7 @@ curl http://127.0.0.1:5000/api/ping</pre></div>
   Hive ID:   default
   Database:  localhost:3306/wastelandz
 [GATEWAY] Database connection: OK</pre></div>
-    <p class="muted">If the version does not say <b>0.7.1</b>, you copied from the wrong folder &mdash; check that step 3 points at <code class="inline">gateway-1.0.16</code>. On Linux you can watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
+    <p class="muted">If the version does not say <b>0.7.1</b>, you copied from the wrong folder &mdash; check that step 3 points at <code class="inline">gateway</code>. On Linux you can watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
   </div>
 
   <div class="note tip"><div class="h">Roll back if something&rsquo;s off</div><p>Restore the backup and restart:</p>
@@ -2985,37 +2984,37 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
   <div class="tablewrap"><table class="rtab">
     <tr><th>File</th><th>What it is</th><th>What it can reach</th></tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/gateway.py">gateway.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/gateway.py">gateway.py</a></td>
       <td>The whole program. A Flask web service: it listens on the ports you configure and answers the game server&rsquo;s requests about players, money, gear and bans.</td>
       <td>Your MySQL database, and the ports in your <code class="inline">config.py</code>. <b>It makes no outbound connections</b> &mdash; nothing phones home, and there is no update check.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/migrate.py">migrate.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/migrate.py">migrate.py</a></td>
       <td>Brings the database up to date on start. Applies <code class="inline">setup_database.sql</code>, then any pending data migration.</td>
       <td>Your database, and <code class="inline">mysqldump</code> when it takes a backup. Refuses to remove anything unless you start it with <code class="inline">--allow-destructive</code>.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/setup_database.sql">setup_database.sql</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/setup_database.sql">setup_database.sql</a></td>
       <td>Every table, defined once. Applied on every start.</td>
       <td>Your database only. It is written so that it can <b>only add</b> &mdash; there is no <code class="inline">DROP</code> or <code class="inline">DELETE</code> anywhere in it, and the gateway refuses to start if one ever appears.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/hf_crypto.py">hf_crypto.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/hf_crypto.py">hf_crypto.py</a></td>
       <td>Verifies the signed tokens the game server sends, so a stranger who finds your port cannot write to your database.</td>
       <td>Nothing external. Pure computation on the key already in your <code class="inline">config.py</code>.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/requirements.txt">requirements.txt</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/requirements.txt">requirements.txt</a></td>
       <td>The Python packages. Four, all mainstream: Flask, the MySQL connector, psutil, waitress.</td>
       <td>PyPI, at install time only.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/config.example.py">config.example.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/config.example.py">config.example.py</a></td>
       <td>The template you copy to <code class="inline">config.py</code>. Every setting is commented.</td>
       <td>Nothing. It is a template and holds no real credentials.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main/gateway/tests">gateway/tests/</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/beta/gateway/tests">gateway/tests/</a></td>
       <td>The tests we run against it, shipped so you can run them too.</td>
       <td>A database you point them at. One of them <b>wipes</b> that database and says so loudly &mdash; read its README first.</td>
     </tr>
@@ -3028,7 +3027,7 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
   <div class="code"><pre>Review this file for anything malicious or risky before I run it
 on a server that holds a database password.
 
-https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway/gateway.py
+https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/beta/gateway/gateway.py
 
 Specifically tell me:
  - does it make any outbound network connections, and to where?
@@ -3080,7 +3079,7 @@ git pull
 <span class="c"># Windows</span>
 cd D:\wastelandz
 git pull</pre></div>
-    <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip">Download the kit as a ZIP</a> and unpack it over the same folder. Same result.</p>
+    <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/beta.zip">Download the kit as a ZIP</a> and unpack it over the same folder. Same result.</p>
   </div>
 
   <div class="step"><span class="n">3</span>
@@ -3334,6 +3333,7 @@ sudo journalctl -u wz-server -f</pre></div>
   <span class="section-tag">Version requirements</span>
   <h2>What each release expects</h2>
   <p class="muted">A release note that raises a requirement says so at the top. These are the ones that have moved so far.</p>
+  <p class="muted"><b>Full release history, with what each one needed and how to move between them: <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/RELEASES.md">RELEASES.md</a>.</b> Documentation for an older release is the repo at that release&rsquo;s tag &mdash; the guide as it stood at 1.0.16 is at <code class="inline">blob/v1.0.16/index.html</code>.</p>
   <div class="tablewrap"><table class="rtab">
     <tr><th>From</th><th>Requirement</th><th>If you skip it</th></tr>
     <tr><td>2026-08-16 onward</td><td><b>Arma Reforger 1.8.0.10</b></td><td>The Game script module fails to compile and <b>the server does not start</b>. There is no 1.7-compatible build.</td></tr>
@@ -3448,10 +3448,10 @@ sudo journalctl -u wz-server -f</pre></div>
   <div class="note"><div class="h">Symptom: <code class="inline">GATEWAY VERSION MISMATCH</code> banner in the server console</div>
   <p><b>Cause:</b> the gateway is older than the mod expects. The mod pings the gateway every 60 seconds and prints this until they line up.</p>
   <p><b>Fix:</b> replace <code class="inline">gateway.py</code> and restart the gateway &mdash; see the <b>Update Gateway</b> tab. This is a <b>warning, not a block</b>: the game keeps running while you sort it out.</p>
-  <p>The banner names both versions. <b>The one after &ldquo;Expected&rdquo; is the gateway your mod needs</b> &mdash; on mod 1.0.16 that is <code class="inline">0.7.1</code>. If it says the gateway is <b>newer</b> than expected, you have installed the beta gateway by mistake: copy from <code class="inline">gateway-1.0.16/</code> instead.</p>
+  <p>The banner names both versions. <b>The one after &ldquo;Expected&rdquo; is the gateway your mod needs</b> &mdash; on mod 1.0.16 that is <code class="inline">0.7.1</code>. If it says the gateway is <b>newer</b> than expected, you have installed the beta gateway by mistake: copy from <code class="inline">gateway/</code> instead.</p>
   <div class="note danger" style="margin-top:10px"><div class="h">Running gateway 0.9.0 on mod 1.0.16 stops gear saving, silently</div>
   <p>The two disagree about where gear lives. Saves are accepted and written under a key the mod never reads back, so the save returns success and <b>nothing in any log reports a problem</b> &mdash; players simply stop keeping changes to their loadout.</p>
-  <p><b>Fix:</b> copy <code class="inline">gateway-1.0.16/</code> over your gateway folder and restart. Gear already stored is untouched and comes back.</p></div></div>
+  <p><b>Fix:</b> copy <code class="inline">gateway/</code> over your gateway folder and restart. Gear already stored is untouched and comes back.</p></div></div>
 
   <div class="note"><div class="h">What a healthy gateway start looks like</div>
   <p>The banner at the top names the version, the hive and the database. Check the version first &mdash; it is the fastest way to catch a gateway copied from the wrong folder.</p>
