@@ -10,19 +10,50 @@
 information may not be correct. As a server admin you use this kit at your own
 risk. The full disclaimer is shown when you open the guide.
 
-> ## 🚨 CRITICAL PATCH — Gateway 0.7.1 (2026-07-16)
+## Branches
+
+| Branch | Channel | Gateway | For |
+|---|---|---|---|
+| **`main`** | **Production** | **0.7.1** | Everyone running a live server. This is what you want. |
+| `beta` | Test | 0.9.0 | Testing the next release. **Never on a live server.** |
+
+Both keep the kit at the same path, `gateway/`, so the setup and update steps are
+identical on either. Only the clone differs:
+
+```
+git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git            # production
+git clone -b beta https://github.com/Motavar/HF_WastelandZ_SETUP.git    # beta
+```
+
+> **A newer gateway is not better.** Gateway `0.9.0` on `beta` pairs with an
+> unreleased mod build. Run it against mod 1.0.16 — what the Workshop gives you
+> today — and **gear silently stops being saved**: the save is accepted, written
+> under a key the mod never reads back, and nothing in any log reports it.
+
+See **[RELEASES.md](RELEASES.md)** for the version history and how to upgrade.
+
+> ## 🚨 SECURITY UPDATE — re-download the gateway (2026-08-26)
 >
-> If your gateway is running **0.7.0 or older, update it now**: replace
-> `gateway.py` on your gateway machine with the copy in this repo's
-> `gateway/` folder and restart the gateway. That's the whole update — no
-> database migration, no config change, no game-server restart.
+> **Update even though the version number has not changed.** A server configured
+> with an **empty** or **placeholder** `api_key` authenticated every anonymous
+> request — `check_auth` defaults a missing `api_key` parameter to `""`, so a
+> configured key of `""` matched a caller who sent none. That reaches your economy
+> database, with nothing in the log to say so.
 >
-> **Why:** 0.7.0 refuses to save admin-spawned money drops (`/money`) to the
-> database, so those drops are silently deleted on server restart. Wallets,
-> banking, death drops and player drops are unaffected.
+> Reachable from a `config.py` with no `SERVERS` list and no `API_KEY`. Placeholder
+> keys are refused too: `CHANGE_ME_*` is published in this kit's own
+> `config.example.py`, so running on one is running on a key anybody can read.
 >
-> **Not updating won't break the game** — but the server console will print a
-> `GATEWAY VERSION MISMATCH` warning every 60 seconds until you update.
+> **What to do:** replace `gateway.py` from this repo's `gateway/` folder and
+> restart. Your `config.py` is untouched. If the gateway then refuses to start and
+> names a server, that server's key was one of the bad ones — generate a real one
+> with `python -c "import secrets; print(secrets.token_hex(32))"`, put it in
+> `config.py` under `SERVERS`, and the same value in that server's
+> `HFWastelandZ_secrets.conf`.
+>
+> The version stays **0.7.1** on purpose: the mod checks it for exact equality, so
+> a bumped number would print `GATEWAY VERSION MISMATCH` every 60 seconds for a
+> gateway that is correct.
 
 ## What is this?
 
