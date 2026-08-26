@@ -78,9 +78,29 @@ HTTP_THREADS = 16
 # identifies each request by the port it arrived on (-> that server's id + key).
 # Keep unused servers COMMENTED OUT so no port ever runs on a default key.
 #
+# THE PORT IS WHAT IDENTIFIES A SERVER - not the key, and not anything the
+# game server tells us. That is deliberate: a server cannot claim to be a
+# different one, and there is no second value to drift out of sync.
+#
+# So EACH GAME SERVER MUST POINT AT ITS OWN PORT. The port here has to match
+# the GATEWAY_URL in that server's HFWastelandZ_server.conf:
+#
+#     server_id    this file      that server's GATEWAY_URL
+#     ----------   ------------   -------------------------------
+#     server-1     port 5000      http://127.0.0.1:5000/
+#     server-2     port 5001      http://127.0.0.1:5001/
+#     server-3     port 5002      http://127.0.0.1:5002/
+#
+# Point two game servers at the SAME port and the gateway treats them as one
+# server: they will overwrite each other's per-server data (last position,
+# placements, money drops). Money and gear are hive-wide so those survive, but
+# it is still wrong and it is silent.
+#
 # api_key = the GATEWAY KEY for that server. Each server needs its OWN unique key
 #   (generate one with: python3 -c "import secrets; print(secrets.token_hex(32))").
 #   The SAME key must go in that server's HFWastelandZ_secrets.conf (API_KEY).
+#   If they differ the gateway rejects every request while the game server
+#   looks perfectly healthy - no money, no gear, no obvious error.
 SERVERS = [
     {"server_id": "server-1", "port": 5000, "host": "127.0.0.1", "api_key": "CHANGE_ME_UNIQUE_KEY_1"},
 
@@ -92,16 +112,28 @@ SERVERS = [
     # {"server_id": "remote-1", "port": 5003, "host": "0.0.0.0", "api_key": "CHANGE_ME_UNIQUE_KEY_4"},
 ]
 
-# All SERVERS above share ONE database = ONE hive. Player money/bank/inventory
-# are shared hive-wide; per-server data (position, placements, money drops) is
-# separated by each entry's server_id.
+# Hive for any SERVERS entry that does not name its own.
+#
+# Entries sharing a hive share money, bank and gear. Per-server data - last
+# position, placements, money drops - is separated by server_id regardless.
+#
+# Hosting for other people? ONE HIVE PER CUSTOMER. Give each their own
+# hive_id on their SERVERS entry. Never give them a gear group instead:
+# groups separate GEAR ONLY, so two customers in one hive would share a
+# bank - one deposits, the other withdraws.
 HIVE_ID = "default"
 
-# Legacy single-server fallback — used ONLY if SERVERS is absent or empty.
-# SERVER_ID    = "dev-01"
-# API_KEY      = "CHANGE_ME_TO_A_RANDOM_STRING"
-# GATEWAY_HOST = "127.0.0.1"
-# GATEWAY_PORT = 5000
+# NOTE: do not add GATEWAY_PORT / GATEWAY_HOST / API_KEY / SERVER_ID here.
+#
+# They are the OLD single-server way of doing this, and while SERVERS is set
+# the gateway never reads them - so a GATEWAY_PORT sitting in your config
+# does nothing at all except mislead whoever reads it next. Everything lives
+# in the SERVERS list above now, one entry per server.
+#
+# They still work as a fallback for a config that has no SERVERS list, which
+# is the only reason they have not been deleted outright. If you are
+# following an older guide that tells you to set them, that guide predates
+# multi-server support.
 
 # --- Health monitoring ---
 # When True, the /api/admin/health endpoint is enabled and returns CPU/RAM/
