@@ -1435,7 +1435,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Keeping current</div>
   <h1>Update the gateway.</h1>
-  <p class="lede">The Wasteland-Z <b>mod</b> updates itself from the Reforger Workshop every time the server starts &mdash; you never touch it. The <b>gateway</b> is the one piece you host yourself, so when a new version ships you refresh its code by hand. Almost always that means replacing a single file: <code class="inline">gateway.py</code>.</p>
+  <p class="lede">The Wasteland-Z <b>mod</b> updates itself from the Reforger Workshop every time the server starts &mdash; you never touch it. The <b>gateway</b> is the one piece you host yourself. <b>There is one procedure for updating it, and it is the same every time</b> &mdash; whether the release changed one file or twenty. You never have to work out which kind of update this is.</p>
 </div></div>
 
 <section><div class="wrap">
@@ -1444,51 +1444,159 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
   <ul class="clean muted">
     <li><b>The mod</b> (gameplay, menus, everything players see) &mdash; auto-downloads from the Workshop on server start. Nothing to do.</li>
     <li><b>The database</b> &mdash; your data stays as it is. When a release does change the schema, the gateway applies it itself on the next restart and records what it applied, so it can never run twice. You never run SQL.</li>
-    <li><b>The gateway</b> &mdash; the small Python program you run. New logic ships as an updated <code class="inline">gateway.py</code>. That&rsquo;s what this page covers.</li>
+    <li><b>The gateway</b> &mdash; the small Python program you run. That&rsquo;s what this page covers.</li>
   </ul>
-  <div class="note tip"><div class="h">The usual case is one file</div><p>Most gateway updates change only <code class="inline">gateway.py</code>. The steps below replace just that file and leave your <code class="inline">config.py</code> &mdash; your database password and gateway key &mdash; completely untouched.</p></div>
+  <div class="note tip"><div class="h">One procedure. Every time. No judgement calls.</div>
+  <p>A gateway release can change <code class="inline">gateway.py</code> alone, or it can also change the Python packages, the config template, or the database schema. <b>You should never have to work out which.</b> So the steps below always refresh the whole kit and always run <code class="inline">pip install</code>.</p>
+  <p>Running the full procedure when only one file changed is <b>completely harmless</b> &mdash; the copy overwrites identical files and <code class="inline">pip install</code> does nothing when nothing is new. Running a shortened version when more <i>did</i> change is the single most common way an upgrade half-lands.</p>
+  <p class="muted">Your <code class="inline">config.py</code> is never touched by any of it &mdash; it is not in the repo, so nothing copies over it.</p></div>
 </div></section>
 
 <section><div class="wrap">
-  <div class="part-head"><span class="part-badge">Quick update</span><h2>Replace gateway.py from GitHub</h2></div>
-  <p class="muted">Run these in your <b>running gateway folder</b> &mdash; the working copy you made during setup (<code class="inline">/opt/wastelandz-gateway/</code> on Linux, <code class="inline">C:\wastelandz-gateway\</code> on Windows), <b>not</b> the reference kit folder.</p>
+  <div class="part-head"><span class="part-badge">Before you run it</span><h2>Read the source first. All of it is public.</h2></div>
+  <p class="muted">You are about to run code on a machine that holds your players&rsquo; data and your database password. <b>You should not have to take our word for any of it.</b> Every file is readable in the browser before you download anything &mdash; no account, no clone.</p>
+
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>File</th><th>What it is</th><th>What it can reach</th></tr>
+    <tr>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/gateway.py">gateway.py</a></td>
+      <td>The whole program. A Flask web service: it listens on the ports you configure and answers the game server&rsquo;s requests about players, money, gear and bans.</td>
+      <td>Your MySQL database, and the ports in your <code class="inline">config.py</code>. <b>It makes no outbound connections</b> &mdash; nothing phones home, and there is no update check.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/migrate.py">migrate.py</a></td>
+      <td>Brings the database up to date on start. Applies <code class="inline">setup_database.sql</code>, then any pending data migration.</td>
+      <td>Your database, and <code class="inline">mysqldump</code> when it takes a backup. Refuses to remove anything unless you start it with <code class="inline">--allow-destructive</code>.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/setup_database.sql">setup_database.sql</a></td>
+      <td>Every table, defined once. Applied on every start.</td>
+      <td>Your database only. It is written so that it can <b>only add</b> &mdash; there is no <code class="inline">DROP</code> or <code class="inline">DELETE</code> anywhere in it, and the gateway refuses to start if one ever appears.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/hf_crypto.py">hf_crypto.py</a></td>
+      <td>Verifies the signed tokens the game server sends, so a stranger who finds your port cannot write to your database.</td>
+      <td>Nothing external. Pure computation on the key already in your <code class="inline">config.py</code>.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/requirements.txt">requirements.txt</a></td>
+      <td>The Python packages. Four, all mainstream: Flask, the MySQL connector, psutil, waitress.</td>
+      <td>PyPI, at install time only.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/config.example.py">config.example.py</a></td>
+      <td>The template you copy to <code class="inline">config.py</code>. Every setting is commented.</td>
+      <td>Nothing. It is a template and holds no real credentials.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main/gateway/tests">gateway/tests/</a></td>
+      <td>The tests we run against it, shipped so you can run them too.</td>
+      <td>A database you point them at. One of them <b>wipes</b> that database and says so loudly &mdash; read its README first.</td>
+    </tr>
+  </table></div>
+
+  <div class="note tip"><div class="h">Have an AI read it for you &mdash; genuinely, do this</div>
+  <p>You do not need to read Python to check this. Paste the link into any capable assistant and ask it directly. It costs you two minutes and it is a real check, not a ritual.</p>
+  <p><b>Works with:</b> Claude, ChatGPT, Gemini, Copilot, Grok. For the ones that cannot open a link, open the <b>Raw</b> button on GitHub and paste the text instead.</p>
+  <p>Something like this:</p>
+  <div class="code"><pre>Review this file for anything malicious or risky before I run it
+on a server that holds a database password.
+
+https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway/gateway.py
+
+Specifically tell me:
+ - does it make any outbound network connections, and to where?
+ - does it read or send any credentials, keys, or environment variables
+   anywhere other than the local database?
+ - does it execute anything downloaded at runtime (eval, exec, pickle,
+   subprocess with a remote source)?
+ - does it delete or overwrite files outside its own folder?
+ - anything else you would not want running on a server you own.</pre></div>
+  <p class="muted">The honest answers are: no outbound connections, credentials go only to your own MySQL, nothing is executed from a download, and the only file it writes outside its folder is a database backup you asked for. <b>If an assistant tells you otherwise, do not run it &mdash; tell us instead.</b></p></div>
+
+  <div class="note"><div class="h">Check you got what you were shown</div>
+  <p>Reviewing a file only means something if it is the same file you end up running. After step 3, compare them:</p>
+  <div class="code"><pre><span class="c"># Linux</span>
+sha256sum /opt/wastelandz/gateway/gateway.py /opt/wastelandz-gateway/gateway.py
+
+<span class="c"># Windows</span>
+certutil -hashfile D:\wastelandz\gateway\gateway.py SHA256
+certutil -hashfile D:\wastelandz-gateway\gateway.py SHA256</pre></div>
+  <p class="muted">The two hashes must match. GitHub shows the same commit history to everyone, so what you reviewed in the browser is what <code class="inline">git pull</code> gave you.</p></div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">The update procedure</span><h2>Five steps &mdash; the same ones every release</h2></div>
+  <p class="muted">Two folders are involved and it matters which is which. The <b>reference kit</b> is the <code class="inline">git clone</code> you made during setup (<code class="inline">/opt/wastelandz</code> on Linux, <code class="inline">D:\wastelandz</code> on Windows). The <b>running gateway folder</b> is the working copy the service actually runs from (<code class="inline">/opt/wastelandz-gateway/</code>, <code class="inline">C:\wastelandz-gateway\</code>).</p>
 
   <div class="step"><span class="n">1</span>
-    <h4>Back up the file you have now</h4>
-    <p>So you can roll back in seconds if the new one misbehaves.</p>
+    <h4>Back up what you have now</h4>
+    <p>Both files. Thirty seconds, and it turns the worst case into a rollback instead of a password hunt.</p>
     <div class="code"><pre><span class="c"># Linux</span>
 cd /opt/wastelandz-gateway
 cp gateway.py gateway.py.bak
+cp config.py ~/config.py.bak
 
 <span class="c"># Windows (Command Prompt)</span>
 cd C:\wastelandz-gateway
-copy gateway.py gateway.py.bak</pre></div>
+copy gateway.py gateway.py.bak
+copy config.py %USERPROFILE%\config.py.bak</pre></div>
+    <p class="muted"><code class="inline">config.py</code> holds your database password and gateway key, and its backup goes <b>outside</b> the gateway folder on purpose. A backup living in the folder you are about to overwrite is not a backup.</p>
   </div>
 
   <div class="step"><span class="n">2</span>
-    <h4>Download the latest gateway.py</h4>
-    <p>This pulls the current file straight from the kit&rsquo;s public repo and writes it over the old one. <code class="inline">curl</code> ships with modern Windows and Linux alike, so the command is the same on both.</p>
-    <div class="code"><pre>curl -fL -o gateway.py https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway/gateway.py</pre></div>
-    <p class="muted"><code class="inline">-f</code> makes curl fail loudly on a bad address instead of saving an error page over your file; <code class="inline">-L</code> follows GitHub&rsquo;s redirect. The URL points at this kit&rsquo;s <code class="inline">main</code> branch, file <code class="inline">gateway/gateway.py</code>.</p>
-    <div class="note warn"><div class="h">Got a 404? Check the file didn&rsquo;t blank</div><p>If the download errors, your <code class="inline">gateway.py</code> may have been emptied. Check its size &mdash; on Linux <code class="inline">ls -l gateway.py</code>, on Windows <code class="inline">dir gateway.py</code> &mdash; and if it&rsquo;s empty, put the backup back with <code class="inline">cp gateway.py.bak gateway.py</code> (Windows: <code class="inline">copy gateway.py.bak gateway.py</code>) before trying again.</p></div>
+    <h4>Update the reference kit</h4>
+    <p>This is the <code class="inline">git clone</code> from setup. It is a read-only reference &mdash; nothing runs from here.</p>
+    <div class="code"><pre><span class="c"># Linux</span>
+cd /opt/wastelandz
+git pull
+
+<span class="c"># Windows</span>
+cd D:\wastelandz
+git pull</pre></div>
+    <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip">Download the kit as a ZIP</a> and unpack it over the same folder. Same result.</p>
   </div>
 
   <div class="step"><span class="n">3</span>
-    <h4>Restart the gateway</h4>
-    <p>The new code only takes effect after a restart.</p>
+    <h4>Copy the gateway files across</h4>
+    <p>Copies every program file the kit ships. It cannot touch your <code class="inline">config.py</code> &mdash; there isn&rsquo;t one in the repo to copy.</p>
+    <div class="code"><pre><span class="c"># Linux</span>
+cp -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
+
+<span class="c"># Windows</span>
+xcopy /E /Y D:\wastelandz\gateway D:\wastelandz-gateway\</pre></div>
+  </div>
+
+  <div class="step"><span class="n">4</span>
+    <h4>Install requirements &mdash; every time, no exceptions</h4>
+    <p>This is how new Python packages arrive. <b>It does nothing when nothing changed</b>, so there is never a reason to skip it &mdash; and skipping it is the most common way an upgrade half-lands.</p>
+    <div class="code"><pre><span class="c"># Linux</span>
+cd /opt/wastelandz-gateway
+source venv/bin/activate
+pip install -r requirements.txt
+
+<span class="c"># Windows</span>
+cd D:\wastelandz-gateway
+pip install -r requirements.txt</pre></div>
+    <p class="muted">This is also what installs <code class="inline">waitress</code>, the production web server. Without it the gateway falls back to a development server that drops requests when everyone reconnects at once &mdash; and a dropped save is a lost save.</p>
+  </div>
+
+  <div class="step"><span class="n">5</span>
+    <h4>Restart, then confirm</h4>
+    <p>The new code only takes effect after a restart. The database updates itself during that start &mdash; you never run SQL.</p>
     <div class="code"><pre><span class="c"># Linux — systemd service</span>
 sudo systemctl restart wz-gateway
 sudo systemctl status wz-gateway --no-pager
 
 <span class="c"># Windows — close the WZ-Gateway window, then start it again</span>
-<span class="c"># (double-click start_gateway.bat, or run: python gateway.py)</span></pre></div>
-  </div>
+<span class="c"># (double-click start_gateway.bat, or run: python gateway.py)</span>
 
-  <div class="step"><span class="n">4</span>
-    <h4>Confirm it&rsquo;s healthy</h4>
-    <p>Hit the health check &mdash; you want <code class="inline">status: ok</code>.</p>
-    <div class="code"><pre>curl http://127.0.0.1:5000/api/ping</pre></div>
-    <p class="muted">Or just browse to <code class="inline">http://127.0.0.1:5000/api/ping</code>. On Linux you can also watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
+<span class="c"># then, either platform</span>
+curl http://127.0.0.1:5000/api/ping</pre></div>
+    <p>You want <code class="inline">status: ok</code> from the ping, and these two lines in the console:</p>
+    <div class="code"><pre>[SCHEMA] setup_database.sql applied (idempotent; no-op when current).
+[MIGRATE] Schema up to date (version 90).</pre></div>
+    <p class="muted">On the first start after a schema change you will see the change applied instead, once. On Linux you can watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
   </div>
 
   <div class="note tip"><div class="h">Roll back if something&rsquo;s off</div><p>Restore the backup and restart:</p>
@@ -1501,33 +1609,12 @@ copy gateway.py.bak gateway.py</pre></div>
 </div></section>
 
 <section><div class="wrap">
-  <h3>When the update is more than one file</h3>
-  <p class="muted">Sometimes a release also changes the Python packages (<code class="inline">requirements.txt</code>), the config template (<code class="inline">config.example.py</code>), or the database schema. When that happens, refresh the whole kit rather than one file. <b>Always run the <code class="inline">pip install</code> step</b> &mdash; it is how new packages arrive, it is harmless when nothing changed, and skipping it is the most common way an upgrade half-lands. The schema needs nothing from you beyond the restart at the end; the gateway applies it itself.</p>
-  <div class="code"><pre><span class="c"># Linux — update the reference kit (the git clone), then copy the gateway across</span>
-cd /opt/wastelandz
-git pull
-cp -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
-
-<span class="c"># ALWAYS run this — installs any new packages, no-op if nothing changed</span>
-cd /opt/wastelandz-gateway
-source venv/bin/activate
-pip install -r requirements.txt
-
-sudo systemctl restart wz-gateway</pre></div>
-  <div class="code"><pre><span class="c"># Windows — same idea</span>
-cd D:\wastelandz
-git pull
-xcopy /E /Y D:\wastelandz\gateway D:\wastelandz-gateway\
-
-<span class="c"># ALWAYS run this</span>
-cd D:\wastelandz-gateway
-pip install -r requirements.txt
-
-<span class="c"># then restart the gateway window</span></pre></div>
-  <div class="note danger"><div class="h">Your config.py is safe &mdash; leave it alone</div><p><code class="inline">config.py</code> holds your database password and gateway key and is never stored in the repo, so <code class="inline">git pull</code> and the single-file <code class="inline">curl</code> both leave it untouched. The <code class="inline">cp -r</code> above copies only the program files the kit ships &mdash; it does <b>not</b> contain a <code class="inline">config.py</code>, so your live one stays in place. Never overwrite it.</p></div>
+  <h3>Why the procedure never changes</h3>
+  <p class="muted">A release can change <code class="inline">gateway.py</code> alone, or it can also change the Python packages (<code class="inline">requirements.txt</code>), the config template (<code class="inline">config.example.py</code>), or the database schema (<code class="inline">setup_database.sql</code>). <b>The five steps above cover all of it</b>, which is why there is no second procedure and nothing for you to decide. Run them the same way every time.</p>
+  <div class="note danger"><div class="h">Your config.py is safe &mdash; leave it alone</div><p><code class="inline">config.py</code> holds your database password and gateway key and is <b>never stored in the repo</b>, so <code class="inline">git pull</code> and the copy step both leave it untouched &mdash; there is no <code class="inline">config.py</code> in the kit to copy over yours. Never overwrite it. If a release adds a new setting, the gateway writes that setting into your file on the next start and tells you it did, keeping your values and backing the file up first.</p></div>
   <div class="note"><div class="h">Database changes apply themselves &mdash; you never run SQL</div>
-  <p>From gateway <b>0.8.0</b> onward the gateway keeps its own database up to date. On start it checks which schema updates have already been applied, runs any that are missing, and prints each one. Restarting it after an update is the whole procedure.</p>
-  <p>It records what it has applied in the database itself, so an update <b>cannot run twice</b> &mdash; there is no flag to reset and nothing to remember. A fresh install still runs <code class="inline">setup_database.sql</code> once; after that, the gateway takes over.</p>
+  <p>From gateway <b>0.9.0</b> the gateway applies <code class="inline">setup_database.sql</code> on <b>every</b> start. That file is written so running it again changes nothing, and so it can only ever <b>add</b> &mdash; it never drops a table or deletes a row. A brand-new install and a five-year-old one therefore end up with exactly the same database, because both run the same file.</p>
+  <p>Anything that <b>removes</b> something is kept separate, recorded in the database itself so it cannot run twice, and is <b>never applied automatically</b>. A fresh install runs <code class="inline">setup_database.sql</code> the same way; there is no separate first-time path to get wrong.</p>
   <p>Two things it will refuse to do rather than risk your data. It will not run an update that <b>deletes</b> anything unless you deliberately start it with <code class="inline">--allow-destructive</code>, and even then only after it has taken its own backup first &mdash; if the backup fails, the update is refused. And if the database is <b>newer</b> than the gateway (you rolled the gateway back but not the data), it refuses to start rather than write a format it does not understand.</p>
   <p class="muted">Watch the console on the first restart after an update. You will see a line per applied change, ending with the schema version. If nothing is pending it simply says the schema is up to date.</p></div>
   <div class="note tip"><div class="h">Speed &mdash; make sure <code class="inline">waitress</code> is installed</div>
@@ -1596,6 +1683,11 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
 <section><div class="wrap">
   <h3>What is in the database</h3>
   <p class="muted">You never need to touch these &mdash; <code class="inline">setup_database.sql</code> creates them and the gateway keeps them current. This is here so you know what your server stores, and what a backup contains.</p>
+
+  <div class="note tip"><div class="h">The database updates itself &mdash; there is no SQL step</div>
+  <p>From gateway <b>0.9.0</b> the gateway applies <code class="inline">setup_database.sql</code> on <b>every</b> start. Update the file, restart, done. You do not run SQL by hand, and there is no migration step to forget.</p>
+  <p>That file is written so that <b>running it again changes nothing</b>, and so that it can only ever <b>add</b> &mdash; it never drops a table or deletes a row. Applying it to a database that is already current is a no-op; applying it to an old one brings it forward. A brand-new install and a five-year-old one end up with exactly the same database, because both run the same file.</p>
+  <p class="muted">Anything that <i>removes</i> something is kept separate and is never applied automatically &mdash; the gateway stops and tells you the exact command instead, after taking a backup. See <b>Troubleshooting</b> if you ever see <code class="inline">REFUSING TO START</code>.</p></div>
 
   <h4>Player data</h4>
   <table class="t">
@@ -1720,8 +1812,14 @@ sudo journalctl -u wz-server -f</pre></div>
     <tr><th>From</th><th>Requirement</th><th>If you skip it</th></tr>
     <tr><td>2026-08-16 onward</td><td><b>Arma Reforger 1.8.0.10</b></td><td>The Game script module fails to compile and <b>the server does not start</b>. There is no 1.7-compatible build.</td></tr>
     <tr><td>2026-07-16 onward</td><td><b>Gateway 0.7.1</b></td><td>Admin <code class="inline">/money</code> drops are not written to the database and vanish on restart. Everything else keeps working.</td></tr>
-    <tr><td>Current</td><td><b>Gateway 0.8.0</b> + <code class="inline">waitress</code></td><td>Without waitress the gateway falls back to a development web server that drops requests under a reconnect burst. A dropped save is a lost save.</td></tr>
+    <tr><td>Current</td><td><b>Gateway 0.9.0</b> + <code class="inline">waitress</code></td><td><b>Update the gateway in the same sitting as the mod.</b> Gear stops saving until you do &mdash; the older gateway has no endpoint for it &mdash; and without <code class="inline">waitress</code> the gateway falls back to a development web server that drops requests under a reconnect burst. A dropped save is a lost save.</td></tr>
   </table></div>
+
+  <div class="note warn"><div class="h">Gateway 0.9.0 &mdash; update the mod and the gateway together</div>
+  <p>This release moves gear into a new table. The mod and the gateway have to agree about that, so <b>do both in one sitting</b>. The order does not matter, but the gap does.</p>
+  <p><b>While only the mod is updated:</b> players still connect, and <b>money and bank are completely unaffected</b> &mdash; but gear <b>stops being saved</b>, because the older gateway has no endpoint to save it to. Nothing is lost that was already stored; new changes simply are not written until the gateway catches up.</p>
+  <p><b>Your bank is not at risk in this upgrade.</b> Money and bank live in the same columns, in the same table, before and after. The upgrade does not read them, move them or rewrite them.</p>
+  <p class="muted">Gear is <b>copied</b> into the new table, not moved &mdash; the old column is left exactly where it was, so a rollback to the previous gateway is still possible for one release.</p></div>
   <div class="note tip"><div class="h">Config files are never rewritten out from under you</div><p>New settings are added to your existing <code class="inline">.conf</code> files on first boot after an update, with defaults. Your values are kept. You do not need to delete anything, and there has never been a release that required you to.</p></div>
 </div></section>
 </main>
@@ -1743,7 +1841,29 @@ sudo journalctl -u wz-server -f</pre></div>
 
   <div class="note"><div class="h">Symptom: <code class="inline">GATEWAY VERSION MISMATCH</code> banner in the server console</div>
   <p><b>Cause:</b> the gateway is older than the mod expects. The mod pings the gateway every 60 seconds and prints this until they line up.</p>
-  <p><b>Fix:</b> replace <code class="inline">gateway.py</code> and restart the gateway &mdash; see the <b>Update Gateway</b> tab. This is a <b>warning, not a block</b>: the game keeps running while you sort it out. Check the release note for that version to see what specifically is degraded in the meantime.</p></div>
+  <p><b>Fix:</b> replace <code class="inline">gateway.py</code> and restart the gateway &mdash; see the <b>Update Gateway</b> tab. This is a <b>warning, not a block</b>: the game keeps running while you sort it out. Check the release note for that version to see what specifically is degraded in the meantime.</p>
+  <p><b>From gateway 0.9.0:</b> what is degraded is <b>gear saving</b> &mdash; the older gateway has no endpoint for it. Money, bank and everything else keep working normally, and nothing already saved is lost. Update the gateway and gear resumes saving on the next autosave.</p></div>
+
+  <div class="note"><div class="h">What a healthy gateway start looks like &mdash; from 0.9.0</div>
+  <p>Two lines near the top tell you the database is correct. If you see both, the schema is current and you can stop reading.</p>
+  <div class="code"><pre>[SCHEMA] setup_database.sql applied (idempotent; no-op when current).
+[MIGRATE] Schema up to date (version 90).</pre></div>
+  <p>On the <b>first</b> start after upgrading you will see the migration run instead, which is normal and happens once:</p>
+  <div class="code"><pre>[MIGRATE] 1 migration(s) pending; schema is at 0.
+[MIGRATE] applying 0090_backfill_inventory ...
+[MIGRATE]   ok -&gt; schema now at 90</pre></div>
+  <p class="muted">The gateway now applies the schema file itself on <b>every</b> start. It is written so that running it again changes nothing, and so that it can only ever add &mdash; it never drops or deletes. You do not run any SQL by hand, and there is no step to forget.</p></div>
+
+  <div class="note warn"><div class="h">Symptom: <code class="inline">REFUSING TO START</code> &mdash; schema is INCOMPLETE</div>
+  <p><b>Cause:</b> a database change that <b>removes</b> something is waiting, and the gateway never applies those unattended. It stops rather than serve a half-updated database, because a half-updated database is how an upgrade turns into lost data.</p>
+  <p><b>Fix:</b> the message names the exact command. It will be:</p>
+  <div class="code"><pre>python gateway.py --allow-destructive</pre></div>
+  <p>A backup is taken automatically before anything is removed, and if that backup cannot be written the change is refused instead. <b>Back up first anyway.</b></p>
+  <p class="muted">Normal upgrades never hit this &mdash; they only ever add. If you see it without having been told to expect it in a release note, ask before running it.</p></div>
+
+  <div class="note warn"><div class="h">Symptom: <code class="inline">REFUSING TO START</code> &mdash; the gateway is older than the database</div>
+  <p><b>Cause:</b> you rolled the gateway back further than the database. An older gateway writing to a newer database corrupts data quietly, so it refuses loudly instead.</p>
+  <p><b>Fix:</b> put the newer <code class="inline">gateway.py</code> back, or restore the database backup that matches the older one. Do not try to force past it.</p></div>
 
   <div class="note warn"><div class="h">Symptom: <code class="inline">gateway.py</code> is 0 bytes after an update</div>
   <p><b>Cause:</b> a download that failed <i>after</i> the shell had already truncated the file. Redirecting output to a file empties it before the download runs, so a failed fetch leaves nothing behind.</p>

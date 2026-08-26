@@ -30,13 +30,14 @@ Start: python gateway.py
 ============================================================
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, has_request_context
 from datetime import datetime
 import mysql.connector
 from mysql.connector import pooling
 import json
 import sys
 import os
+import re
 import time
 
 import migrate
@@ -52,6 +53,431 @@ except ImportError:
     print("Copy config.example.py to config.py and edit it.")
     print("=" * 60)
     sys.exit(1)
+
+
+# --------------------------------------------------------
+# SELF-HEALING CONFIG — write missing optional settings on startup.
+#
+# Same idea the mod uses for its .conf files: a release that ADDS a setting
+# should not leave an existing admin without it. Their config.py is never
+# rewritten by an update (the kit ships config.example.py, not config.py), so
+# without this the setting simply is not there and the fallback applies
+# silently — and a default tuned for a two-server gateway is exactly wrong for
+# the admin running six.
+#
+# RULES, in order of how badly each would hurt if broken:
+#
+#   1. APPEND ONLY. An existing value is never edited or reordered. Detection
+#      is hasattr() on the imported module, not a text search, so a setting
+#      that is present but commented out, or set in an unusual way, still
+#      counts as present — what matters is whether it resolves at runtime.
+#
+#   2. NOTHING SECRET IS INVENTED. DB_PASSWORD, API_KEY and SERVERS are
+#      deliberately absent from this list. There is no safe default for a
+#      credential, and generating an api_key would produce one that does not
+#      match the game server's HFWastelandZ_secrets.conf — the gateway would
+#      then reject every request while looking healthy. A missing credential
+#      must stop the gateway, not be papered over.
+#
+#   3. A FAILED WRITE IS NOT FATAL. Read-only file, wrong owner, running as a
+#      service user with no write access — all plausible. The values are
+#      applied IN MEMORY regardless, so this run behaves correctly, and the
+#      admin is told exactly what to paste in by hand.
+#
+#   4. THE CURRENT RUN USES THEM IMMEDIATELY. setattr on the module means no
+#      second restart to pick up what was just written.
+# --------------------------------------------------------
+CONFIG_AUTOFILL = [
+    ("HIVE_ID", "default",
+     "Which hive this gateway serves. Servers sharing a hive share money and\n"
+     "# bank. Leave alone unless you run more than one independent hive."),
+    ("DB_POOL_SIZE", 32,
+     "Pooled MySQL connections. 32 is the connector's maximum.\n"
+     "# Keep HTTP_THREADS x number_of_servers <= this, or bursts return 503 —\n"
+     "# and a 503 on a save is a lost save."),
+    ("HTTP_SERVER", "auto",
+     "auto | waitress | werkzeug. 'auto' uses waitress when installed and\n"
+     "# falls back to Flask's development server, which drops requests under a\n"
+     "# reconnect burst. pip install waitress."),
+    ("HTTP_THREADS", 16,
+     "Request threads per listening server. Lower this as you add servers —\n"
+     "# see DB_POOL_SIZE above. 2 servers -> 16, 6 -> 5, 10 -> 3, 16+ -> 2."),
+    ("FLASK_DEBUG", False,
+     "Never True on a live server: it exposes an interactive debugger."),
+    ("MONITORING_ENABLED", False,
+     "Enables /api/admin/health. Needs monitor.py present."),
+    ("PLAYER_ONLINE_WINDOW_SEC", 900,
+     "How recently a player must have been seen to count as online."),
+    ("LOG_FILE", "gateway.log",
+     "Rotating log file. Relative paths sit beside gateway.py.\n"
+     "# Set to \"\" to log to the console only."),
+    ("LOG_MAX_MB", 5,
+     "Roll over at this size. Total disk use is capped at\n"
+     "# LOG_MAX_MB x (LOG_BACKUPS + 1) and never grows past it - there are no\n"
+     "# per-day files to prune."),
+    ("LOG_BACKUPS", 3,
+     "How many rolled files to keep (gateway.log.2, .3, .4)."),
+    ("LOG_COLOR", True,
+     "Colour the console. Switched off automatically when output is not a\n"
+     "# terminal, or when NO_COLOR is set in the environment. The log FILE is\n"
+     "# always plain text either way."),
+]
+
+
+def ensure_config_defaults():
+    """Append settings this build expects but this config.py does not define."""
+    # Every name must be a legal Python identifier before it is written.
+    #
+    # Not paranoia - this exact failure shipped: a bulk rename across the file
+    # rewrote the string "HIVE_ID" in the table above into "current_hive_id()",
+    # hasattr() said the config lacked it (nothing is named that), and the
+    # autofill appended `current_hive_id() = 'default'` to config.py. The next
+    # start died on a SyntaxError in the ADMIN'S OWN file - a file this code is
+    # trusted to edit and they did not write.
+    #
+    # Refuse loudly and skip the entry. A missing setting falls back to its
+    # default; an unparseable config.py stops the gateway.
+    bad = [k for (k, _v, _c) in CONFIG_AUTOFILL if not k.isidentifier()]
+    if bad:
+        print(f"[GATEWAY] BUG: CONFIG_AUTOFILL has non-identifier key(s) {bad} — "
+              f"skipping them rather than writing an unparseable config.py")
+
+    missing = [(k, v, c) for (k, v, c) in CONFIG_AUTOFILL
+               if k.isidentifier() and not hasattr(config, k)]
+    if not missing:
+        return
+
+    # Apply in memory FIRST, so a write failure below cannot leave the process
+    # running without settings it is about to read.
+    for name, value, _ in missing:
+        setattr(config, name, value)
+
+    names = ", ".join(n for n, _, _ in missing)
+    print(f"[GATEWAY] config.py is missing {len(missing)} setting(s): {names}")
+
+    path = getattr(config, "__file__", None)
+    if not path:
+        print("[GATEWAY]   cannot locate config.py on disk — using defaults for this run only")
+        return
+
+    try:
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup = f"{path}.bak-{stamp}"
+        with open(path, "r", encoding="utf-8") as fh:
+            existing = fh.read()
+        with open(backup, "w", encoding="utf-8") as fh:
+            fh.write(existing)
+
+        lines = []
+        # A file not ending in a newline would glue our first line onto the
+        # admin's last one.
+        if existing and not existing.endswith("\n"):
+            lines.append("")
+        lines.append("")
+        lines.append("# " + "-" * 58)
+        lines.append(f"# Added automatically on {stamp} by the gateway, which found them missing.")
+        lines.append("# These are this build's defaults for settings your config.py did not")
+        lines.append("# define. Edit them freely — they are only ever added, never changed.")
+        lines.append("# " + "-" * 58)
+        for name, value, comment in missing:
+            lines.append("")
+            lines.append(f"# {comment}")
+            lines.append(f"{name} = {value!r}")
+        lines.append("")
+
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write("\n".join(lines))
+
+        print(f"[GATEWAY]   written to config.py with this build's defaults")
+        print(f"[GATEWAY]   previous file saved as {os.path.basename(backup)}")
+    except Exception as exc:
+        # Not fatal. The values are already live for this run.
+        print(f"[GATEWAY]   could NOT write config.py ({exc})")
+        print("[GATEWAY]   running with defaults; add these by hand to keep them:")
+        for name, value, _ in missing:
+            print(f"[GATEWAY]     {name} = {value!r}")
+
+
+ensure_config_defaults()
+
+
+# --------------------------------------------------------
+# LOGGING — timestamped console, plus a rotating file that maintains itself.
+#
+# WHY A TEE RATHER THAN 95 EDITED print() CALLS. Every existing print keeps
+# working untouched, and so does every print added later - nobody has to
+# remember a convention. It also catches what matters most: an unhandled
+# traceback goes to STDERR, so teeing that too means a crash leaves its stack
+# in the file instead of only in a console window that has already closed.
+#
+# WHY SIZE-CAPPED AND NOT PER-DAY. Daily files accumulate forever and become a
+# chore nobody does. This has a hard ceiling - LOG_MAX_MB x (LOG_BACKUPS + 1) -
+# and once it reaches it, it stays there. Nothing to prune, nothing to
+# schedule, and disk usage you can state in advance.
+#
+# The console is left exactly as it was. An admin watching the window sees the
+# same lines, now with a time in front.
+# --------------------------------------------------------
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def _strip_ansi(text):
+    """Escape codes are for a terminal, never for a file.
+
+    The startup banner already emitted BOLD/RESET before any of this existed,
+    so without stripping, the log filled with \x1b[1m litter that breaks grep
+    and makes every line awkward to read in an editor.
+    """
+    return _ANSI_RE.sub("", text)
+
+
+def _terminal_supports_colour():
+    """TERM tells you what the far end of an SSH session actually is.
+
+    isatty() only says "something interactive is attached" - it is true for a
+    dumb terminal, a serial console and a CI harness alike. TERM is what
+    distinguishes them, and it is the variable every other tool checks:
+
+      unset   - no terminal type advertised, assume nothing
+      dumb    - explicitly says it cannot do this
+
+    PuTTY, xterm, Windows Terminal and a plain SSH login all advertise
+    something real (xterm, xterm-256color, vt100) and handle the basic ANSI
+    set fine.
+    """
+    if os.name == "nt":
+        return True                  # decided by _enable_windows_ansi instead
+    term = os.environ.get("TERM", "")
+    return bool(term) and term != "dumb"
+
+
+def _enable_windows_ansi():
+    """Turn on virtual-terminal processing so Windows renders ANSI.
+
+    Windows 10+ supports it but does NOT enable it for a plain console by
+    default. Modern Terminal does; conhost often does not. Wrapped in a broad
+    except because on an old build, a redirected handle, or a non-Windows
+    Python this simply is not available - and colour is never worth an
+    exception on startup.
+    """
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        # -11 = STD_OUTPUT_HANDLE. 7 = PROCESSED_OUTPUT | WRAP_AT_EOL |
+        # VIRTUAL_TERMINAL_PROCESSING.
+        return bool(k.SetConsoleMode(k.GetStdHandle(-11), 7))
+    except Exception:
+        return False
+
+
+class _Colour:
+    """Decides once whether colour is safe, then paints by line content.
+
+    Three ways to end up with no colour, all deliberate:
+      - LOG_COLOR = False in config.py
+      - NO_COLOR set in the environment (the de-facto convention)
+      - output is not a terminal, i.e. piped to a file or a service log,
+        where escape codes are noise rather than formatting
+    """
+
+    RESET = "\x1b[0m"
+
+    def __init__(self, enabled):
+        self.on = bool(enabled)
+
+    def paint(self, stamp, line):
+        if not self.on:
+            return f"{stamp} {line}"
+
+        # ORIGINAL ANSI ONLY - 30-37 plus bold/dim. The 90-97 "bright" range
+        # is an aixterm extension: xterm, PuTTY and Windows Terminal render
+        # it, a strict VT100 need not, and no colour here is worth a line of
+        # garbage on somebody's serial console.
+        body = ""
+        if "Traceback" in line or line.startswith("ERR ") or "Error" in line:
+            body = "\x1b[31m"                              # red
+        elif "WARN" in line or "WARNING" in line or "missing" in line:
+            body = "\x1b[33m"                              # yellow
+        elif line.startswith("[MIGRATE]"):
+            body = "\x1b[36m"                              # cyan
+        elif "OK" in line or "created" in line or "up." in line:
+            body = "\x1b[32m"                              # green
+
+        # Dim timestamp so the eye lands on the message. A terminal without
+        # dim ignores the code and prints normally, so no fallback is needed.
+        if not body:
+            return f"\x1b[2m{stamp}{self.RESET} {line}"
+        return f"\x1b[2m{stamp}{self.RESET} {body}{line}{self.RESET}"
+
+
+class _TeeStream:
+    """Line-buffered tee. BOTH console and file get a timestamp per line.
+
+    Buffers until a newline because print() emits the text and the "\n" as
+    SEPARATE writes - stamping every write would drop a timestamp into the
+    middle of a line. Whatever is left unterminated is flushed on exit.
+
+    The console is stamped as well as the file. It was not, briefly, on the
+    reasoning that an admin watching the window wanted it unchanged - which was
+    wrong. A console line with no time on it is the one you cannot correlate
+    with anything later, and "when did the pool come up" is exactly the
+    question a startup log gets asked.
+    """
+
+    def __init__(self, real, sink, tag, colour):
+        self._real = real
+        self._sink = sink
+        self._tag = tag
+        self._colour = colour
+        self._buf = ""
+
+    def _stamp(self):
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def _line(self, line):
+        # Full date AND time on the console, same as the file. A server
+        # window can stay open for weeks, so a bare clock time is ambiguous
+        # the moment you scroll back past midnight.
+        try:
+            self._real.write(self._colour.paint(self._stamp(), line) + "\n")
+        except Exception:
+            pass
+        if self._sink:
+            # Plain text to disk, always. Colour is a property of the terminal
+            # you are looking at, not of the event that happened.
+            self._sink.emit(self._tag, _strip_ansi(line))
+
+    def write(self, text):
+        self._buf += text
+        while "\n" in self._buf:
+            line, self._buf = self._buf.split("\n", 1)
+            self._line(line)
+
+    def flush(self):
+        if self._buf:
+            line, self._buf = self._buf, ""
+            self._line(line)
+        try:
+            self._real.flush()
+        except Exception:
+            pass
+
+    def isatty(self):
+        try:
+            return self._real.isatty()
+        except Exception:
+            return False
+
+
+class _RotatingSink:
+    """Append lines, roll over at a size cap, keep a fixed number of old files.
+
+    Deliberately not logging.handlers.RotatingFileHandler: that wants to OWN
+    formatting and levels, and everything here is already a formatted print.
+    This just needs "append a line, roll when big".
+    """
+
+    def __init__(self, path, max_bytes, backups):
+        self._path = path
+        self._max = max_bytes
+        self._backups = backups
+        self._fh = None
+        self._open()
+
+    def _open(self):
+        try:
+            d = os.path.dirname(self._path)
+            if d and not os.path.isdir(d):
+                os.makedirs(d, exist_ok=True)
+            self._fh = open(self._path, "a", encoding="utf-8", errors="replace")
+        except Exception as exc:
+            # Never take the gateway down over a log file. Console still works.
+            sys.__stderr__.write(f"[GATEWAY] log file unavailable ({exc}) — console only\n")
+            self._fh = None
+
+    def _roll(self):
+        """gateway.log -> .2, .2 -> .3, ... and the oldest is dropped.
+
+        Backups are numbered from 2 so the live file keeps its plain name -
+        an admin tailing gateway.log never has to think about which one is
+        current.
+
+        Walked OLDEST FIRST. Going the other way would rename .2 onto .3
+        before .3 had moved, destroying a file that should have survived.
+        """
+        try:
+            self._fh.close()
+        except Exception:
+            pass
+        try:
+            oldest = self._backups + 1        # e.g. backups=3 -> .4 is dropped
+            if os.path.exists(f"{self._path}.{oldest}"):
+                os.remove(f"{self._path}.{oldest}")
+
+            for i in range(oldest - 1, 1, -1):     # .3 -> .4, then .2 -> .3
+                src = f"{self._path}.{i}"
+                if os.path.exists(src):
+                    os.rename(src, f"{self._path}.{i + 1}")
+
+            if os.path.exists(self._path):         # live file -> .2
+                os.rename(self._path, f"{self._path}.2")
+        except Exception:
+            pass
+        self._open()
+
+    def emit(self, tag, line):
+        if not self._fh:
+            return
+        try:
+            stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self._fh.write(f"{stamp} {tag} {line}\n")
+            self._fh.flush()          # flush every line: a crash must not lose the last one
+            if self._max > 0 and self._fh.tell() >= self._max:
+                self._roll()
+        except Exception:
+            pass
+
+
+def _install_logging():
+    # LOG_FILE "" means CONSOLE ONLY - not "no timestamps". Returning early
+    # here skipped installing the tee altogether, so switching the file off
+    # also silently switched the timestamps off, which is not what the setting
+    # says and not what anyone would want.
+    path = str(getattr(config, "LOG_FILE", "gateway.log"))
+    sink = None
+    max_mb = 0
+    backups = 0
+    if path:
+        if not os.path.isabs(path):
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
+        max_mb = float(getattr(config, "LOG_MAX_MB", 5))
+        backups = int(getattr(config, "LOG_BACKUPS", 3))
+        sink = _RotatingSink(path, int(max_mb * 1024 * 1024), backups)
+
+    want = bool(getattr(config, "LOG_COLOR", True))
+    if os.environ.get("NO_COLOR"):
+        want = False
+    tty = False
+    try:
+        tty = sys.__stdout__.isatty()
+    except Exception:
+        tty = False
+    colour = _Colour(want and tty and _terminal_supports_colour()
+                     and _enable_windows_ansi())
+
+    sys.stdout = _TeeStream(sys.__stdout__, sink, "    ", colour)
+    sys.stderr = _TeeStream(sys.__stderr__, sink, "ERR ", colour)
+
+    if sink:
+        total = max_mb * (backups + 1)
+        print(f"[GATEWAY] logging to {path} (max {max_mb:g} MB x {backups + 1} files = {total:g} MB ceiling)")
+    else:
+        print("[GATEWAY] LOG_FILE is empty — console only, still timestamped")
+
+
+_install_logging()
 
 # --------------------------------------------------------
 # Load crypto module
@@ -88,7 +514,7 @@ app.config['JSON_SORT_KEYS'] = False
 # --------------------------------------------------------
 # Version
 # --------------------------------------------------------
-GATEWAY_VERSION = "0.8.0"
+GATEWAY_VERSION = "0.9.0"
 
 # --------------------------------------------------------
 # Server roster — multi-server hive.
@@ -96,6 +522,7 @@ GATEWAY_VERSION = "0.8.0"
 # Backward-compatible fallback: a single server from the legacy flat keys.
 # --------------------------------------------------------
 def _resolve_servers():
+    default_hive = str(getattr(config, "HIVE_ID", "default"))
     raw = getattr(config, "SERVERS", None)
     if raw:
         out = []
@@ -105,6 +532,10 @@ def _resolve_servers():
                 "port": int(s["port"]),
                 "host": str(s.get("host", "127.0.0.1")),
                 "api_key": str(s["api_key"]),
+                # Per-entry hive. Omit it and the entry joins the gateway-wide
+                # HIVE_ID, which is every existing config - so this is additive
+                # and nobody's hive changes by upgrading.
+                "hive_id": str(s.get("hive_id", default_hive)),
             })
         return out
     # Legacy single-server fallback
@@ -113,11 +544,38 @@ def _resolve_servers():
         "port": int(getattr(config, "GATEWAY_PORT", 5000)),
         "host": str(getattr(config, "GATEWAY_HOST", "127.0.0.1")),
         "api_key": str(getattr(config, "API_KEY", "")),
+        "hive_id": default_hive,
     }]
 
 SERVERS = _resolve_servers()
 SERVERS_BY_PORT = {s["port"]: s for s in SERVERS}
+
+# DEFAULT hive for entries that name none. Still the only hive on a
+# single-tenant gateway, which is almost every gateway.
+#
+# NOT the hive for a request - use current_hive_id(). One gateway can now serve
+# several hives at once (a hosting provider giving each customer their own port
+# and key), and reading this global instead of the request's own hive would let
+# one customer read another's players. Every table is already hive-scoped; the
+# process was the only thing that was not.
 HIVE_ID = str(getattr(config, "HIVE_ID", "default"))
+
+
+def current_hive_id():
+    """The hive that owns THIS request, resolved from the listening port.
+
+    Falls back to the module-level default when there is no request, or when
+    the request arrived on a port that is not in SERVERS - which is the only
+    sensible answer, and is what every caller expects.
+
+    NOTE the fallback is HIVE_ID, the module global, NOT this function. It read
+    `return current_hive_id()` for one commit: the bulk rewrite that replaced
+    HIVE_ID with current_hive_id() across 62 lines also rewrote this function's
+    own fallback, making it call itself forever."""
+    srv = current_server()
+    if srv:
+        return srv["hive_id"]
+    return HIVE_ID
 
 # Flask web-service debug (gateway only — NOT the game server's DEV_MODE/HF_DEBUG).
 FLASK_DEBUG = getattr(config, "FLASK_DEBUG", getattr(config, "DEBUG", False))
@@ -126,7 +584,18 @@ FLASK_DEBUG = getattr(config, "FLASK_DEBUG", getattr(config, "DEBUG", False))
 # Per-request server identity (by the port the request arrived on)
 # --------------------------------------------------------
 def current_server():
-    """The configured server for the port this request arrived on, or None."""
+    """The configured server for the port this request arrived on, or None.
+
+    Returns None OUTSIDE a request rather than raising. `request` is a proxy
+    that throws "Working outside of request context" the moment it is touched
+    with no active request, so startup code touching this - a banner, a
+    migration, a warm-up query - would take the whole process down.
+
+    Callers already handle None (they fall back to the gateway-wide default),
+    so returning it is both safe and the honest answer: with no request there
+    is genuinely no "current" server."""
+    if not has_request_context():
+        return None
     try:
         port = int(request.environ.get("SERVER_PORT", 0))
     except (TypeError, ValueError):
@@ -339,7 +808,7 @@ def ping():
             try:
                 _cur = conn.cursor()
                 _cur.execute("SELECT addon_hash FROM hive_servers WHERE hive_id=%s AND server_id=%s",
-                             (HIVE_ID, _sid))
+                             (current_hive_id(), _sid))
                 _row = _cur.fetchone()
                 if not _row:
                     reregister = True
@@ -352,7 +821,7 @@ def ping():
                 else:
                     _cur.execute(
                         "UPDATE hive_servers SET players_online=%s WHERE hive_id=%s AND server_id=%s",
-                        (int(_online or 0), HIVE_ID, _sid))
+                        (int(_online or 0), current_hive_id(), _sid))
                     conn.commit()
                 _cur.close()
             except mysql.connector.Error as err:
@@ -385,7 +854,7 @@ def ping():
         "reregister": 1 if reregister else 0,
         "database": db_status,
         "server_id": current_server_id(),
-        "hive_id": HIVE_ID,
+        "hive_id": current_hive_id(),
         "authenticated": is_authed,
         "crypto_enabled": CRYPTO_AVAILABLE,
         "timestamp": datetime.now().isoformat()
@@ -422,7 +891,7 @@ def admin_health():
             "version": GATEWAY_VERSION,
             "schema_version": SCHEMA_VERSION,
             "server_id": current_server_id(),
-            "hive_id": HIVE_ID,
+            "hive_id": current_hive_id(),
             "database": db_status,
             "crypto_enabled": CRYPTO_AVAILABLE,
         },
@@ -446,7 +915,7 @@ def get_player(uid):
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM players WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
+        cursor.execute("SELECT * FROM players WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
         prof = cursor.fetchone()
         if not prof:
             return jsonify({"status": "ok", "player": None, "new_player": True})
@@ -471,13 +940,13 @@ def get_player(uid):
             cursor.execute(
                 "UPDATE players SET current_server_id = %s, arrival_grace = 1 "
                 "WHERE player_uid = %s AND hive_id = %s",
-                (sid, uid, HIVE_ID))
+                (sid, uid, current_hive_id()))
             print(f"[GATEWAY] arrival: {uid} {_prev_owner} -> {sid} (grace armed)")
         else:
             cursor.execute(
                 "UPDATE players SET current_server_id = %s "
                 "WHERE player_uid = %s AND hive_id = %s",
-                (sid, uid, HIVE_ID))
+                (sid, uid, current_hive_id()))
         conn.commit()
 
         cursor.execute("SELECT * FROM player_sessions WHERE player_uid = %s AND server_id = %s", (uid, sid))
@@ -524,15 +993,34 @@ def get_player(uid):
         _my_map     = request.args.get("map", "")
 
         if _gear_group:
+            # ONE ROW, no ordering, no fallback clause (migration 0088).
+            #
+            # Gear is per HIVE per SHARED GEAR SET. Not per server, not per map -
+            # the same mods on a different map in the same hive and the same
+            # group are the same gear. The old query also matched on
+            # (server_id = me AND map_name = my map), which made exactly that
+            # case resolve as two different rows, and then needed
+            # ORDER BY updated_at DESC LIMIT 1 to pick between the candidates it
+            # had just manufactured.
+            #
+            # share_group is part of the primary key, so this is a point
+            # lookup that cannot return more than one row. `map` is still
+            # accepted and recorded, it just no longer decides anything.
+            #
+            # scope_map = '' pins the FULL five-column key rather than a
+            # prefix of it. GEAR IS DELIBERATELY NOT MAP-SCOPED: the same
+            # mods on a different map in the same hive and the same group
+            # are the same gear, so a map rotation is a config read and
+            # nothing more. Naming scope_map explicitly is what keeps this
+            # an exact-match point lookup instead of a range scan that a
+            # future map-scoped namespace could wander into.
             cursor.execute("""
                 SELECT server_id, share_group, map_name, format_ver, payload, updated_at
                   FROM player_data
-                 WHERE player_uid = %s AND hive_id = %s AND namespace = 'inventory'
-                   AND ( share_group = %s
-                         OR ( server_id = %s AND (map_name = %s OR map_name = '') ) )
-                 ORDER BY updated_at DESC
-                 LIMIT 1
-            """, (uid, HIVE_ID, _gear_group, sid, _my_map))
+                 WHERE player_uid = %s AND hive_id = %s
+                   AND share_group = %s AND namespace = 'inventory'
+                   AND scope_map = ''
+            """, (uid, current_hive_id(), _gear_group))
             _win = cursor.fetchone()
             if _win:
                 player["inventory"]              = _win.get("payload")
@@ -622,7 +1110,7 @@ def save_player(uid):
         cursor = conn.cursor()
         # Phase 3 anti-clobber: reject a stale save from a server that no longer
         # owns this player (they have joined a different server in the hive).
-        cursor.execute("SELECT current_server_id FROM players WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
+        cursor.execute("SELECT current_server_id FROM players WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
         _own = cursor.fetchone()
         if _own and _own[0] is not None and _own[0] != sid:
             print(f"[GATEWAY] save rejected: {uid} owned by {_own[0]}, not {sid}")
@@ -651,7 +1139,7 @@ def save_player(uid):
         def _write():
             cursor.execute("UPDATE players SET arrival_grace = 0 "
                            "WHERE player_uid = %s AND hive_id = %s AND arrival_grace <> 0",
-                           (uid, HIVE_ID))
+                           (uid, current_hive_id()))
             if cursor.rowcount:
                 print(f"[GATEWAY] arrival grace consumed: {uid} on {sid}")
             if inventory is not None:
@@ -668,7 +1156,7 @@ def save_player(uid):
                         bank = VALUES(bank),
                         current_server_id = VALUES(current_server_id),
                         last_seen = CURRENT_TIMESTAMP
-                """, (uid, HIVE_ID, display_name, money, faction, weapon, inventory, bank, sid))
+                """, (uid, current_hive_id(), display_name, money, faction, weapon, inventory, bank, sid))
             else:
                 cursor.execute("""
                     INSERT INTO players (player_uid, hive_id, display_name, money, faction,
@@ -682,7 +1170,7 @@ def save_player(uid):
                         bank = VALUES(bank),
                         current_server_id = VALUES(current_server_id),
                         last_seen = CURRENT_TIMESTAMP
-                """, (uid, HIVE_ID, display_name, money, faction, weapon, bank, sid))
+                """, (uid, current_hive_id(), display_name, money, faction, weapon, bank, sid))
 
             cursor.execute("""
                 INSERT INTO player_sessions (player_uid, server_id, map_name,
@@ -734,7 +1222,7 @@ def save_inventory(uid):
     try:
         cursor = conn.cursor()
         # Phase 3 anti-clobber: reject a stale inventory save from a non-owner server.
-        cursor.execute("SELECT current_server_id FROM players WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
+        cursor.execute("SELECT current_server_id FROM players WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
         _own = cursor.fetchone()
         if _own and _own[0] is not None and _own[0] != sid:
             print(f"[GATEWAY] inventory save rejected: {uid} owned by {_own[0]}, not {sid}")
@@ -746,7 +1234,7 @@ def save_inventory(uid):
             ON DUPLICATE KEY UPDATE
                 inventory = VALUES(inventory),
                 last_seen = CURRENT_TIMESTAMP
-        """, (uid, HIVE_ID, inventory))
+        """, (uid, current_hive_id(), inventory))
         conn.commit()
         print(f"[GATEWAY] Inventory saved: {uid} ({len(inventory) if inventory else 0} chars)")
         return jsonify({"status": "ok", "message": "inventory saved"})
@@ -834,7 +1322,7 @@ def player_transaction(uid):
         cursor.execute("""
             INSERT INTO transactions (player_uid, hive_id, server_id, type, amount, balance_after, details)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (uid, HIVE_ID, sid, tx_type, amount, balance_after, details))
+        """, (uid, current_hive_id(), sid, tx_type, amount, balance_after, details))
         conn.commit()
         print(f"[GATEWAY] Transaction: {uid} @ {sid} {tx_type} {amount:+d} balance={balance_after}")
         return jsonify({"status": "ok", "transaction_type": tx_type, "amount": amount, "balance_after": balance_after})
@@ -888,7 +1376,7 @@ def save_player_stats(uid):
                 longest_life_sec = GREATEST(longest_life_sec, VALUES(longest_life_sec)),
                 hvt_kills = hvt_kills + VALUES(hvt_kills),
                 missions_completed = missions_completed + VALUES(missions_completed)
-        """, (uid, HIVE_ID, sid, kills, deaths, playtime_seconds,
+        """, (uid, current_hive_id(), sid, kills, deaths, playtime_seconds,
               money_earned, money_spent, distance_traveled, longest_life_sec, hvt_kills,
               missions_completed))
         conn.commit()
@@ -945,7 +1433,7 @@ def get_marker_prefs(uid):
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM player_marker_prefs WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
+        cursor.execute("SELECT * FROM player_marker_prefs WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
         row = cursor.fetchone()
         if row:
             row["updated_at"] = _iso(row.get("updated_at"))
@@ -1012,7 +1500,7 @@ def save_marker_prefs(uid):
                 group_only = VALUES(group_only),
                 auto_vehicle_swap = VALUES(auto_vehicle_swap),
                 map_flags = VALUES(map_flags)
-        """, (uid, HIVE_ID, icon_idx, icon_size_px, marker_range_m,
+        """, (uid, current_hive_id(), icon_idx, icon_size_px, marker_range_m,
               markers_enabled, names_enabled, group_only, auto_vehicle_swap, map_flags))
         conn.commit()
         return jsonify({"status": "ok"})
@@ -1079,10 +1567,10 @@ def get_stats_leaderboard():
             ORDER BY value DESC
             LIMIT %s
         """
-        params = (HIVE_ID,) + date_params + (limit,)
+        params = (current_hive_id(),) + date_params + (limit,)
         cursor.execute(sql, params)
         rows = cursor.fetchall()
-        return jsonify({"status": "ok", "metric": metric, "days": days_arg, "hive_id": HIVE_ID, "rows": rows})
+        return jsonify({"status": "ok", "metric": metric, "days": days_arg, "hive_id": current_hive_id(), "rows": rows})
     except mysql.connector.Error as err:
         return _db_error("get_stats_leaderboard", err)
     except Exception as err:
@@ -1105,13 +1593,13 @@ def delete_player(uid):
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM transactions WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
+        cursor.execute("DELETE FROM transactions WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
         tx_deleted = cursor.rowcount
-        cursor.execute("DELETE FROM player_stats_daily WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
+        cursor.execute("DELETE FROM player_stats_daily WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
         stats_deleted = cursor.rowcount
         cursor.execute("DELETE FROM player_sessions WHERE player_uid = %s", (uid,))
         sessions_deleted = cursor.rowcount
-        cursor.execute("DELETE FROM players WHERE player_uid = %s AND hive_id = %s", (uid, HIVE_ID))
+        cursor.execute("DELETE FROM players WHERE player_uid = %s AND hive_id = %s", (uid, current_hive_id()))
         player_deleted = cursor.rowcount
         conn.commit()
 
@@ -1156,7 +1644,7 @@ def bulk_money():
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT player_uid, display_name, money, bank FROM players WHERE hive_id = %s", (HIVE_ID,))
+        cursor.execute("SELECT player_uid, display_name, money, bank FROM players WHERE hive_id = %s", (current_hive_id(),))
         before = {r["player_uid"]: r for r in cursor.fetchall()}
 
         set_parts = []
@@ -1167,11 +1655,11 @@ def bulk_money():
             set_parts.append(f"bank = bank + {int(amount)}" if amount > 0
                              else f"bank = GREATEST(0, bank + ({int(amount)}))")
 
-        cursor.execute(f"UPDATE players SET {', '.join(set_parts)} WHERE hive_id = %s", (HIVE_ID,))
+        cursor.execute(f"UPDATE players SET {', '.join(set_parts)} WHERE hive_id = %s", (current_hive_id(),))
         rows_affected = cursor.rowcount
         conn.commit()
 
-        cursor.execute("SELECT player_uid, display_name, money, bank FROM players WHERE hive_id = %s", (HIVE_ID,))
+        cursor.execute("SELECT player_uid, display_name, money, bank FROM players WHERE hive_id = %s", (current_hive_id(),))
         after = {r["player_uid"]: r for r in cursor.fetchall()}
 
         op = "give" if amount > 0 else "take"
@@ -1189,7 +1677,7 @@ def bulk_money():
             # Audit row — log the ACTUAL applied delta (GREATEST(0,...) can clamp a take).
             delta = (row["money"] - wallet_before) + (row["bank"] - bank_before)
             if delta != 0:
-                tx_rows.append((puid, HIVE_ID, sid, "admin_give", delta, row["money"],
+                tx_rows.append((puid, current_hive_id(), sid, "admin_give", delta, row["money"],
                                 f"bulk {op} {target} ${abs(amount):,}"))
 
         if tx_rows:
@@ -1198,7 +1686,7 @@ def bulk_money():
                 "VALUES (%s, %s, %s, %s, %s, %s, %s)", tx_rows)
             conn.commit()
 
-        print(f"[GATEWAY] Bulk {op}: ${abs(amount):,} to {target} for {rows_affected} players (hive {HIVE_ID}); {len(tx_rows)} audit rows")
+        print(f"[GATEWAY] Bulk {op}: ${abs(amount):,} to {target} for {rows_affected} players (hive {current_hive_id()}); {len(tx_rows)} audit rows")
         return jsonify({"status": "ok", "operation": op, "amount": abs(amount),
                         "target": target, "players_affected": rows_affected, "results": results})
     except mysql.connector.Error as err:
@@ -1232,9 +1720,9 @@ def get_all_players():
         """
         if search:
             cursor.execute(base + " AND (p.display_name LIKE %s OR p.player_uid LIKE %s) ORDER BY p.last_seen DESC",
-                           (sid, HIVE_ID, f"%{search}%", f"%{search}%"))
+                           (sid, current_hive_id(), f"%{search}%", f"%{search}%"))
         else:
-            cursor.execute(base + " ORDER BY p.last_seen DESC", (sid, HIVE_ID))
+            cursor.execute(base + " ORDER BY p.last_seen DESC", (sid, current_hive_id()))
         rows = cursor.fetchall()
         for row in rows:
             if row.get("last_seen"):
@@ -1259,28 +1747,28 @@ def server_summary():
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT COUNT(*) as total_players FROM players WHERE hive_id = %s", (HIVE_ID,))
+        cursor.execute("SELECT COUNT(*) as total_players FROM players WHERE hive_id = %s", (current_hive_id(),))
         total = cursor.fetchone()["total_players"]
         cursor.execute("""
             SELECT COUNT(*) as alive FROM player_sessions s
             JOIN players p ON p.player_uid = s.player_uid
             WHERE p.hive_id = %s AND s.is_alive = 1
-        """, (HIVE_ID,))
+        """, (current_hive_id(),))
         alive = cursor.fetchone()["alive"]
-        cursor.execute("SELECT COALESCE(SUM(money),0) as total_wallet, COALESCE(SUM(bank),0) as total_bank FROM players WHERE hive_id = %s", (HIVE_ID,))
+        cursor.execute("SELECT COALESCE(SUM(money),0) as total_wallet, COALESCE(SUM(bank),0) as total_bank FROM players WHERE hive_id = %s", (current_hive_id(),))
         economy = cursor.fetchone()
-        cursor.execute("SELECT display_name, (money + bank) as total_money FROM players WHERE hive_id = %s ORDER BY total_money DESC LIMIT 5", (HIVE_ID,))
+        cursor.execute("SELECT display_name, (money + bank) as total_money FROM players WHERE hive_id = %s ORDER BY total_money DESC LIMIT 5", (current_hive_id(),))
         top5 = cursor.fetchall()
-        cursor.execute("SELECT faction, COUNT(*) as count FROM players WHERE hive_id = %s AND faction IS NOT NULL AND faction != '' GROUP BY faction", (HIVE_ID,))
+        cursor.execute("SELECT faction, COUNT(*) as count FROM players WHERE hive_id = %s AND faction IS NOT NULL AND faction != '' GROUP BY faction", (current_hive_id(),))
         factions = {row["faction"]: row["count"] for row in cursor.fetchall()}
         tx_count = 0
         try:
-            cursor.execute("SELECT COUNT(*) as tx_count FROM transactions WHERE hive_id = %s AND timestamp >= NOW() - INTERVAL 1 DAY", (HIVE_ID,))
+            cursor.execute("SELECT COUNT(*) as tx_count FROM transactions WHERE hive_id = %s AND timestamp >= NOW() - INTERVAL 1 DAY", (current_hive_id(),))
             tx_count = cursor.fetchone()["tx_count"]
         except mysql.connector.Error:
             pass
         return jsonify({
-            "status": "ok", "hive_id": HIVE_ID,
+            "status": "ok", "hive_id": current_hive_id(),
             "total_players": total, "alive_players": alive,
             "total_wallet_economy": economy["total_wallet"], "total_bank_economy": economy["total_bank"],
             "total_economy": economy["total_wallet"] + economy["total_bank"],
@@ -1325,7 +1813,7 @@ def log_security_event():
             INSERT INTO security_events
                 (player_uid, server_id, hive_id, display_name, event_type, item_prefab, details, severity)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (player_uid, sid, HIVE_ID, display_name, event_type, item_prefab, details, severity))
+        """, (player_uid, sid, current_hive_id(), display_name, event_type, item_prefab, details, severity))
         conn.commit()
         event_id = cursor.lastrowid
         print(f"[SECURITY] Event #{event_id}: {player_uid} @ {sid} {event_type} severity={severity}")
@@ -1384,7 +1872,7 @@ def check_blacklist(uid):
                    OR (scope = 'server' AND server_id = %s))
             ORDER BY CASE scope WHEN 'global' THEN 1 WHEN 'hive' THEN 2 WHEN 'server' THEN 3 END
             LIMIT 1
-        """, (uid, HIVE_ID, sid))
+        """, (uid, current_hive_id(), sid))
         ban = cursor.fetchone()
         if ban:
             if ban.get("banned_at"):
@@ -1426,7 +1914,7 @@ def ban_player():
         return jsonify({"status": "error", "message": "scope must be server/hive/global"}), 400
 
     ban_server_id = sid if scope == "server" else None
-    ban_hive_id = HIVE_ID if scope in ("server", "hive") else None
+    ban_hive_id = current_hive_id() if scope in ("server", "hive") else None
 
     conn = get_db()
     if not conn:
@@ -1473,7 +1961,7 @@ def unban_player():
         if scope == "global":
             cursor.execute("UPDATE blacklist SET is_active = 0 WHERE player_uid = %s AND scope = 'global' AND is_active = 1", (player_uid,))
         elif scope == "hive":
-            cursor.execute("UPDATE blacklist SET is_active = 0 WHERE player_uid = %s AND scope = 'hive' AND hive_id = %s AND is_active = 1", (player_uid, HIVE_ID))
+            cursor.execute("UPDATE blacklist SET is_active = 0 WHERE player_uid = %s AND scope = 'hive' AND hive_id = %s AND is_active = 1", (player_uid, current_hive_id()))
         else:
             cursor.execute("UPDATE blacklist SET is_active = 0 WHERE player_uid = %s AND scope = 'server' AND server_id = %s AND is_active = 1", (player_uid, sid))
         affected = cursor.rowcount
@@ -1512,7 +2000,7 @@ def list_blacklist():
         if scope == "global":
             cursor.execute(f"SELECT {cols} FROM blacklist WHERE is_active = 1 AND scope = 'global' AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY banned_at DESC LIMIT %s", (limit,))
         elif scope == "hive":
-            cursor.execute(f"SELECT {cols} FROM blacklist WHERE is_active = 1 AND scope = 'hive' AND hive_id = %s AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY banned_at DESC LIMIT %s", (HIVE_ID, limit))
+            cursor.execute(f"SELECT {cols} FROM blacklist WHERE is_active = 1 AND scope = 'hive' AND hive_id = %s AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY banned_at DESC LIMIT %s", (current_hive_id(), limit))
         else:
             cursor.execute(f"SELECT {cols} FROM blacklist WHERE is_active = 1 AND scope = 'server' AND server_id = %s AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY banned_at DESC LIMIT %s", (sid, limit))
         rows = cursor.fetchall()
@@ -1564,7 +2052,7 @@ def placements_insert():
                 (hive_id, server_id, map_name, carry_class, prefab_path,
                  pos_x, pos_y, pos_z, yaw, pitch, roll, owner_uid, is_active)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 1)
-        """, (HIVE_ID, sid, map_name, int(carry_class), prefab_path,
+        """, (current_hive_id(), sid, map_name, int(carry_class), prefab_path,
               float(pos_x), float(pos_y), float(pos_z),
               float(yaw), float(pitch), float(roll), owner_uid))
         new_id = cursor.lastrowid
@@ -1725,7 +2213,7 @@ def money_drops_insert():
                 (hive_id, server_id, map_name, pos_x, pos_y, pos_z, amount,
                  drop_source, dropper_uid, dropper_name, expires_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (HIVE_ID, sid, map_name, float(pos_x), float(pos_y), float(pos_z),
+        """, (current_hive_id(), sid, map_name, float(pos_x), float(pos_y), float(pos_z),
               int(amount), drop_source, dropper_uid, dropper_name, expires_at))
         new_id = cursor.lastrowid
         conn.commit()
@@ -1840,37 +2328,86 @@ def _csvsafe(value):
     return t.replace("~", "-").replace("|", "/")
 
 
-SCOPE_HIVE = "@hive"
-SCOPE_SELF = "@self"
+# ------------------------------------------------------------------
+# THE KEY IS THE SCOPE
+# ------------------------------------------------------------------
+# A row is addressed by exactly one thing: its key.
+#
+#     (player_uid, hive_id, share_group, namespace, scope_map)
+#
+# share_group carries the whole scope model, and the mod decides what to
+# put there. The gateway does not know or care what any of it MEANS:
+#
+#     '@hive'                 one row for the whole hive
+#     'ALPHA'..'ZULU'         a shared gear or vehicle set
+#     '@private:<server_id>'  a group of one - "sharing off"
+#
+# scope_map is '' for anything not map-scoped, which is gear, perks,
+# payments and most settings. It carries a map name only when a feature
+# genuinely differs per map.
+#
+# WHY THERE IS NO LONGER A '@self' SCOPE IN THE URL. The old endpoints
+# addressed a row by server_id and enforced "a server may write only its
+# own rows". Migration 0088 took server_id OUT of the key, which left
+# that check guarding something that was no longer identity: the read
+# still filtered on server_id and so could not address a row by group at
+# all, and could match several rows and pick between them with no
+# ORDER BY. Rows are per-GROUP now, and every server in a group is
+# supposed to write the same row - that is what sharing IS.
+#
+# server_id survives as an informational "last writer" column, and it is
+# now stamped from the LISTENING PORT on every write. The caller cannot
+# state it and therefore cannot get it wrong or lie about it. That is
+# strictly safer than accepting '@self' on trust, and it removes the
+# second source of truth that caused the original cross-server gear loss.
+#
+# The real tenant boundary was never this check anyway: it is the
+# per-server API key and the per-server hive_id, both resolved from the
+# port the request arrived on.
+# ------------------------------------------------------------------
 
-
-def _resolve_scope(scope):
-    """'@self' means 'whatever THIS gateway calls the calling server'.
-
-    The mod sends @self rather than its own configured SERVER_ID on purpose.
-    The gateway identifies a server by the PORT the request arrived on, and if
-    a server's local SERVER_ID has drifted from that, sending the local value
-    would get every save refused 403. That drift is exactly the bug that caused
-    the cross-server gear loss in the first place; @self removes the second
-    source of truth instead of asking admins to keep two values in sync.
-    """
-    if scope == SCOPE_SELF:
-        return current_server_id()
-    return scope
-
-
-def _scope_writable(scope):
-    """A server may write only its own rows, or the hive-wide scope."""
-    return scope == SCOPE_HIVE or scope == current_server_id()
+GROUP_HIVE = "@hive"
 
 
 def _valid_namespace(ns):
+    """Shape only. THERE IS NO LIST OF VALID NAMESPACES, and adding one
+    would destroy the property this whole table exists for: a new
+    player-owned feature is a new namespace string, with no gateway
+    release and no migration. Perks, payments, night-vision settings and
+    stored vehicles are all just labels."""
     return bool(ns) and len(ns) <= 32 and all(c.isalnum() or c in "_-" for c in ns)
+
+
+def _valid_group(group):
+    """Shape only, same reasoning as _valid_namespace.
+
+    '@' and ':' are allowed because '@hive' and '@private:<server_id>'
+    are groups like any other - resolving them in the mod rather than
+    special-casing them here is what keeps ONE read rule for every case
+    instead of a branch per scope.
+    """
+    return bool(group) and len(group) <= 32 and all(
+        c.isalnum() or c in "_-@:." for c in group
+    )
+
+
+def _valid_scope_map(scope_map):
+    """'' is the normal value and always valid: most things are not
+    map-scoped."""
+    return len(scope_map) <= 64 and all(
+        c.isalnum() or c in "_-." for c in scope_map
+    )
 
 
 @app.route("/api/data/<uid>/<namespace>", methods=["GET"])
 def data_list(uid, namespace):
-    """Every row for this player in this namespace, across all scopes."""
+    """Every row this player has in this namespace, across all groups.
+
+    Diagnostic and admin use. The mod reads a single row by key; this is
+    for answering "where IS their gear" when a player says it vanished -
+    which is almost always a group they are no longer in, with the row
+    sitting untouched exactly where they left it.
+    """
     if not check_auth("LOAD"):
         return jsonify({"status": "error", "message": "unauthorized"}), 401
     if not _valid_namespace(namespace):
@@ -1882,14 +2419,16 @@ def data_list(uid, namespace):
     try:
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT server_id, share_group, map_name, format_ver, payload, updated_at
+            SELECT share_group, scope_map, server_id, map_name,
+                   format_ver, payload, updated_at
               FROM player_data
              WHERE player_uid = %s AND hive_id = %s AND namespace = %s
-             ORDER BY updated_at DESC
-        """, (uid, HIVE_ID, namespace))
+             ORDER BY share_group, scope_map
+        """, (uid, current_hive_id(), namespace))
         rows = [{
-            "server_id":   r.get("server_id"),
             "share_group": r.get("share_group"),
+            "scope_map":   r.get("scope_map") or "",
+            "server_id":   r.get("server_id"),
             "map_name":    r.get("map_name") or "",
             "format_ver":  r.get("format_ver"),
             "payload":     r.get("payload"),
@@ -1904,14 +2443,26 @@ def data_list(uid, namespace):
         _close(conn)
 
 
-@app.route("/api/data/<uid>/<namespace>/<scope>", methods=["GET"])
-def data_get(uid, namespace, scope):
-    """One row - this scope only."""
+@app.route("/api/data/<uid>/<namespace>/<group>", methods=["GET"])
+def data_get(uid, namespace, group):
+    """ONE row, addressed by its full key. ?map= supplies scope_map.
+
+    A point lookup on the primary key: no ORDER BY, no fallback clause,
+    no candidate list. It CANNOT match more than one row, so there is no
+    "which row wins" question to answer - the previous version filtered
+    on server_id, a column that is not in the key, and so could match
+    several rows and take an arbitrary one via fetchone().
+    """
     if not check_auth("LOAD"):
         return jsonify({"status": "error", "message": "unauthorized"}), 401
     if not _valid_namespace(namespace):
         return jsonify({"status": "error", "message": "bad namespace"}), 400
-    scope = _resolve_scope(scope)
+    if not _valid_group(group):
+        return jsonify({"status": "error", "message": "bad share_group"}), 400
+
+    scope_map = request.args.get("map", "")
+    if not _valid_scope_map(scope_map):
+        return jsonify({"status": "error", "message": "bad map"}), 400
 
     conn = get_db()
     if not conn:
@@ -1919,18 +2470,26 @@ def data_get(uid, namespace, scope):
     try:
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT server_id, share_group, map_name, format_ver, payload, updated_at
+            SELECT share_group, scope_map, server_id, map_name,
+                   format_ver, payload, updated_at
               FROM player_data
-             WHERE player_uid = %s AND hive_id = %s AND namespace = %s AND server_id = %s
-        """, (uid, HIVE_ID, namespace, scope))
+             WHERE player_uid = %s AND hive_id = %s AND share_group = %s
+               AND namespace = %s AND scope_map = %s
+        """, (uid, current_hive_id(), group, namespace, scope_map))
         r = cursor.fetchone()
         if not r:
-            # Not an error. A first visit, or a namespace this player has never
-            # written. The mod decides what "nothing here" means.
-            return jsonify({"status": "ok", "namespace": namespace, "scope": scope, "row": None})
-        return jsonify({"status": "ok", "namespace": namespace, "scope": scope, "row": {
-            "server_id":   r.get("server_id"),
+            # NOT an error. A first visit, or a namespace this player has
+            # never written, or a group with no rows yet. The mod decides
+            # what "nothing here" means - for gear it means faction
+            # defaults, and it is emphatically not data loss.
+            return jsonify({"status": "ok", "namespace": namespace,
+                            "share_group": group, "scope_map": scope_map,
+                            "row": None})
+        return jsonify({"status": "ok", "namespace": namespace,
+                        "share_group": group, "scope_map": scope_map, "row": {
             "share_group": r.get("share_group"),
+            "scope_map":   r.get("scope_map") or "",
+            "server_id":   r.get("server_id"),
             "map_name":    r.get("map_name") or "",
             "format_ver":  r.get("format_ver"),
             "payload":     r.get("payload"),
@@ -1944,23 +2503,21 @@ def data_get(uid, namespace, scope):
         _close(conn)
 
 
-@app.route("/api/data/<uid>/<namespace>/<scope>", methods=["PUT", "POST"])
-def data_put(uid, namespace, scope):
-    """Upsert one row. A server may write only its OWN scope, or '@hive'."""
+@app.route("/api/data/<uid>/<namespace>/<group>", methods=["PUT", "POST"])
+def data_put(uid, namespace, group):
+    """Upsert ONE row, addressed by its full key.
+
+    server_id is stamped from the listening port and is NEVER taken from
+    the caller, so it cannot drift and cannot be forged. It is
+    informational - "last written by dev-01 on GM_Arland" - and decides
+    nothing.
+    """
     if not check_auth("SAVE"):
         return jsonify({"status": "error", "message": "unauthorized"}), 401
     if not _valid_namespace(namespace):
         return jsonify({"status": "error", "message": "bad namespace"}), 400
-    scope = _resolve_scope(scope)
-
-    if not _scope_writable(scope):
-        # Refused, not silently redirected. A server trying to write another
-        # server's row is a bug worth surfacing loudly, and honouring it would
-        # reintroduce exactly the clobber class this design removes.
-        print(f"[GATEWAY] data_put REFUSED: {current_server_id()} tried to write scope '{scope}'")
-        return jsonify({"status": "error",
-                        "message": "a server may only write its own scope",
-                        "your_scope": current_server_id()}), 403
+    if not _valid_group(group):
+        return jsonify({"status": "error", "message": "bad share_group"}), 400
 
     data = request.get_json(force=True, silent=True)
     if not data:
@@ -1972,33 +2529,55 @@ def data_put(uid, namespace, scope):
     if isinstance(payload, (list, dict)):
         payload = json.dumps(payload, separators=(",", ":"))
 
-    share_group = (data.get("share_group") or "ALPHA")[:32]
-    map_name    = (data.get("map_name") or "")[:64]
-    format_ver  = int(data.get("format_ver") or 1)
+    scope_map = (data.get("scope_map") or "")[:64]
+    if not _valid_scope_map(scope_map):
+        return jsonify({"status": "error", "message": "bad scope_map"}), 400
+
+    map_name   = (data.get("map_name") or "")[:64]
+    format_ver = int(data.get("format_ver") or 1)
+    sid = current_server_id()
 
     conn = get_db()
     if not conn:
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO player_data
-                (player_uid, hive_id, server_id, namespace, share_group, map_name, payload, format_ver)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                share_group = VALUES(share_group),
-                map_name    = VALUES(map_name),
-                payload     = VALUES(payload),
-                format_ver  = VALUES(format_ver)
-        """, (uid, HIVE_ID, scope, namespace, share_group, map_name, payload, format_ver))
-        conn.commit()
-        print(f"[GATEWAY] data saved: {uid} ns={namespace} scope={scope} "
-              f"group={share_group} map={map_name or '-'} ({len(payload)} chars)")
+
+        # RETRY ON A TRANSIENT LOCK ERROR, same as save_player.
+        #
+        # Defence in depth, not a gap being closed: the mod already
+        # re-sends once on an error, and its dedupe cache only updates on
+        # a CONFIRMED write, so a payload that fails twice is still
+        # re-sent by the next ordinary save rather than being suppressed
+        # as "already stored". Absorbing a lock blip here just means that
+        # machinery never has to run.
+        #
+        # Safe to re-run: a single idempotent upsert of absolute values,
+        # so replaying it writes the same row - there is nothing to
+        # double.
+        def _write():
+            cursor.execute("""
+                INSERT INTO player_data
+                    (player_uid, hive_id, share_group, namespace, scope_map,
+                     server_id, map_name, payload, format_ver)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    server_id   = VALUES(server_id),
+                    map_name    = VALUES(map_name),
+                    payload     = VALUES(payload),
+                    format_ver  = VALUES(format_ver)
+            """, (uid, current_hive_id(), group, namespace, scope_map,
+                  sid, map_name, payload, format_ver))
+            conn.commit()
+
+        _db_retry(_write, "data_put")
+        print(f"[GATEWAY] data saved: {uid} ns={namespace} group={group} "
+              f"map={scope_map or '-'} by={sid} ({len(payload)} chars)")
         return jsonify({"status": "ok", "message": "saved"})
     except mysql.connector.Error as err:
-        # A malformed payload is REJECTED by the JSON column rather than stored.
-        # That is deliberate: the previous good value surviving beats writing
-        # garbage over it.
+        # A write that fails here leaves the PREVIOUS value in place,
+        # which is the outcome to want: stale gear beats garbage gear,
+        # and the mod re-sends on the next save anyway.
         return _db_error("data_put", err)
     except Exception as err:
         return _internal_error("data_put", err)
@@ -2006,15 +2585,24 @@ def data_put(uid, namespace, scope):
         _close(conn)
 
 
-@app.route("/api/data/<uid>/<namespace>/<scope>", methods=["DELETE"])
-def data_delete(uid, namespace, scope):
-    """Delete one row. Same write rule as PUT."""
+@app.route("/api/data/<uid>/<namespace>/<group>", methods=["DELETE"])
+def data_delete(uid, namespace, group):
+    """Delete ONE row, addressed by its full key. ?map= supplies scope_map.
+
+    Deliberately narrow: it can only ever remove the single row named by
+    the key, so a mistake costs one namespace for one player in one
+    group, and never a whole table.
+    """
     if not check_auth("SAVE"):
         return jsonify({"status": "error", "message": "unauthorized"}), 401
-    scope = _resolve_scope(scope)
-    if not _scope_writable(scope):
-        return jsonify({"status": "error",
-                        "message": "a server may only write its own scope"}), 403
+    if not _valid_namespace(namespace):
+        return jsonify({"status": "error", "message": "bad namespace"}), 400
+    if not _valid_group(group):
+        return jsonify({"status": "error", "message": "bad share_group"}), 400
+
+    scope_map = request.args.get("map", "")
+    if not _valid_scope_map(scope_map):
+        return jsonify({"status": "error", "message": "bad map"}), 400
 
     conn = get_db()
     if not conn:
@@ -2023,10 +2611,14 @@ def data_delete(uid, namespace, scope):
         cursor = conn.cursor()
         cursor.execute("""
             DELETE FROM player_data
-             WHERE player_uid = %s AND hive_id = %s AND namespace = %s AND server_id = %s
-        """, (uid, HIVE_ID, namespace, scope))
+             WHERE player_uid = %s AND hive_id = %s AND share_group = %s
+               AND namespace = %s AND scope_map = %s
+        """, (uid, current_hive_id(), group, namespace, scope_map))
         conn.commit()
-        return jsonify({"status": "ok", "deleted": cursor.rowcount})
+        removed = cursor.rowcount
+        print(f"[GATEWAY] data deleted: {uid} ns={namespace} group={group} "
+              f"map={scope_map or '-'} ({removed} row)")
+        return jsonify({"status": "ok", "deleted": removed})
     except mysql.connector.Error as err:
         return _db_error("data_delete", err)
     except Exception as err:
@@ -2084,7 +2676,7 @@ def hive_register():
                 boot_session_id = VALUES(boot_session_id),
                 started_at      = VALUES(started_at)
         """, (
-            HIVE_ID, sid,
+            current_hive_id(), sid,
             (data.get("display_name") or "")[:128],
             (data.get("map_name") or "")[:64],
             (data.get("gear_group") or "")[:32],
@@ -2127,7 +2719,7 @@ def hive_servers():
               FROM hive_servers
              WHERE hive_id = %s
              ORDER BY gear_group, server_id
-        """, (HIVE_ID,))
+        """, (current_hive_id(),))
         rows = []
         for r in cursor.fetchall():
             r["last_seen"] = _iso(r.get("last_seen"))
@@ -2164,10 +2756,10 @@ def hive_servers():
                     str(r.get("players_online") or 0),
                     str(r.get("seconds_ago") if r.get("seconds_ago") is not None else -1),
                 ]))
-            return jsonify({"status": "ok", "hive_id": HIVE_ID,
+            return jsonify({"status": "ok", "hive_id": current_hive_id(),
                             "you": current_server_id(), "text": "|".join(recs)})
 
-        return jsonify({"status": "ok", "hive_id": HIVE_ID,
+        return jsonify({"status": "ok", "hive_id": current_hive_id(),
                         "you": current_server_id(), "servers": rows})
     except mysql.connector.Error as err:
         return _db_error("hive_servers", err)
@@ -2195,7 +2787,7 @@ def hive_group(group_name):
     try:
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT addon_hash, addon_list FROM hive_servers WHERE hive_id=%s AND server_id=%s",
-                       (HIVE_ID, sid))
+                       (current_hive_id(), sid))
         me = cursor.fetchone() or {}
         my_hash = me.get("addon_hash")
         try:
@@ -2213,7 +2805,7 @@ def hive_group(group_name):
               FROM hive_servers
              WHERE hive_id = %s AND gear_group = %s
              ORDER BY server_id
-        """, (HIVE_ID, group_name))
+        """, (current_hive_id(), group_name))
 
         members = []
         for r in cursor.fetchall():
@@ -2229,6 +2821,12 @@ def hive_group(group_name):
             # missing_here = the reverse, for the return trip.
             r["missing_there"] = sorted(t or i for i, t in my_addons.items() if i not in theirs)
             r["missing_here"]  = sorted(t or i for i, t in theirs.items() if i not in my_addons)
+            # Their FULL mod list, sorted by title, for the F8 tab's per-server
+            # mod pane. Sorted here because a server reports its addons in load
+            # order, which differs between servers running the same set - the
+            # match test is already order-independent (sorted id hash), and a
+            # list a human reads should be too.
+            r["addon_titles"] = sorted((t or i) for i, t in theirs.items())
             members.append(r)
 
         if request.args.get("format") == "csv":
@@ -2243,6 +2841,10 @@ def hive_group(group_name):
                     str(m.get("seconds_ago") if m.get("seconds_ago") is not None else -1),
                     _csvsafe(", ".join(m.get("missing_there") or [])),
                     _csvsafe(", ".join(m.get("missing_here") or [])),
+                    # Field 9, appended 2026-08-23. Trailing on purpose: a mod
+                    # reading the first 8 fields is unaffected, so this needs no
+                    # coordinated mod+gateway rollout.
+                    _csvsafe(", ".join(m.get("addon_titles") or [])),
                 ]))
             return jsonify({"status": "ok", "group": group_name, "you": sid,
                             "text": "|".join(recs)})
@@ -2275,7 +2877,7 @@ def hive_share_groups():
               FROM hive_share_groups g
              WHERE g.hive_id = %s
              ORDER BY g.group_name
-        """, (HIVE_ID,))
+        """, (current_hive_id(),))
         described = {r["group_name"]: r for r in cursor.fetchall()}
         for r in described.values():
             r["updated_at"] = _iso(r.get("updated_at"))
@@ -2286,7 +2888,7 @@ def hive_share_groups():
             SELECT gear_group AS group_name, COUNT(*) AS members
               FROM hive_servers WHERE hive_id = %s AND gear_group IS NOT NULL AND gear_group <> ''
              GROUP BY gear_group
-        """, (HIVE_ID,))
+        """, (current_hive_id(),))
         for r in cursor.fetchall():
             if r["group_name"] not in described:
                 described[r["group_name"]] = {
@@ -2301,9 +2903,9 @@ def hive_share_groups():
                 str(g.get("members") or 0),
                 _csvsafe(g.get("description")),
             ]) for g in ordered]
-            return jsonify({"status": "ok", "hive_id": HIVE_ID, "text": "|".join(recs)})
+            return jsonify({"status": "ok", "hive_id": current_hive_id(), "text": "|".join(recs)})
 
-        return jsonify({"status": "ok", "hive_id": HIVE_ID, "groups": ordered})
+        return jsonify({"status": "ok", "hive_id": current_hive_id(), "groups": ordered})
     except mysql.connector.Error as err:
         return _db_error("hive_share_groups", err)
     except Exception as err:
@@ -2330,7 +2932,7 @@ def hive_share_group_set(group_name):
             ON DUPLICATE KEY UPDATE
                 description = VALUES(description),
                 updated_by  = VALUES(updated_by)
-        """, (HIVE_ID, group_name[:32],
+        """, (current_hive_id(), group_name[:32],
               (data.get("description") or "")[:255],
               (data.get("updated_by") or "")[:64]))
         conn.commit()
@@ -2351,7 +2953,16 @@ if __name__ == "__main__":
     RESET = "\033[0m"; BOLD = "\033[1m"
     print("=" * 60)
     print(f"  {BOLD}WastelandZ Gateway v{GATEWAY_VERSION}{RESET}")
-    print(f"  Hive ID:   {HIVE_ID}")
+    _hives = []
+    for _s in SERVERS:
+        if _s["hive_id"] not in _hives:
+            _hives.append(_s["hive_id"])
+    if len(_hives) == 1:
+        print(f"  Hive ID:   {_hives[0]}")
+    else:
+        # One gateway can serve several hives now, so there is no single
+        # answer here - list them rather than picking one.
+        print(f"  Hives ({len(_hives)}): {', '.join(_hives)}")
     print(f"  Database:  {config.DB_HOST}:{config.DB_PORT}/{config.DB_NAME}")
     print(f"  Crypto:    {'ENABLED' if CRYPTO_AVAILABLE else 'DISABLED (hf_crypto.py missing)'}")
     print(f"  Monitor:   {'ENABLED' if MONITOR_AVAILABLE else 'DISABLED'}")

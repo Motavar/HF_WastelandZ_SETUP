@@ -24,6 +24,7 @@ USAGE IN gateway.py:
   token = request.args.get('token', '')
   verb, timestamp = decrypt_auth_token(token, API_KEY)
 
+Session #10 — Security hardening
 """
 
 import base64
