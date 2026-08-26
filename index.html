@@ -2714,13 +2714,21 @@ copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
 
   <div class="step"><span class="n">2</span>
     <h4>Get the new kit</h4>
+    <p>Make sure you are on the <b>main</b> branch before you pull &mdash; that is what decides which gateway you get.</p>
     <div class="code"><pre><span class="c"># Linux</span>
 cd /opt/wastelandz
+git checkout main
 git pull
+grep GATEWAY_VERSION gateway/gateway.py
 
 <span class="c"># Windows</span>
 cd D:\wastelandz
-git pull</pre></div>
+git checkout main
+git pull
+
+<span class="c"># confirm what you just pulled</span>
+findstr GATEWAY_VERSION gateway\gateway.py</pre></div>
+    <p class="muted">That last line prints the version now sitting in the kit. Nothing has been copied to your gateway folder yet &mdash; that is step 3.</p>
     <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip">Download the ZIP</a> and unpack it over the same folder. Same result.</p>
   </div>
 
@@ -2904,13 +2912,21 @@ copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
 
   <div class="step"><span class="n">2</span>
     <h4>Get the new kit</h4>
+    <p>Make sure you are on the <b>beta</b> branch before you pull &mdash; that is what decides which gateway you get.</p>
     <div class="code"><pre><span class="c"># Linux</span>
 cd /opt/wastelandz
+git checkout beta
 git pull
+grep GATEWAY_VERSION gateway/gateway.py
 
 <span class="c"># Windows</span>
 cd D:\wastelandz
-git pull</pre></div>
+git checkout beta
+git pull
+
+<span class="c"># confirm what you just pulled</span>
+findstr GATEWAY_VERSION gateway\gateway.py</pre></div>
+    <p class="muted">That last line prints the version now sitting in the kit. Nothing has been copied to your gateway folder yet &mdash; that is step 3.</p>
     <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/beta.zip">Download the ZIP</a> and unpack it over the same folder. Same result.</p>
   </div>
 
