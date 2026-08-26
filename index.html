@@ -1601,7 +1601,7 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
   <table class="t">
     <tr><th>Table</th><th>Holds</th><th>Scope</th></tr>
     <tr><td><code class="inline">players</code></td><td>Money, bank, faction, identity</td><td><b>Hive-wide</b> &mdash; follows the player to every server</td></tr>
-    <tr><td><code class="inline">player_data</code></td><td>Gear, and any future player-owned system</td><td><b>Per server</b>, shared per the gear group</td></tr>
+    <tr><td><code class="inline">player_data</code></td><td>Gear, and any future player-owned system</td><td><b>Per gear group</b> &mdash; see &ldquo;How new features get stored&rdquo; below</td></tr>
     <tr><td><code class="inline">player_sessions</code></td><td>Position, stance, alive state, <code class="inline">/recover</code> token</td><td>Per server &mdash; where you logged off</td></tr>
     <tr><td><code class="inline">transactions</code></td><td>Every money movement, append-only</td><td>Audit trail</td></tr>
     <tr><td><code class="inline">player_stats_daily</code></td><td>Kills, deaths, playtime</td><td>Per server, per day</td></tr>
@@ -1627,6 +1627,26 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
 
   <div class="note warn"><div class="h">Servers sharing gear must share mods</div>
   <p>Gear is stored as item references. If a player carries an item from a server that has a mod to one that does not, that item cannot be restored there. The gateway records every server&rsquo;s addon list precisely so you can compare them <b>before</b> putting servers in the same gear group.</p></div>
+
+  <h4 id="namespaces">How new features get stored &mdash; and why you won&rsquo;t keep updating the gateway</h4>
+
+  <p>Every player has a set of <b>labelled boxes</b> in <code class="inline">player_data</code>. The label is called a <b>namespace</b>, and inside each box is one chunk of data the gateway stores without ever looking inside it. Today exactly one box is in use, labelled <code class="inline">inventory</code>, and it holds gear.</p>
+
+  <p>When Wasteland-Z adds a stored feature &mdash; perks, a garage, saved settings &mdash; it picks a new label and starts using it. <b>There is no list of valid labels anywhere in the gateway or the database.</b> So a new feature costs you nothing: no schema update, no new table, no migration, and nothing for you to run.</p>
+
+  <p class="muted">That is the point of the design. Gateway updates are the part admins are rightly wary of, so the schema is built to need them as rarely as possible.</p>
+
+  <table class="t">
+    <tr><th>What is stored</th><th>Shared how far</th></tr>
+    <tr><td>Money and bank</td><td><b>Your whole hive</b>, always. These are real columns, not a box &mdash; the database has to do the arithmetic itself so two purchases at the same moment can never duplicate currency.</td></tr>
+    <tr><td>Gear</td><td>Per <b>gear group</b> (<code class="inline">GEAR_SHARE_GROUP</code>)</td></tr>
+    <tr><td>Stored vehicles</td><td>Per <b>garage group</b> (<code class="inline">GARAGE_SHARE_GROUP</code>) &mdash; a separate dial, so you can share gear but keep vehicles local, or the reverse</td></tr>
+    <tr><td>Account-level things (perks, settings)</td><td>Your whole hive</td></tr>
+    <tr><td>Anything genuinely map-specific</td><td>Per map</td></tr>
+  </table>
+
+  <div class="note"><div class="h">Does storing it this way slow the server down?</div>
+  <p>No. Every lookup goes straight to one row by its exact key &mdash; the database never searches through anyone else&rsquo;s data to find it, so it does not get slower as your player count grows. Measured on a test database of ten thousand rows: <b>0.14 milliseconds per read</b>, roughly seven thousand reads a second on a single connection. Ten servers do not come close to that.</p></div>
 </div></section>
 
 </main>

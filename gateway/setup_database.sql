@@ -1,10 +1,35 @@
 -- ============================================================
--- WastelandZ Gateway — Database Setup (Hive-Shared schema)
+-- WastelandZ Gateway — Database Schema (THE single source of truth)
 -- ============================================================
--- Run this script to create the database and all tables.
+-- THIS FILE DEFINES THE WHOLE SCHEMA, AND IT IS APPLIED ON EVERY
+-- GATEWAY START — on a brand-new database and on a decade-old one
+-- alike. There is no second place where a table is defined.
 --
--- Usage:
---   mysql -u root -p < setup_database.sql
+-- WHY IT WORKS THAT WAY. The schema used to live in TWO places: this
+-- file for fresh installs, and migrations/*.sql for upgrades. The two
+-- drifted, exactly as that arrangement always eventually does:
+-- player_marker_prefs ended up utf8mb4_unicode_ci on a fresh install
+-- and utf8mb4_0900_ai_ci on an upgraded one, because a migration
+-- omitted a COLLATE clause and inherited the server default instead.
+-- The result was a hard `ERROR 1267 Illegal mix of collations` on any
+-- join between players and player_marker_prefs — a query that passes
+-- on a developer's fresh database and fails on every existing server.
+--
+-- One file, applied to both, makes that class of bug impossible rather
+-- than merely unlikely. Numbered migrations still exist, but they now
+-- carry DATA transformations only — never table definitions.
+--
+-- THEREFORE, THE RULES FOR EDITING THIS FILE:
+--   1. Every statement MUST be idempotent. It runs again on every boot.
+--      Tables: CREATE TABLE IF NOT EXISTS.
+--      Columns / keys on existing tables: the guarded-ALTER pattern in
+--      the SCHEMA UPGRADES section at the bottom.
+--   2. Every table MUST name its COLLATE explicitly. Inheriting the
+--      server default is what caused the drift described above, and the
+--      default differs between MySQL 5.7 and 8.0.
+--   3. NOTHING here may DROP or DELETE. Removing something is a
+--      separate, numbered, destructive migration that an admin opts in
+--      to. This file must always be safe to run unattended.
 --
 -- HIVE-SHARED MODEL
 --   Player-associated data (money, bank, inventory, faction, stats,
@@ -13,16 +38,17 @@
 --   (position on a specific map, alive state, placed objects) is
 --   per-server. See docs/HIVE_SHARED_PLAN.md.
 --
---   This is the launch schema. It is a structural redesign vs the old
---   per-(player,server) model; apply it on a FRESH database (pre-launch,
---   no data to migrate).
--- ============================================================
-
--- The database and the 'wastelandz' login are created in the setup guide
--- ("Create the database" step). This script builds TABLES ONLY and holds
--- NO usernames or passwords. Run it logged in as the wastelandz user:
+-- Usage (the gateway does this for you; this is for a manual run):
 --   mysql -u wastelandz -p wastelandz < setup_database.sql
-USE wastelandz;
+--
+-- The database and the 'wastelandz' login are created in the setup
+-- guide ("Create the database" step). This script builds TABLES ONLY
+-- and holds NO usernames or passwords.
+--
+-- There is deliberately no `USE` statement: the database is selected by
+-- the connection, so this file works against a database an admin has
+-- named something other than 'wastelandz'.
+-- ============================================================
 
 -- ============================================================
 -- PLAYERS table — the SHARED player profile.
@@ -234,40 +260,74 @@ CREATE TABLE IF NOT EXISTS player_marker_prefs (
 -- PLAYER_DATA table - namespaced per-scope player state.
 --
 -- Replaces the single players.inventory value, which could not hold
--- more than one server's gear no matter how it was read. One row per
--- (player, hive, server, namespace); a new player-owned feature is a
--- new namespace string, NOT a new table and NOT a gateway release.
+-- more than one server's gear no matter how it was read.
+--
+-- THE POINT OF THIS TABLE: a new player-owned feature is a NEW
+-- NAMESPACE STRING - not a new table, not a migration, not a gateway
+-- release. The gateway holds NO list of valid namespaces; it validates
+-- the SHAPE of the name only (<=32 chars, alnum/_/-, see
+-- _valid_namespace) and stores the payload without ever parsing it.
+-- Perks, payments, night-vision settings, gun settings and stored
+-- vehicles are all just labels an admin never has to hear about.
+--
+-- THE PAYLOAD IS OPAQUE. The gateway never reads inside it. That is
+-- what keeps every access a primary-key point lookup: three or four
+-- B-tree page reads, microseconds, and NOT slower as the table grows.
+-- NEVER add a query that looks inside payload (no JSON_EXTRACT in a
+-- WHERE, no LIKE over payload) - that converts a point lookup into a
+-- full scan and is the single change that would make this design slow.
 --
 -- WRITE RULE, ABSOLUTE: a server writes only rows whose server_id is
 -- its own (or '@hive'). Every data-loss hazard in this area came from
 -- one server overwriting another's value; that class is impossible by
 -- construction here rather than merely guarded against.
 --
--- payload is JSON so MySQL validates it on write - a malformed
--- inventory is REJECTED and the previous good value survives.
+-- THE KEY IS THE SCOPE. Five scopes, all first-class, all expressed by
+-- the key rather than by branching code:
+--   hive-wide      share_group '@hive'                scope_map ''
+--   gear set       share_group 'ALPHA'..'ZULU'        scope_map ''
+--   vehicle set    share_group from GARAGE_SHARE_GROUP scope_map ''
+--   this server    share_group '@private:<server_id>' scope_map ''
+--   per map        any of the above                   scope_map '<map>'
 --
--- share_group + map_name drive the read rule:
---   share_group = mine  OR  (server_id = me AND map_name = my map)
--- The map test stops a server that rotated to a new map (and a new mod
--- set) from restoring gear whose prefabs no longer resolve there.
+-- scope_map is BLANK for everything that is not map-scoped, which is
+-- gear, perks, payments and most settings. Gear is deliberately NOT
+-- per-map: the same mods on a different map in the same hive and the
+-- same group are the same gear. map_name below is a separate,
+-- INFORMATIONAL column ("last written on GM_Arland") so a per-map
+-- namespace and the support breadcrumb never fight over one field.
+--
+-- format_ver is per ROW, so each namespace evolves its payload
+-- independently - 'perks' can be at v4 while 'inventory' is still v1.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS player_data (
   player_uid   VARCHAR(64)  NOT NULL,
   hive_id      VARCHAR(64)  NOT NULL DEFAULT 'default',
-  server_id    VARCHAR(64)  NOT NULL,            -- real server id, or '@hive'
-  namespace    VARCHAR(32)  NOT NULL,            -- 'inventory' | 'garage' | future
   share_group  VARCHAR(32)  NOT NULL DEFAULT 'ALPHA',
-  map_name     VARCHAR(64)  NOT NULL DEFAULT '', -- '' = matches any map (legacy rows)
+  namespace    VARCHAR(32)  NOT NULL,            -- 'inventory' | 'garage' | future
+  scope_map    VARCHAR(64)  NOT NULL DEFAULT '', -- '' = not map-scoped (the norm)
+  server_id    VARCHAR(64)  NOT NULL,            -- informational: last writer
+  map_name     VARCHAR(64)  NOT NULL DEFAULT '', -- informational: last written on
   payload      MEDIUMTEXT   NOT NULL,   -- NOT json: MySQL normalises a JSON
                                         -- column (space after every colon, keys
                                         -- sorted) and the mod parses this by hand,
-                                        -- whitespace- and order-sensitive. See 0087.
+                                        -- whitespace- and order-sensitive.
   format_ver   INT          NOT NULL DEFAULT 1,
   updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                             ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (player_uid, hive_id, server_id, namespace),
-  KEY idx_ns    (hive_id, namespace, share_group),
-  KEY idx_owner (player_uid, hive_id)
+  -- 256 chars = 1024 bytes under utf8mb4, well inside InnoDB's 3072-byte
+  -- index limit.
+  PRIMARY KEY (player_uid, hive_id, share_group, namespace, scope_map)
+  --
+  -- DELIBERATELY NO SECONDARY INDEXES. Every query the gateway issues
+  -- against this table begins `player_uid = ? AND hive_id = ?`, so the
+  -- primary key serves all of them as a leftmost prefix. The previous
+  -- idx_owner (player_uid, hive_id) was an exact duplicate of that
+  -- prefix, and idx_ns / idx_last_writer were never referenced by any
+  -- endpoint. Three redundant index writes on every gear save is a real
+  -- cost for no read benefit. If a support or dashboard query later
+  -- needs to search by server_id, add the index then - it is one
+  -- additive line.
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -381,7 +441,87 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 
 
 -- ============================================================
--- Verify setup
+-- SCHEMA UPGRADES — bring an OLDER database up to the definitions above
 -- ============================================================
-SELECT 'WastelandZ database created successfully (hive-shared schema)!' AS status;
-SHOW TABLES;
+-- Everything above is CREATE TABLE IF NOT EXISTS, which by design does
+-- NOTHING to a table that already exists. So a database created by an
+-- older release keeps its old shape unless it is altered here.
+--
+-- This is that section. It is where "fresh install" and "upgrade" are
+-- made to converge, and the harness test diffs the two to prove it.
+--
+-- EVERY STATEMENT HERE MUST BE:
+--   * GUARDED   — check information_schema first, so a re-run is a no-op.
+--                 ADD COLUMN IF NOT EXISTS is not portable before MySQL
+--                 8.0.29, hence the prepared-statement pattern.
+--   * ADDITIVE  — never DROP, never DELETE, never TRUNCATE. This file
+--                 runs unattended on every boot; it must never be the
+--                 thing that loses an admin's data. Removals are
+--                 separate, numbered, destructive migrations that an
+--                 admin opts in to.
+--
+-- A guard that names the WRONG TABLE is worse than no guard: it always
+-- evaluates false and the ALTER fires every time. That exact bug shipped
+-- once — a migration checked `players` for columns that live on
+-- `player_sessions`, so it added three permanently-dead columns to
+-- `players` on every install. Check the guard names the same table the
+-- ALTER does.
+-- ============================================================
+
+-- ---- players.arrival_grace (one-shot cross-server arrival flag) ------
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'players' AND COLUMN_NAME = 'arrival_grace');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE players ADD COLUMN arrival_grace TINYINT NOT NULL DEFAULT 0',
+    'SELECT "players.arrival_grace present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- player_sessions.hive_id ----------------------------------------
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_sessions' AND COLUMN_NAME = 'hive_id');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_sessions ADD COLUMN hive_id VARCHAR(64) NOT NULL DEFAULT ''default''',
+    'SELECT "player_sessions.hive_id present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- hf_placements.base_id (groups parts into one player base) -------
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'hf_placements' AND COLUMN_NAME = 'base_id');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE hf_placements ADD COLUMN base_id BIGINT DEFAULT NULL',
+    'SELECT "hf_placements.base_id present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- hf_placements.meta (per-part state: damage, flags, future) ------
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'hf_placements' AND COLUMN_NAME = 'meta');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE hf_placements ADD COLUMN meta JSON DEFAULT NULL',
+    'SELECT "hf_placements.meta present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- player_marker_prefs collation ----------------------------------
+-- THE DRIFT THIS WHOLE FILE EXISTS TO PREVENT, and the one instance of
+-- it that reached real servers. An older release created this table with
+-- no COLLATE clause, so it inherited the server default —
+-- utf8mb4_0900_ai_ci on MySQL 8.0. Every other table names
+-- utf8mb4_unicode_ci explicitly. The mismatch is a hard
+-- `ERROR 1267 Illegal mix of collations` on any join between
+-- player_marker_prefs and players: a query that passes on a fresh
+-- database and fails on every upgraded one.
+--
+-- CONVERT TO rewrites the table but preserves every row. It is not
+-- destructive and needs no flag. A COUNT of 0 (wrong collation absent,
+-- or table absent) makes it a no-op.
+SET @c = (SELECT COUNT(*) FROM information_schema.TABLES
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_marker_prefs'
+             AND TABLE_COLLATION <> 'utf8mb4_unicode_ci');
+SET @ddl = IF(@c > 0,
+    'ALTER TABLE player_marker_prefs CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
+    'SELECT "player_marker_prefs collation correct" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
