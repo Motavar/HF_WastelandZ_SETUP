@@ -27,10 +27,15 @@ Check your gateway by looking at the first line it prints on start:
 If it says anything else, see the table below.
 
 > **A newer gateway is not better.** `0.9.0` exists on the `beta` branch and pairs
-> with an unreleased mod build. Run it against mod 1.0.16 and **gear silently stops
-> being saved** — the save is accepted, written under a key the mod never reads
-> back, and nothing in any log reports a problem. Stay on 0.7.1 until the release
-> notes here say otherwise.
+> with an unreleased mod build. Run it against mod 1.0.16 and gear keeps saving —
+> which is exactly the trap. Starting 0.9.0 copies your gear into its new table
+> once; that copy then sits still while players keep writing the old column. Update
+> the mod later and gear **appears to roll back** to the day you started 0.9.0.
+> Stay on 0.7.1 until the release notes here say otherwise.
+>
+> **When the next release does land, update the mod FIRST, then the gateway.** The
+> order is not symmetric: mod-first fails visibly and recovers, gateway-first looks
+> fine and drifts.
 
 ---
 
@@ -40,7 +45,7 @@ Newest first. "Gateway" is the minimum that release needs.
 
 | Date | Mod | Gateway | What it needed from you |
 |---|---|---|---|
-| *unreleased* | *next* | **0.9.0** | In testing on the `beta` branch. Not on the Workshop. Do not install. |
+| *unreleased* | *next* | **0.9.0** | In testing on the `beta` branch. Not on the Workshop. Do not install. **Mod first, then gateway.** |
 | 2026-08-26 | 1.0.16 | **0.7.1** | **Security update — re-download the gateway.** See below. |
 | 2026-08-21 | **1.0.16** | 0.7.1 | Nothing. Towing keybinds returned (B sling, R heli start), loose props re-seat. |
 | 2026-08-16 | 1.0.15 | 0.7.1 | **Arma Reforger 1.8.0.10.** The server does not start on older builds. |
@@ -140,10 +145,10 @@ Splitting gear into groups while keeping one bank is what the next release adds.
 One procedure, every release, whether it changed one file or twenty. It is on the
 setup site under **Update Gateway**, and it is the same five steps every time:
 
-**1. Back up `gateway.py` and `config.py`**
+**1. Stop the gateway and back up the whole folder**
 
-Put the `config.py` backup **outside** the gateway folder. A backup living in the
-folder you are about to overwrite is not a backup.
+The whole folder, not just `gateway.py` — any file in the kit can change. Put the
+extra `config.py` copy **outside** the folder you are about to overwrite.
 
 **2. Update the reference kit**
 

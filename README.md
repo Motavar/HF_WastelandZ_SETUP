@@ -26,9 +26,10 @@ git clone -b beta https://github.com/Motavar/HF_WastelandZ_SETUP.git    # beta
 ```
 
 > **A newer gateway is not better.** Gateway `0.9.0` on `beta` pairs with an
-> unreleased mod build. Run it against mod 1.0.16 — what the Workshop gives you
-> today — and **gear silently stops being saved**: the save is accepted, written
-> under a key the mod never reads back, and nothing in any log reports it.
+> unreleased mod build. Run it against mod 1.0.16 and gear keeps saving — which is
+> the trap. Starting 0.9.0 copies your gear into its new table once; that copy then
+> goes stale while players carry on writing the old one. Update the mod later and
+> gear **appears to roll back** to the day you started 0.9.0.
 
 See **[RELEASES.md](RELEASES.md)** for the version history and how to upgrade.
 

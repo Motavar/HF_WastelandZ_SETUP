@@ -2392,7 +2392,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
   <p class="muted">A mission is an ordered list of steps &mdash; some are <b>events</b> (spawn a scene), the rest are <b>logic</b> (show a message, wait for a condition, hand out a reward, end the mission). A common shape: show a heads-up &rarr; spawn the event &rarr; wait until the enemies are dead &rarr; spawn a reward &rarr; complete. You arrange these steps in the Mission Editor.</p>
 
   <div class="note tip"><div class="h">Grab the example missions</div>
-  <p>You don&rsquo;t have to start from a blank page. <b>Download the example missions from the <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main/missions" target="_blank" rel="noopener">Wasteland-Z SETUP repo</a></b> (the <code class="inline">missions/</code> folder &mdash; copy <code class="inline">events/</code>, <code class="inline">templates/</code> and <code class="inline">rewards/</code> into your server&rsquo;s <code class="inline">&lt;profile&gt;/hf_wastelandz/missions/</code>), then open them in the editor to see how a working mission is put together &mdash; then build your own the same way. More examples get added over time, so check back.</p></div>
+  <p>You don&rsquo;t have to start from a blank page. <b>Download the example missions from the <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/beta/missions" target="_blank" rel="noopener">Wasteland-Z SETUP repo</a></b> (the <code class="inline">missions/</code> folder &mdash; copy <code class="inline">events/</code>, <code class="inline">templates/</code> and <code class="inline">rewards/</code> into your server&rsquo;s <code class="inline">&lt;profile&gt;/hf_wastelandz/missions/</code>), then open them in the editor to see how a working mission is put together &mdash; then build your own the same way. More examples get added over time, so check back.</p></div>
 
   <div class="note tip"><div class="h">The pool runs it on a timer</div>
   <p>You don&rsquo;t spawn missions by hand for players. Finished missions go into the <b>Mission Pool</b>, which spawns them automatically &mdash; on a per-tier timer, away from players, with cooldowns so the same spot doesn&rsquo;t reused instantly. You just build missions and turn the pool on.</p></div>
@@ -3252,14 +3252,13 @@ sudo journalctl -u wz-server -f</pre></div>
     <tr><th>From</th><th>Requirement</th><th>If you skip it</th></tr>
     <tr><td>2026-08-16 onward</td><td><b>Arma Reforger 1.8.0.10</b></td><td>The Game script module fails to compile and <b>the server does not start</b>. There is no 1.7-compatible build.</td></tr>
     <tr><td>2026-07-16 onward</td><td><b>Gateway 0.7.1</b></td><td>Admin <code class="inline">/money</code> drops are not written to the database and vanish on restart. Everything else keeps working.</td></tr>
-    <tr><td>Current</td><td><b>Gateway 0.9.0</b> + <code class="inline">waitress</code></td><td><b>Update the gateway in the same sitting as the mod.</b> Gear stops saving until you do &mdash; the older gateway has no endpoint for it &mdash; and without <code class="inline">waitress</code> the gateway falls back to a development web server that drops requests under a reconnect burst. A dropped save is a lost save.</td></tr>
   </table></div>
 
-  <div class="note warn"><div class="h">Gateway 0.9.0 &mdash; update the mod and the gateway together</div>
-  <p>This release moves gear into a new table. The mod and the gateway have to agree about that, so <b>do both in one sitting</b>. The order does not matter, but the gap does.</p>
-  <p><b>While only the mod is updated:</b> players still connect, and <b>money and bank are completely unaffected</b> &mdash; but gear <b>stops being saved</b>, because the older gateway has no endpoint to save it to. Nothing is lost that was already stored; new changes simply are not written until the gateway catches up.</p>
-  <p><b>Your bank is not at risk in this upgrade.</b> Money and bank live in the same columns, in the same table, before and after. The upgrade does not read them, move them or rewrite them.</p>
-  <p class="muted">Gear is <b>copied</b> into the new table, not moved &mdash; the old column is left exactly where it was, so a rollback to the previous gateway is still possible for one release.</p></div>
+  <div class="note warn"><div class="h">When the next release lands: <b>update the mod first</b></div>
+  <p>The order is <b>not</b> symmetric. Do the mod, then the gateway.</p>
+  <p><b>Mod first</b> &mdash; the new mod calls an endpoint 0.7.1 does not have, so gear stops saving until the gateway catches up. Money and bank are unaffected, nothing already stored is lost, and it resumes on the next autosave once you update. <b>You can see it happening.</b></p>
+  <p><b>Gateway first</b> &mdash; everything looks fine, and that is the problem. The old mod keeps writing the legacy column and the new gateway accepts it, but the upgrade has already copied your gear into the new table. That copy then sits still while players keep playing. Update the mod days later and their gear <b>appears to roll back</b> to the day you upgraded the gateway.</p>
+  <p class="muted">Your bank is not at risk either way &mdash; money and bank are the same columns in the same table, before and after, and the upgrade never touches them.</p></div>
   <div class="note tip"><div class="h">Config files are never rewritten out from under you</div><p>New settings are added to your existing <code class="inline">.conf</code> files on first boot after an update, with defaults. Your values are kept. You do not need to delete anything, and there has never been a release that required you to.</p></div>
 </div></section>
 </main>
@@ -3283,9 +3282,9 @@ sudo journalctl -u wz-server -f</pre></div>
   <p><b>Cause:</b> the gateway is older than the mod expects. The mod pings the gateway every 60 seconds and prints this until they line up.</p>
   <p><b>Fix:</b> replace <code class="inline">gateway.py</code> and restart the gateway &mdash; see the <b>Update Gateway</b> tab. This is a <b>warning, not a block</b>: the game keeps running while you sort it out.</p>
   <p>The banner names both versions. <b>The one after &ldquo;Expected&rdquo; is the gateway your mod needs</b> &mdash; on mod 1.0.16 that is <code class="inline">0.7.1</code>. If it says the gateway is <b>newer</b> than expected, you have installed the beta gateway by mistake: copy from <code class="inline">gateway/</code> instead.</p>
-  <div class="note danger" style="margin-top:10px"><div class="h">Running gateway 0.9.0 on mod 1.0.16 stops gear saving, silently</div>
-  <p>The two disagree about where gear lives. Saves are accepted and written under a key the mod never reads back, so the save returns success and <b>nothing in any log reports a problem</b> &mdash; players simply stop keeping changes to their loadout.</p>
-  <p><b>Fix:</b> copy <code class="inline">gateway/</code> over your gateway folder and restart. Gear already stored is untouched and comes back.</p></div></div>
+  <div class="note warn" style="margin-top:10px"><div class="h">If you installed gateway 0.9.0 by mistake</div>
+  <p>Gear keeps saving &mdash; 1.0.16 writes the legacy column and 0.9.0 still honours it &mdash; so nothing breaks today. The catch is that starting 0.9.0 copies your gear into its new table once, and that copy then goes stale while players carry on. Update the mod later and gear <b>appears to roll back</b> to the day you started 0.9.0.</p>
+  <p><b>Fix:</b> go back to the 0.7.1 kit &mdash; copy <code class="inline">gateway/</code> from a <b>main</b>-branch clone over your gateway folder and restart. Do it before the next mod release, not after.</p></div></div>
 
   <div class="note"><div class="h">What a healthy gateway start looks like</div>
   <p>The banner at the top names the version, the hive and the database. Check the version first &mdash; it is the fastest way to catch a gateway copied from the wrong folder.</p>
@@ -3602,7 +3601,7 @@ for /f "tokens=2" %%A in ('findstr /b /c:"COMMAND" "%FILE%"') do set "CMD=%%A"</
   <h3>The full versions, if you want them</h3>
   <p class="muted">All three do the same job and ship in this download, in <code class="inline">server/</code>. They add logging, argument checking and clearer errors to the ten-line versions above &mdash; still no dependencies, still nothing fetched at runtime. Click to read before you run.</p>
   <details class="src"><summary>Bash / POSIX shell &mdash; full file (79 lines)</summary>
-  <p class="muted" style="margin:0 14px 8px">Uses only sh, grep, awk, tr and rm. Run from cron or a systemd timer, or with --loop. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/server/wz_watchdog.sh" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
+  <p class="muted" style="margin:0 14px 8px">Uses only sh, grep, awk, tr and rm. Run from cron or a systemd timer, or with --loop. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/server/wz_watchdog.sh" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
   <div class="code"><pre>#!/bin/sh
 # Wasteland-Z server action watchdog — POSIX shell.
 #
@@ -3685,7 +3684,7 @@ fi
 </pre></div>
   </details>
   <details class="src"><summary>Python 3 &mdash; full file (157 lines)</summary>
-  <p class="muted" style="margin:0 14px 8px">Standard library only - os, subprocess, sys, time. Same on Linux and Windows. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/server/wz_watchdog.py" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
+  <p class="muted" style="margin:0 14px 8px">Standard library only - os, subprocess, sys, time. Same on Linux and Windows. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/server/wz_watchdog.py" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
   <div class="code"><pre>#!/usr/bin/env python3
 &quot;&quot;&quot;Wasteland-Z server action watchdog.
 
@@ -3846,7 +3845,7 @@ if __name__ == &quot;__main__&quot;:
 </pre></div>
   </details>
   <details class="src"><summary>Windows batch &mdash; full file (89 lines)</summary>
-  <p class="muted" style="margin:0 14px 8px">Uses only findstr, del and net. Point Task Scheduler at it on a one-minute trigger. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/server/wz_watchdog.cmd" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
+  <p class="muted" style="margin:0 14px 8px">Uses only findstr, del and net. Point Task Scheduler at it on a one-minute trigger. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/server/wz_watchdog.cmd" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
   <div class="code"><pre>@echo off
 setlocal EnableDelayedExpansion
 rem ==========================================================================
