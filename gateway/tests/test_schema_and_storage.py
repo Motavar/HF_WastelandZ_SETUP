@@ -41,6 +41,29 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 GW = os.path.dirname(HERE)
 sys.path.insert(0, GW)
 
+# ----------------------------------------------------------------------
+# config.py is what tells these tests which database to talk to, and it is
+# NEVER in the kit - it holds your database password and gateway key, so it
+# is deliberately not distributed. Run these from your RUNNING gateway
+# folder (the one the service actually uses), not from the downloaded kit.
+#
+# Python's own ModuleNotFoundError does not explain any of that, so say it.
+# ----------------------------------------------------------------------
+if not os.path.exists(os.path.join(GW, "config.py")):
+    raise SystemExit(
+        "\n  No config.py found in:\n    " + GW + "\n"
+        "\n  These tests read your database settings from config.py, which is"
+        "\n  never shipped in the kit - it holds your password and gateway key."
+        "\n"
+        "\n  Run them from your RUNNING gateway folder instead, e.g.:"
+        "\n    cd /opt/wastelandz-gateway   (Linux)"
+        "\n    cd C:\\wastelandz-gateway    (Windows)"
+        "\n    python tests/test_endpoints.py"
+        "\n"
+        "\n  If you only want to read the tests rather than run them, that is"
+        "\n  what they are shipped for - no config.py needed.\n"
+    )
+
 import config      # noqa: E402
 import migrate     # noqa: E402
 import mysql.connector  # noqa: E402

@@ -2,6 +2,18 @@
 
 Two suites. One is safe to run anywhere; the other wipes a database.
 
+> **Run them from your RUNNING gateway folder**, not from the downloaded
+> kit — `/opt/wastelandz-gateway` on Linux, `C:\wastelandz-gateway` on
+> Windows.
+>
+> They read your database settings from `config.py`, and that file is
+> **never shipped in the kit** because it holds your database password and
+> gateway key. Run from the kit folder and both tests stop and say so,
+> rather than failing with an unexplained import error.
+>
+> They are also shipped simply to be **read**. If you only want to see what
+> is being claimed and how it is checked, no `config.py` is needed.
+
 ---
 
 ## `test_endpoints.py` — safe
