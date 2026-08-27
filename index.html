@@ -3085,6 +3085,7 @@ Specifically tell me:
     <tr><td><code class="inline">hf_bases</code> / <code class="inline">hf_base_access</code></td><td>Base ownership and door access (schema only for now)</td></tr>
     <tr><td><code class="inline">money_drops</code></td><td>Dropped cash &mdash; session-only, wiped on boot</td></tr>
     <tr><td><code class="inline">blacklist</code> / <code class="inline">security_events</code></td><td>Bans and the audit log</td></tr>
+    <tr><td><code class="inline">hive_data</code></td><td>Anything that belongs to the <b>hive</b> rather than a player &mdash; supporter tiers, announcements, seasonal state. Same idea as <code class="inline">player_data</code>, without a player.</td></tr>
     <tr><td><code class="inline">schema_migrations</code></td><td>Which schema updates have been applied &mdash; what stops one running twice</td></tr>
   </table>
 
@@ -3095,6 +3096,18 @@ Specifically tell me:
 
   <div class="note warn"><div class="h">Servers sharing gear must share mods</div>
   <p>Gear is stored as item references. If a player carries an item from a server that has a mod to one that does not, that item cannot be restored there. The gateway records every server&rsquo;s addon list precisely so you can compare them <b>before</b> putting servers in the same gear group.</p></div>
+
+  <div class="note tip"><div class="h">Reading it from outside the game &mdash; for bots and admin tools</div>
+  <p>Every namespace is readable over the API, so a Discord bot or dashboard follows the game into new data without the gateway changing again. All of these need your <code class="inline">api_key</code>.</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Endpoint</th><th>Returns</th></tr>
+    <tr><td><code class="inline">GET /api/data/&lt;uid&gt;/&lt;ns&gt;</code></td><td>Every group that player has in one namespace. The right call when you do not know their gear group.</td></tr>
+    <tr><td><code class="inline">GET /api/data/&lt;uid&gt;/&lt;ns&gt;/&lt;group&gt;</code></td><td>One row by its full key. <code class="inline">PUT</code>/<code class="inline">DELETE</code> the same path to write or remove it.</td></tr>
+    <tr><td><code class="inline">GET /api/hivedata/&lt;ns&gt;/&lt;scope&gt;</code></td><td>One hive-level row. <code class="inline">GET /api/hivedata/&lt;ns&gt;</code> lists every scope.</td></tr>
+    <tr><td><code class="inline">GET /api/namespace/&lt;ns&gt;</code></td><td>Every player&rsquo;s rows in one namespace &mdash; leaderboards and exports. Capped at 500; page with <code class="inline">limit</code>/<code class="inline">offset</code>.</td></tr>
+    <tr><td><code class="inline">GET /api/namespaces</code></td><td>What is actually stored, player and hive, with counts. Use this instead of hardcoding names.</td></tr>
+  </table></div>
+  <p class="muted">There is deliberately <b>no</b> endpoint that takes a filter or a query fragment. That would be the general answer, and it would hand anyone holding the API key an arbitrary read of your economy database over a key that travels in a URL.</p></div>
 
   <h4 id="namespaces">How new features get stored &mdash; and why you won&rsquo;t keep updating the gateway</h4>
 
