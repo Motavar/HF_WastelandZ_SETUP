@@ -330,6 +330,49 @@ CREATE TABLE IF NOT EXISTS player_data (
   -- additive line.
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- ============================================================
+-- hive_data - THE SAME IDEA, FOR THINGS THAT ARE NOT A PLAYER
+-- ============================================================
+-- player_data answers "what does this person own". This answers "what
+-- does this hive know" - anything belonging to the community rather
+-- than to one profile: supporter tiers, an announcement, seasonal
+-- state, a Discord guild's settings.
+--
+-- WHY A SEPARATE TABLE AND NOT A SENTINEL PLAYER. Storing it in
+-- player_data under a fake uid like '@hive' works on day one and costs
+-- forever after: every "list the players" query, every leaderboard,
+-- every export has to learn to skip that row, and the one that forgets
+-- shows a fake player to an admin. A NOT NULL player_uid should mean
+-- there is a player.
+--
+-- SAME CONTRACT AS player_data, deliberately: an opaque payload the
+-- gateway never parses, a namespace that is shape-checked but never
+-- enumerated, and a per-row format_ver. A new kind of hive-level data
+-- therefore costs no schema change, no migration and no admin action -
+-- the property player data already has.
+--
+--   scope   ''            not scoped (the norm)
+--           '<map>'       per map
+--           '<guild_id>'  per Discord guild, or any other partition
+--                         the caller decides on
+--
+-- server_id is NOT in the key: hive data belongs to the hive, so two
+-- servers writing one namespace mean one row. The column records the
+-- last writer, for support only.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS hive_data (
+  hive_id      VARCHAR(64)  NOT NULL DEFAULT 'default',
+  namespace    VARCHAR(32)  NOT NULL,            -- 'supporters' | 'announce' | future
+  scope        VARCHAR(64)  NOT NULL DEFAULT '', -- '' = not scoped (the norm)
+  server_id    VARCHAR(64)  NOT NULL,            -- informational: last writer
+  payload      MEDIUMTEXT   NOT NULL,   -- opaque, same reasoning as player_data
+  format_ver   INT          NOT NULL DEFAULT 1,
+  updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                            ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (hive_id, namespace, scope)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================
 -- HIVE_SERVERS table - server registration + mod compliance.
 --

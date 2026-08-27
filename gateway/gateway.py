@@ -2690,6 +2690,341 @@ def data_delete(uid, namespace, group):
 
 
 # ============================================================
+# HIVE-LEVEL STORAGE  (/api/hivedata/...)  +  CROSS-PLAYER READS
+# ============================================================
+# The player_data endpoints above answer "what does THIS player own".
+# These answer the three questions a bot or an admin tool asks that they
+# cannot: what does the hive know, who has a given namespace, and what
+# namespaces exist at all.
+#
+# They exist so that adding a FEATURE never needs a gateway update. A
+# tool that can read any namespace and any hive key does not need a new
+# endpoint when the mod starts storing something new - it needs a new
+# string.
+#
+# WHAT IS DELIBERATELY NOT HERE: a generic query endpoint taking filters
+# or SQL fragments. That is the obvious way to never update the gateway
+# again, and it hands anyone holding the API key an arbitrary read of
+# the economy database - over a key that travels in a query string.
+# Every query below is a fixed shape with a bounded result.
+#
+# The prefix is /api/hivedata/ and NOT /api/hive/ because
+# /api/hive/servers and /api/hive/share_groups already exist: a
+# <namespace> placeholder under /api/hive/ would silently make
+# "servers" and "share_groups" unusable as namespace names.
+# ============================================================
+
+# Reads that walk more than one player are capped. A guardrail, not a
+# tuning knob - a caller that wants everything pages for it.
+NAMESPACE_PAGE_DEFAULT = 100
+NAMESPACE_PAGE_MAX = 500
+
+
+def _page_args():
+    """limit/offset from the query string, clamped.
+
+    Bad input is CLAMPED rather than refused: a report that returns the
+    first 100 rows beats one that 400s because someone typed limit=abc.
+    """
+    try:
+        limit = int(request.args.get("limit", NAMESPACE_PAGE_DEFAULT))
+    except (TypeError, ValueError):
+        limit = NAMESPACE_PAGE_DEFAULT
+    try:
+        offset = int(request.args.get("offset", 0))
+    except (TypeError, ValueError):
+        offset = 0
+    return max(1, min(limit, NAMESPACE_PAGE_MAX)), max(0, offset)
+
+
+@app.route("/api/hivedata/<namespace>/<scope>", methods=["GET"])
+def hivedata_get(namespace, scope):
+    """ONE hive row, addressed by its full key."""
+    if not check_auth("LOAD"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    if not _valid_namespace(namespace):
+        return jsonify({"status": "error", "message": "bad namespace"}), 400
+    if not _valid_scope_map(scope):
+        return jsonify({"status": "error", "message": "bad scope"}), 400
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT namespace, scope, server_id, payload, format_ver, updated_at
+              FROM hive_data
+             WHERE hive_id = %s AND namespace = %s AND scope = %s
+        """, (current_hive_id(), namespace, scope))
+        r = cursor.fetchone()
+        if not r:
+            # NOT an error - nothing has written this key yet.
+            return jsonify({"status": "ok", "namespace": namespace,
+                            "scope": scope, "row": None})
+        return jsonify({"status": "ok", "namespace": namespace, "scope": scope, "row": {
+            "namespace":  r.get("namespace"),
+            "scope":      r.get("scope") or "",
+            "server_id":  r.get("server_id"),
+            "payload":    r.get("payload"),
+            "format_ver": r.get("format_ver"),
+            "updated_at": _iso(r.get("updated_at")),
+        }})
+    except mysql.connector.Error as err:
+        return _db_error("hivedata_get", err)
+    except Exception as err:
+        return _internal_error("hivedata_get", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/hivedata/<namespace>", methods=["GET"])
+def hivedata_list(namespace):
+    """Every scope this hive holds in one namespace."""
+    if not check_auth("LOAD"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    if not _valid_namespace(namespace):
+        return jsonify({"status": "error", "message": "bad namespace"}), 400
+    limit, offset = _page_args()
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT scope, server_id, payload, format_ver, updated_at
+              FROM hive_data
+             WHERE hive_id = %s AND namespace = %s
+             ORDER BY scope
+             LIMIT %s OFFSET %s
+        """, (current_hive_id(), namespace, limit, offset))
+        rows = [{
+            "scope":      r.get("scope") or "",
+            "server_id":  r.get("server_id"),
+            "payload":    r.get("payload"),
+            "format_ver": r.get("format_ver"),
+            "updated_at": _iso(r.get("updated_at")),
+        } for r in cursor.fetchall()]
+        return jsonify({"status": "ok", "namespace": namespace,
+                        "limit": limit, "offset": offset, "rows": rows})
+    except mysql.connector.Error as err:
+        return _db_error("hivedata_list", err)
+    except Exception as err:
+        return _internal_error("hivedata_list", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/hivedata/<namespace>/<scope>", methods=["PUT", "POST"])
+def hivedata_put(namespace, scope):
+    """Upsert ONE hive row.
+
+    server_id is stamped from the listening port and never taken from the
+    caller, exactly as player data does it - informational, and it cannot
+    be forged.
+    """
+    if not check_auth("SAVE"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    if not _valid_namespace(namespace):
+        return jsonify({"status": "error", "message": "bad namespace"}), 400
+    if not _valid_scope_map(scope):
+        return jsonify({"status": "error", "message": "bad scope"}), 400
+
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"status": "error", "message": "JSON body required"}), 400
+    payload = data.get("payload")
+    if payload is None:
+        return jsonify({"status": "error", "message": "payload required"}), 400
+    if isinstance(payload, (list, dict)):
+        payload = json.dumps(payload, separators=(",", ":"))
+    format_ver = int(data.get("format_ver") or 1)
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO hive_data
+                (hive_id, namespace, scope, server_id, payload, format_ver)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                server_id  = VALUES(server_id),
+                payload    = VALUES(payload),
+                format_ver = VALUES(format_ver)
+        """, (current_hive_id(), namespace, scope, current_server_id(),
+              payload, format_ver))
+        conn.commit()
+        print(f"[GATEWAY] hive data saved: ns={namespace} "
+              f"scope={scope or '-'} ({len(payload)} chars)")
+        return jsonify({"status": "ok", "message": "saved"})
+    except mysql.connector.Error as err:
+        return _db_error("hivedata_put", err)
+    except Exception as err:
+        return _internal_error("hivedata_put", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/hivedata/<namespace>/<scope>", methods=["DELETE"])
+def hivedata_delete(namespace, scope):
+    """Delete ONE hive row, addressed by its full key.
+
+    Narrow on purpose: it can never remove more than the single key
+    named, so a mistake costs one scope of one namespace.
+    """
+    if not check_auth("SAVE"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    if not _valid_namespace(namespace):
+        return jsonify({"status": "error", "message": "bad namespace"}), 400
+    if not _valid_scope_map(scope):
+        return jsonify({"status": "error", "message": "bad scope"}), 400
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM hive_data
+             WHERE hive_id = %s AND namespace = %s AND scope = %s
+        """, (current_hive_id(), namespace, scope))
+        conn.commit()
+        removed = cursor.rowcount
+        print(f"[GATEWAY] hive data deleted: ns={namespace} "
+              f"scope={scope or '-'} ({removed} row)")
+        return jsonify({"status": "ok", "deleted": removed})
+    except mysql.connector.Error as err:
+        return _db_error("hivedata_delete", err)
+    except Exception as err:
+        return _internal_error("hivedata_delete", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/namespace/<namespace>", methods=["GET"])
+def namespace_rows(namespace):
+    """Every PLAYER's rows in one namespace, across the hive.
+
+    The cross-player read the per-uid endpoints cannot do: a leaderboard
+    over a custom namespace, an export, "who has perks yet". Bounded by
+    limit/offset; ?group= narrows to one share_group.
+
+    display_name is joined in because every caller that wants this wants
+    to label the rows, and making them call /api/players separately to do
+    it is a second round trip for nothing.
+    """
+    if not check_auth("LOAD"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+    if not _valid_namespace(namespace):
+        return jsonify({"status": "error", "message": "bad namespace"}), 400
+
+    group = request.args.get("group", "")
+    if group and not _valid_group(group):
+        return jsonify({"status": "error", "message": "bad share_group"}), 400
+    limit, offset = _page_args()
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor(dictionary=True)
+        sql = """
+            SELECT d.player_uid, p.display_name, d.share_group, d.scope_map,
+                   d.server_id, d.map_name, d.payload, d.format_ver, d.updated_at
+              FROM player_data d
+              LEFT JOIN players p
+                     ON p.player_uid = d.player_uid AND p.hive_id = d.hive_id
+             WHERE d.hive_id = %s AND d.namespace = %s
+        """
+        args = [current_hive_id(), namespace]
+        if group:
+            sql += " AND d.share_group = %s"
+            args.append(group)
+        sql += " ORDER BY d.player_uid, d.share_group, d.scope_map LIMIT %s OFFSET %s"
+        args.extend([limit, offset])
+        cursor.execute(sql, tuple(args))
+        rows = [{
+            "player_uid":   r.get("player_uid"),
+            "display_name": r.get("display_name") or "",
+            "share_group":  r.get("share_group"),
+            "scope_map":    r.get("scope_map") or "",
+            "server_id":    r.get("server_id"),
+            "map_name":     r.get("map_name") or "",
+            "payload":      r.get("payload"),
+            "format_ver":   r.get("format_ver"),
+            "updated_at":   _iso(r.get("updated_at")),
+        } for r in cursor.fetchall()]
+        return jsonify({"status": "ok", "namespace": namespace,
+                        "share_group": group, "limit": limit,
+                        "offset": offset, "rows": rows})
+    except mysql.connector.Error as err:
+        return _db_error("namespace_rows", err)
+    except Exception as err:
+        return _internal_error("namespace_rows", err)
+    finally:
+        _close(conn)
+
+
+@app.route("/api/namespaces", methods=["GET"])
+def namespaces_list():
+    """What namespaces exist, player-level and hive-level, with counts.
+
+    Discovery. Without it a tool hardcodes the names the mod happens to
+    use today and gets no signal when a release starts storing something
+    new; with it the tool lists what is actually there, and the answer is
+    current by construction.
+    """
+    if not check_auth("LOAD"):
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    conn = get_db()
+    if not conn:
+        return jsonify({"status": "error", "message": "database unavailable"}), 503
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT namespace, COUNT(*) AS rows_total,
+                   COUNT(DISTINCT player_uid) AS players,
+                   MAX(updated_at) AS last_write
+              FROM player_data
+             WHERE hive_id = %s
+             GROUP BY namespace
+             ORDER BY namespace
+        """, (current_hive_id(),))
+        player_ns = [{
+            "namespace":  r.get("namespace"),
+            "rows":       r.get("rows_total"),
+            "players":    r.get("players"),
+            "last_write": _iso(r.get("last_write")),
+        } for r in cursor.fetchall()]
+
+        cursor.execute("""
+            SELECT namespace, COUNT(*) AS rows_total, MAX(updated_at) AS last_write
+              FROM hive_data
+             WHERE hive_id = %s
+             GROUP BY namespace
+             ORDER BY namespace
+        """, (current_hive_id(),))
+        hive_ns = [{
+            "namespace":  r.get("namespace"),
+            "rows":       r.get("rows_total"),
+            "last_write": _iso(r.get("last_write")),
+        } for r in cursor.fetchall()]
+
+        return jsonify({"status": "ok", "hive_id": current_hive_id(),
+                        "player": player_ns, "hive": hive_ns})
+    except mysql.connector.Error as err:
+        return _db_error("namespaces_list", err)
+    except Exception as err:
+        return _internal_error("namespaces_list", err)
+    finally:
+        _close(conn)
+
+
+# ============================================================
 # HIVE REGISTRATION  (/api/hive/...)
 # ============================================================
 # A server announces itself once at OnGameStart (map + share groups + full addon
