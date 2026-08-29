@@ -514,7 +514,12 @@ app.config['JSON_SORT_KEYS'] = False
 # --------------------------------------------------------
 # Version
 # --------------------------------------------------------
-GATEWAY_VERSION = "0.9.0"
+# 0.9.1 (2026-08-29) - NOT a cosmetic bump. Two materially different
+# gateways shipped as 0.9.0: the earlier beta had no owner_dead at all.
+# A mod expecting the death flag would have handshaked CLEAN against it,
+# then read every player as alive and silently restored gear to the dead.
+# The version exists to make exactly that loud, so it had to move.
+GATEWAY_VERSION = "0.9.1"
 
 # --------------------------------------------------------
 # Server roster — multi-server hive.

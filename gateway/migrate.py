@@ -113,6 +113,72 @@ _DESTRUCTIVE = re.compile(
     re.IGNORECASE,
 )
 
+# ------------------------------------------------------------------
+# NON-LOSSY OPT-IN - a destructive VERB that provably cannot lose rows
+# ------------------------------------------------------------------
+# Some migrations must use a destructive verb to do a harmless thing.
+# Widening a PRIMARY KEY is the case that forced this: MySQL has no way
+# to re-key in place, so it needs DROP PRIMARY KEY, and the guard above
+# rightly matches the verb. Narrowing the pattern was NOT an option -
+# that comment says so, and it is correct: the pattern is the only thing
+# standing between an admin and a silent DELETE in some future file.
+#
+# So the migration may OPT IN, and the runner VERIFIES the claim rather
+# than believing it. A header carrying both directives:
+#
+#     -- @auto-apply-nonlossy
+#     -- @verify-rowcount: player_stats_daily, player_sessions
+#
+# is applied without --allow-destructive, but ONLY with all of:
+#
+#   1. A BACKUP IS STILL TAKEN FIRST. The flag was never the protection;
+#      the backup is. Waiving the human gate does not waive that.
+#   2. Row counts for every named table are captured BEFORE and compared
+#      AFTER. If any table lost a single row the migration is NOT
+#      recorded, the gateway refuses to serve, and the message names the
+#      backup. DDL cannot be rolled back in MySQL, so this is detection
+#      plus a recovery path - not prevention.
+#   3. @verify-rowcount is MANDATORY. An opt-in with nothing to check is
+#      just a bypass with better manners, so a migration claiming
+#      non-lossy without naming tables is REFUSED outright.
+#
+# A migration that lies therefore does not get away with it: it either
+# preserves every row, or it is caught immediately and the admin is
+# handed the backup that predates it.
+_AUTO_NONLOSSY = re.compile(r"--\s*@auto-apply-nonlossy\b", re.IGNORECASE)
+_VERIFY_ROWCOUNT = re.compile(r"--\s*@verify-rowcount:\s*([A-Za-z0-9_,\s]+)", re.IGNORECASE)
+
+
+def _nonlossy_claim(sql):
+    """(claims_nonlossy, [tables]) read from the migration's own header."""
+    if not _AUTO_NONLOSSY.search(sql):
+        return False, []
+    m = _VERIFY_ROWCOUNT.search(sql)
+    if not m:
+        return True, []          # claim with no tables -> refused by the caller
+    tables = [t.strip() for t in m.group(1).split(",") if t.strip()]
+    return True, tables
+
+
+def _row_counts(conn, tables):
+    """COUNT(*) per table. A table that does not exist counts as None so a
+    migration that CREATES one is not mistaken for one that emptied it."""
+    out = {}
+    cur = conn.cursor()
+    for t in tables:
+        if not re.match(r"^[A-Za-z0-9_]+$", t):
+            raise ValueError(f"@verify-rowcount names an invalid table: {t!r}")
+        cur.execute(
+            "SELECT COUNT(*) FROM information_schema.TABLES "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s", (t,))
+        if not cur.fetchone()[0]:
+            out[t] = None
+            continue
+        cur.execute(f"SELECT COUNT(*) FROM `{t}`")
+        out[t] = cur.fetchone()[0]
+    return out
+
+
 _FILENAME = re.compile(r"^(\d{4})_(.+)\.sql$", re.IGNORECASE)
 
 
@@ -721,8 +787,26 @@ def run_migrations(conn, db_config, gateway_version, allow_destructive=False, ba
 
         destructive = bool(_DESTRUCTIVE.search(_strip_sql_comments(sql)))
 
+        # A destructive VERB doing a provably harmless thing may opt in, and
+        # the runner checks the claim rather than taking its word. See
+        # _nonlossy_claim above for why this exists and what it does not waive.
+        claims_nonlossy, verify_tables = _nonlossy_claim(sql)
+        auto_nonlossy = False
+        if destructive and claims_nonlossy:
+            if not verify_tables:
+                # An opt-in with nothing to verify is a bypass wearing a hat.
+                print(f"[MIGRATE] {version:04d}_{name} claims @auto-apply-nonlossy "
+                      "but names no @verify-rowcount tables - REFUSED.")
+                held = (
+                    version, name,
+                    "it claims to be non-lossy but gives the runner nothing to verify",
+                    "add  -- @verify-rowcount: <tables>  to the migration, or apply it with --allow-destructive",
+                )
+                break
+            auto_nonlossy = True
+
         if destructive:
-            if not allow_destructive:
+            if not allow_destructive and not auto_nonlossy:
                 print(f"[MIGRATE] {version:04d}_{name} is DESTRUCTIVE and was HELD.")
                 print("[MIGRATE]   It drops or deletes data, so it is never applied unattended.")
                 print("[MIGRATE]   Everything after it is held too, so migrations stay in order.")
@@ -733,6 +817,9 @@ def run_migrations(conn, db_config, gateway_version, allow_destructive=False, ba
                 )
                 break
 
+            # Unconditional: the backup was ALWAYS the real protection, and
+            # auto-applying a non-lossy migration waives the human gate, never
+            # this. A non-lossy claim that cannot be backed up is still held.
             if not backup_done:
                 backup_path = _backup(db_config, os.path.join(base_dir, "backups"))
                 if not backup_path:
@@ -745,7 +832,18 @@ def run_migrations(conn, db_config, gateway_version, allow_destructive=False, ba
                     break
                 backup_done = True
 
-        print(f"[MIGRATE] applying {version:04d}_{name}{' [DESTRUCTIVE]' if destructive else ''} ...")
+        tag = ""
+        if destructive:
+            tag = " [DESTRUCTIVE]"
+            if auto_nonlossy:
+                tag = " [DESTRUCTIVE VERB / VERIFIED NON-LOSSY]"
+        print(f"[MIGRATE] applying {version:04d}_{name}{tag} ...")
+
+        counts_before = {}
+        if auto_nonlossy:
+            counts_before = _row_counts(conn, verify_tables)
+            print(f"[MIGRATE]   rows before: {counts_before}")
+
         try:
             _run_sql(conn, sql)
         except mysql.connector.Error as err:
@@ -755,6 +853,27 @@ def run_migrations(conn, db_config, gateway_version, allow_destructive=False, ba
             print(f"[MIGRATE] {msg}")
             print("[MIGRATE] Not recorded - it will retry on the next start. Refusing to serve.")
             return False, applied_count, msg
+
+        # VERIFY THE CLAIM. DDL cannot be rolled back in MySQL, so this is
+        # detection plus a named recovery path, not prevention - and that is
+        # precisely why the backup above is unconditional.
+        if auto_nonlossy:
+            counts_after = _row_counts(conn, verify_tables)
+            lost = {t: (counts_before.get(t), counts_after.get(t))
+                    for t in verify_tables
+                    if counts_before.get(t) is not None
+                    and counts_after.get(t) is not None
+                    and counts_after[t] < counts_before[t]}
+            if lost:
+                msg = (f"migration {version:04d}_{name} declared itself NON-LOSSY and LOST ROWS: "
+                       + ", ".join(f"{t} {b} -> {a}" for t, (b, a) in lost.items()))
+                print("[MIGRATE] " + "=" * 62)
+                print(f"[MIGRATE] {msg}")
+                print("[MIGRATE] NOT recorded. The gateway refuses to serve.")
+                print(f"[MIGRATE] A backup taken BEFORE this migration is at: {backup_path}")
+                print("[MIGRATE] " + "=" * 62)
+                return False, applied_count, msg
+            print(f"[MIGRATE]   rows after:  {counts_after}  (non-lossy confirmed)")
 
         _record(conn, version, name, gateway_version)
         applied_count += 1

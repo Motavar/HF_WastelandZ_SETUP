@@ -43,6 +43,16 @@
 --   player_sessions - the collision landed on position and is_alive,
 --   i.e. on where a player is standing and whether they are alive.
 --
+-- APPLIES WITHOUT --allow-destructive, because it opts in below and the
+-- runner VERIFIES the claim instead of trusting it: a backup is still
+-- taken first, row counts for both tables are captured before and
+-- compared after, and if either loses a single row the migration is not
+-- recorded, the gateway refuses to serve, and the message names the
+-- backup. The opt-in waives the human gate, never the backup.
+--
+-- @auto-apply-nonlossy
+-- @verify-rowcount: player_stats_daily, player_sessions
+--
 -- IDEMPOTENT. Each statement is guarded on the CURRENT key shape read
 -- from information_schema, so a re-run is a no-op rather than an error.
 -- MySQL has no "ALTER TABLE ... DROP PRIMARY KEY IF EXISTS".

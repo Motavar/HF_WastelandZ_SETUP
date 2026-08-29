@@ -1,5 +1,12 @@
 # Secrets — never commit
 gateway/config.py
+# ...and every backup of it. The gateway's self-healing config writer
+# creates config.py.bak-* files that carry a REAL DB_PASSWORD and
+# API_KEY. This repo is PUBLIC, so the bare filename is not enough.
+gateway/config.py.bak*
+gateway/config.py.*.bak
+gateway/*.log
+gateway/backups/
 
 # Local database scratch files
 *.db
