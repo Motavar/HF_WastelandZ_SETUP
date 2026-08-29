@@ -1077,7 +1077,8 @@ def get_player(uid):
             # an exact-match point lookup instead of a range scan that a
             # future map-scoped namespace could wander into.
             cursor.execute("""
-                SELECT server_id, share_group, map_name, format_ver, payload, updated_at
+                SELECT server_id, share_group, map_name, format_ver, payload,
+                       owner_dead, updated_at
                   FROM player_data
                  WHERE player_uid = %s AND hive_id = %s
                    AND share_group = %s AND namespace = 'inventory'
@@ -1090,6 +1091,12 @@ def get_player(uid):
                 player["inventory_group"]        = _win.get("share_group")
                 player["inventory_map"]          = _win.get("map_name") or ""
                 player["inventory_format_ver"]   = _win.get("format_ver")
+                # Travels WITH the gear it guards, from the same row, in the
+                # same read. No second query and no way for the two to
+                # disagree - which is the failure that put it here: is_alive
+                # lives on another table at another scope, and the mod had to
+                # remember to consult it. This one arrives attached.
+                player["owner_dead"]             = int(_win.get("owner_dead") or 0)
                 print(f"[GATEWAY] gear resolved: {uid} <- {_win.get('server_id')} "
                       f"group={_win.get('share_group')} map='{_win.get('map_name')}' "
                       f"(asked group={_gear_group} map='{_my_map}')")
@@ -1100,6 +1107,8 @@ def get_player(uid):
                 player["inventory"]            = None
                 player["inventory_source"]     = ""
                 player["inventory_format_ver"] = 0
+                # No row = nothing stored here = nobody has died here.
+                player["owner_dead"]           = 0
         player["first_join"] = _iso(prof.get("first_join"))
         player["last_seen"] = _iso(prof.get("last_seen"))
         if sess:
@@ -1466,9 +1475,14 @@ def get_player_stats(uid):
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
+        # hive_id is part of the key as of 0.9 (migration 0090 part 2), and it
+        # belongs in the WHERE for the same reason: without it this read could
+        # return another hive's row for a server_id both hives happen to use.
+        # The write has always supplied hive_id; only the read was missing it.
         cursor.execute(
-            "SELECT * FROM player_stats_daily WHERE player_uid = %s AND server_id = %s AND stat_date = %s",
-            (uid, sid, stat_date))
+            "SELECT * FROM player_stats_daily "
+            "WHERE player_uid = %s AND hive_id = %s AND server_id = %s AND stat_date = %s",
+            (uid, current_hive_id(), sid, stat_date))
         row = cursor.fetchone()
         if row:
             row["stat_date"] = _iso(row.get("stat_date"))
@@ -2585,9 +2599,64 @@ def data_put(uid, namespace, group):
     if not data:
         return jsonify({"status": "error", "message": "JSON body required"}), 400
 
+    # owner_dead (0.9) - "the character who owns this state is dead".
+    # Accepted here rather than on a route of its own, because it is a
+    # property OF this row and belongs on the write that owns the row.
+    #
+    # The gateway does not interpret it. It does not know that death
+    # forfeits gear or that a garage survives death - the MOD decides
+    # which namespaces death touches and simply says so.
+    owner_dead = data.get("owner_dead")
+    if owner_dead is not None:
+        try:
+            owner_dead = 1 if int(owner_dead) else 0
+        except (TypeError, ValueError):
+            return jsonify({"status": "error", "message": "owner_dead must be 0 or 1"}), 400
+
     payload = data.get("payload")
+
+    # FLAG-ONLY UPDATE. A body carrying owner_dead and no payload updates
+    # just that column and leaves the stored gear untouched.
+    #
+    # This exists so DEATH does not have to rewrite the loadout. Flipping
+    # one bit by re-uploading a few thousand characters of gear is both
+    # wasteful and risky: the death path runs while the character is being
+    # torn down, which is exactly when a serialize returns a partial read.
+    # Sending no payload cannot corrupt what is stored.
     if payload is None:
-        return jsonify({"status": "error", "message": "payload required"}), 400
+        if owner_dead is None:
+            return jsonify({"status": "error", "message": "payload required"}), 400
+
+        scope_map_f = (data.get("scope_map") or "")[:64]
+        if not _valid_scope_map(scope_map_f):
+            return jsonify({"status": "error", "message": "bad scope_map"}), 400
+
+        conn = get_db()
+        if not conn:
+            return jsonify({"status": "error", "message": "database unavailable"}), 503
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE player_data SET owner_dead = %s
+                 WHERE player_uid = %s AND hive_id = %s AND share_group = %s
+                   AND namespace = %s AND scope_map = %s
+            """, (owner_dead, uid, current_hive_id(), group, namespace, scope_map_f))
+            conn.commit()
+            # rowcount 0 is NOT an error. A player who has never stored
+            # anything in this namespace has no row to flag, and creating an
+            # empty one to hold a flag would invent state they do not have.
+            # No row already reads as alive.
+            print(f"[GATEWAY] owner_dead={owner_dead}: {uid} ns={namespace} "
+                  f"group={group} (rows={cursor.rowcount})")
+            return jsonify({"status": "ok", "message": "flag updated",
+                            "rows": cursor.rowcount})
+        except mysql.connector.Error as err:
+            return _db_error("data_put_flag", err)
+        except Exception as err:
+            return _internal_error("data_put_flag", err)
+        finally:
+            _close(conn)
+
     if isinstance(payload, (list, dict)):
         payload = json.dumps(payload, separators=(",", ":"))
 
@@ -2617,19 +2686,34 @@ def data_put(uid, namespace, group):
         # Safe to re-run: a single idempotent upsert of absolute values,
         # so replaying it writes the same row - there is nothing to
         # double.
+        # owner_dead is only touched when the caller SAYS so.
+        #
+        # Omitting it must leave the stored flag alone: an ordinary gear
+        # save happens every few seconds, and folding a silent "= 0" into
+        # it would resurrect a dead character on the next autosave. A new
+        # row still inserts 0, because a row that has never existed
+        # belongs to nobody who has died.
+        if owner_dead is None:
+            dead_insert = 0
+            dead_update = ""
+        else:
+            dead_insert = owner_dead
+            dead_update = "owner_dead = VALUES(owner_dead),"
+
         def _write():
             cursor.execute("""
                 INSERT INTO player_data
                     (player_uid, hive_id, share_group, namespace, scope_map,
-                     server_id, map_name, payload, format_ver)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     server_id, map_name, payload, format_ver, owner_dead)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     server_id   = VALUES(server_id),
                     map_name    = VALUES(map_name),
                     payload     = VALUES(payload),
+                    """ + dead_update + """
                     format_ver  = VALUES(format_ver)
             """, (uid, current_hive_id(), group, namespace, scope_map,
-                  sid, map_name, payload, format_ver))
+                  sid, map_name, payload, format_ver, dead_insert))
             conn.commit()
 
         _db_retry(_write, "data_put")

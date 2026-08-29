@@ -72,6 +72,13 @@ CREATE TABLE IF NOT EXISTS players (
   arrival_grace     TINYINT      NOT NULL DEFAULT 0,  -- one-shot cross-server arrival flag
   first_join        DATETIME     DEFAULT CURRENT_TIMESTAMP,
   last_seen         DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  -- SOFT DELETE for the stale-account policy. NULL = active.
+  -- A purge marks this and stops; removing rows is a separate, deliberate,
+  -- opt-in step over rows already marked. A date-driven hard DELETE across
+  -- money, bank, gear, garages and bases is a data-loss machine the first
+  -- time a clock, a timezone or a last_seen regression is wrong - and this
+  -- file's own rule is that the unattended path never destroys data.
+  deleted_at        DATETIME     DEFAULT NULL,
   PRIMARY KEY (player_uid, hive_id)
 ) ENGINE=InnoDB;
 
@@ -95,8 +102,19 @@ CREATE TABLE IF NOT EXISTS player_sessions (
   recover_veh_prefab VARCHAR(256) DEFAULT NULL,       -- vehicle to re-spawn via /recover
   recover_veh_class  VARCHAR(16)  DEFAULT NULL,       -- GROUND / HELI / PLANE / BOAT
   recover_session_id VARCHAR(64)  DEFAULT NULL,       -- server session the driver got in during
+  -- The boot session that last WROTE this row. Lets a load tell "you played
+  -- here earlier this run" from "this server has restarted since you left",
+  -- which nothing could distinguish before. Only ever written by a SAVE, so
+  -- repeated loads during one arrival cannot disturb it - the property that
+  -- arrival_grace exists to work around. See PLAYER_GEAR_STATE_CARD.md S8.
+  boot_session_id    VARCHAR(64)  DEFAULT NULL,
+  first_join         DATETIME     DEFAULT CURRENT_TIMESTAMP,  -- first seen ON THIS SERVER
   last_seen          DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (player_uid, server_id)
+  -- hive_id IS in the key. It is on the row either way, but leaving it out
+  -- let two hives that share a server_id string collide on one row - and
+  -- server_id is an admin-chosen string, so "dev-01" in two hives is not
+  -- exotic. The collision landed on position and is_alive.
+  PRIMARY KEY (player_uid, hive_id, server_id)
 ) ENGINE=InnoDB;
 
 -- ============================================================
@@ -136,7 +154,13 @@ CREATE TABLE IF NOT EXISTS player_stats_daily (
   longest_life_sec INT          DEFAULT 0,
   hvt_kills        INT          DEFAULT 0,
   missions_completed INT        DEFAULT 0,
-  PRIMARY KEY (player_uid, server_id, stat_date),
+  -- hive_id IS in the key. Without it two hives sharing a server_id string
+  -- collided, and because this table is written with ON DUPLICATE KEY UPDATE
+  -- the collision was SILENT AND CUMULATIVE: kills, deaths, playtime and
+  -- money were summed across both hives into one row, which then kept
+  -- whichever hive inserted it first. Widening a key can only SPLIT rows,
+  -- never merge them, so correcting it loses nothing.
+  PRIMARY KEY (player_uid, hive_id, server_id, stat_date),
   INDEX idx_date (stat_date),
   INDEX idx_player_hive (player_uid, hive_id)
 ) ENGINE=InnoDB;
@@ -313,6 +337,24 @@ CREATE TABLE IF NOT EXISTS player_data (
                                         -- sorted) and the mod parses this by hand,
                                         -- whitespace- and order-sensitive.
   format_ver   INT          NOT NULL DEFAULT 1,
+  -- Is the character who owns THIS state dead? 0 = alive (the default, so an
+  -- upgrade marks nobody dead), 1 = died and has not respawned into this gear
+  -- set yet.
+  --
+  -- PER NAMESPACE ON PURPOSE, and that is the model rather than a compromise:
+  -- the mod sets it on 'inventory' because gear is forfeit on death, and
+  -- NEVER on 'garage', because a car parked before you died is still yours
+  -- afterwards. settings, perks and anything future are untouched.
+  --
+  -- The gateway stores this and never interprets it. The MOD decides which
+  -- namespaces death touches.
+  --
+  -- WHY IT LIVES HERE. is_alive is on player_sessions, keyed by SERVER, and
+  -- the load answers is_alive = 1 when the server being joined has no row.
+  -- So death on one server was invisible to the next and cross-server gear
+  -- restore handed the pre-death loadout back. Death is a property of the
+  -- character and its gear, so it is stored at the gear's scope.
+  owner_dead   TINYINT      NOT NULL DEFAULT 0,
   updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                             ON UPDATE CURRENT_TIMESTAMP,
   -- 256 chars = 1024 bytes under utf8mb4, well inside InnoDB's 3072-byte
@@ -637,4 +679,67 @@ SET @c = (SELECT COUNT(*) FROM information_schema.STATISTICS
 SET @ddl = IF(@c = 0,
     'ALTER TABLE player_stats_daily ADD INDEX idx_player_hive (player_uid, hive_id)',
     'SELECT "player_stats_daily.idx_player_hive present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ============================================================
+-- GATEWAY 0.9 ADDITIONS (2026-08-28)
+-- ============================================================
+-- All four are ADD COLUMN with an information_schema guard, so they are
+-- additive, idempotent and safe to run unattended on every boot - the
+-- rule this whole section lives by.
+--
+-- The two PRIMARY KEY corrections that ship alongside these are NOT here
+-- and cannot be: a re-key is DROP PRIMARY KEY, and nothing in this file
+-- is allowed to drop anything. They live in migration 0090, which an
+-- admin opts into and which takes a backup first.
+
+-- ---- player_data.owner_dead (death at gear-set scope) ----------------
+-- 0 = alive. Every existing row gets the default, so the upgrade marks
+-- NOBODY dead - which is the required behaviour, not a happy accident.
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_data' AND COLUMN_NAME = 'owner_dead');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_data ADD COLUMN owner_dead TINYINT NOT NULL DEFAULT 0',
+    'SELECT "player_data.owner_dead present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- player_sessions.boot_session_id (which run wrote this row) ------
+-- NULL on every existing row, and NULL reads as "unknown, assume the
+-- server has restarted" - the forgiving direction, matching
+-- HFServerSession.HasRestartedSince() which already treats an empty id
+-- that way. No backfill needed or wanted.
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_sessions' AND COLUMN_NAME = 'boot_session_id');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_sessions ADD COLUMN boot_session_id VARCHAR(64) DEFAULT NULL',
+    'SELECT "player_sessions.boot_session_id present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- player_sessions.first_join (first seen ON THIS SERVER) ----------
+-- Existing rows get CURRENT_TIMESTAMP, so for a database that predates
+-- this column "first join" reads as the upgrade date rather than the
+-- true first visit. That is unavoidable - the information was never
+-- recorded - and it is honest going forward. players.first_join already
+-- carries the hive-level answer and is not affected.
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_sessions' AND COLUMN_NAME = 'first_join');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_sessions ADD COLUMN first_join DATETIME DEFAULT CURRENT_TIMESTAMP',
+    'SELECT "player_sessions.first_join present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- players.deleted_at (soft delete for the stale-account policy) ---
+-- NULL = active. Nothing writes this yet; the purge job and what
+-- deletion MEANS for a player's base, stored vehicles and outstanding
+-- money are policy that still needs its own pass. The column is the
+-- cheap part.
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'players' AND COLUMN_NAME = 'deleted_at');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE players ADD COLUMN deleted_at DATETIME DEFAULT NULL',
+    'SELECT "players.deleted_at present" AS msg');
 PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
