@@ -543,8 +543,8 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="op"><h4>Restart MySQL</h4><p><span class="kbd">Win</span>+<span class="kbd">R</span> &rarr; type <code class="inline">services.msc</code> &rarr; find <b>MySQL80</b> &rarr; right-click &rarr; Restart.</p></div>
   </div>
   <h3>Back up your data (do this regularly)</h3>
-  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p --result-file=wastelandz_backup.sql wastelandz</pre></div>
-  <p class="muted">Keep a copy of that file somewhere safe. It is your whole server&rsquo;s save.</p><p><strong>Why <code class="inline">--result-file</code> and not <code class="inline">&gt;</code>?</strong> Because <code class="inline">mysqldump</code> can print a warning &mdash; the common one is about <em>PROCESS privilege / dump tablespaces</em> &mdash; and with <code class="inline">&gt;</code> that warning is written <em>into the .sql file</em>. MySQL then hits it as a syntax error and the restore stops dead, having written nothing. The command still exits 0, so the backup looks fine until the day you need it. <code class="inline">--result-file</code> writes the dump directly and sends warnings to the screen instead, so they can never end up inside it.</p>
+  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wastelandz_backup.sql</pre></div>
+  <p class="muted">Keep a copy of that file somewhere safe. It is your whole server&rsquo;s save.</p>
 
   <h3>Troubleshooting</h3>
   <ul class="clean muted">
@@ -914,8 +914,8 @@ grep -n <span class="s">"User"</span> /etc/systemd/system/wz-server1.service    
   </div>
 
   <h3>Back up your data (do this regularly)</h3>
-  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p --result-file=wastelandz_backup_$(date +%F).sql wastelandz</pre></div>
-  <p class="muted">That file is your whole server&rsquo;s save — keep copies somewhere safe.</p><p><strong>Why <code class="inline">--result-file</code> and not <code class="inline">&gt;</code>?</strong> <code class="inline">mysqldump</code> can print a warning, and with <code class="inline">&gt;</code> it lands <em>inside the .sql file</em>. The restore then fails on a syntax error having written nothing &mdash; while the backup command exited 0 and looked successful. <code class="inline">--result-file</code> makes that impossible.</p>
+  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wastelandz_backup_$(date +%F).sql</pre></div>
+  <p class="muted">That file is your whole server&rsquo;s save — keep copies somewhere safe.</p>
 
   <hr class="rule">
   <div class="part-head"><span class="part-badge">Part 3</span><h2>Two or three servers on one box</h2></div>
@@ -1431,8 +1431,8 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="op"><h4>Restart MySQL</h4><p><span class="kbd">Win</span>+<span class="kbd">R</span> &rarr; type <code class="inline">services.msc</code> &rarr; find <b>MySQL80</b> &rarr; right-click &rarr; Restart.</p></div>
   </div>
   <h3>Back up your data (do this regularly)</h3>
-  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p --result-file=wastelandz_backup.sql wastelandz</pre></div>
-  <p class="muted">Keep a copy of that file somewhere safe. It is your whole server&rsquo;s save.</p><p><strong>Why <code class="inline">--result-file</code> and not <code class="inline">&gt;</code>?</strong> Because <code class="inline">mysqldump</code> can print a warning &mdash; the common one is about <em>PROCESS privilege / dump tablespaces</em> &mdash; and with <code class="inline">&gt;</code> that warning is written <em>into the .sql file</em>. MySQL then hits it as a syntax error and the restore stops dead, having written nothing. The command still exits 0, so the backup looks fine until the day you need it. <code class="inline">--result-file</code> writes the dump directly and sends warnings to the screen instead, so they can never end up inside it.</p>
+  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wastelandz_backup.sql</pre></div>
+  <p class="muted">Keep a copy of that file somewhere safe. It is your whole server&rsquo;s save.</p>
 
   <h3>Troubleshooting</h3>
   <ul class="clean muted">
@@ -1803,8 +1803,8 @@ grep -n <span class="s">"User"</span> /etc/systemd/system/wz-server1.service    
   </div>
 
   <h3>Back up your data (do this regularly)</h3>
-  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p --result-file=wastelandz_backup_$(date +%F).sql wastelandz</pre></div>
-  <p class="muted">That file is your whole server&rsquo;s save — keep copies somewhere safe.</p><p><strong>Why <code class="inline">--result-file</code> and not <code class="inline">&gt;</code>?</strong> <code class="inline">mysqldump</code> can print a warning, and with <code class="inline">&gt;</code> it lands <em>inside the .sql file</em>. The restore then fails on a syntax error having written nothing &mdash; while the backup command exited 0 and looked successful. <code class="inline">--result-file</code> makes that impossible.</p>
+  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wastelandz_backup_$(date +%F).sql</pre></div>
+  <p class="muted">That file is your whole server&rsquo;s save — keep copies somewhere safe.</p>
 
   <hr class="rule">
   <div class="part-head"><span class="part-badge">Part 3</span><h2>Two or three servers on one box</h2></div>
