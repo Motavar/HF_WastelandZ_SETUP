@@ -3125,6 +3125,36 @@ curl http://127.0.0.1:5000/api/ping</pre></div>
     <p class="muted">On the first start after a schema change you will see the change applied instead, once. On Linux you can watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
   </div>
 
+  <div class="step"><span class="n">6</span>
+    <h4>Where your database backup went</h4>
+    <p>Before the gateway changes anything it cannot undo, it <b>backs your database up by itself</b>. You do not ask for it and you cannot forget it &mdash; if the backup fails, the change does not happen.</p>
+    <p>It prints a block you cannot miss:</p>
+    <div class="code"><pre>======================================================================
+  DATABASE BACKED UP BEFORE MIGRATING
+======================================================================
+  Folder : .../gateway/backups
+  File   : wastelandz_premigration_20260829-192231.sql  (340,372 bytes)
+  Receipt: wastelandz_premigration_20260829-192231.sql.RESTORE.txt   &lt;- what is in it + how to restore
+  Saved  : players 3, player_sessions 3, player_data 5, transactions 1,764, player_stats_daily 116
+======================================================================</pre></div>
+
+    <p>Two files land in <code class="inline">gateway/backups/</code>, side by side:</p>
+    <ul>
+      <li><b>The <code class="inline">.sql</code> dump</b> &mdash; your whole database. Schema, data, routines and triggers. A complete restore point, not a partial one.</li>
+      <li><b>A <code class="inline">.RESTORE.txt</code> receipt</b> &mdash; plain text, written next to the dump so the two cannot be separated. It says when the backup was taken, why, <b>how many rows of each table are in it</b>, and the exact command to put it back.</li>
+    </ul>
+
+    <p class="muted">Open the <code class="inline">.RESTORE.txt</code> in any text editor. It is written for the moment you actually need it, when nobody wants to go looking for instructions.</p>
+
+    <p>To restore one, stop the gateway first and then:</p>
+    <div class="code"><pre><span class="c"># Linux and Windows &mdash; same command, run it from the backups folder</span>
+mysql -h localhost -P 3306 -u wastelandz -p wastelandz &lt; "wastelandz_premigration_20260829-192231.sql"</pre></div>
+    <p class="muted">One line, no line-continuation character &mdash; Linux shells continue a line with a trailing <code class="inline">\</code> and Windows <code class="inline">cmd</code> uses <code class="inline">^</code>, so a wrapped version would be wrong on one of them. On Windows run it from a Command Prompt where <code class="inline">mysql.exe</code> is on your PATH; on Linux any shell will do. Start the gateway afterwards &mdash; it brings a restored database back up to date on its own.</p>
+
+    <div class="note"><div class="h">Restoring rewinds the update record too</div>
+      <p>The dump includes <code class="inline">schema_migrations</code>, the table that records which database updates have run. So restoring rewinds <b>both</b> your data and the record of what had been applied &mdash; which is what you want, because those two must never disagree. Start the gateway and it simply applies them again.</p></div>
+  </div>
+
   <div class="note tip"><div class="h">Roll back if something&rsquo;s off</div><p>Restore the backup and restart:</p>
     <div class="code" style="margin-top:8px"><pre><span class="c"># Linux</span>
 cp gateway.py.bak gateway.py && sudo systemctl restart wz-gateway
