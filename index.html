@@ -3121,7 +3121,7 @@ sudo systemctl status wz-gateway --no-pager
 curl http://127.0.0.1:5000/api/ping</pre></div>
     <p>You want <code class="inline">status: ok</code> from the ping, and these two lines in the console:</p>
     <div class="code"><pre>[SCHEMA] setup_database.sql applied (idempotent; no-op when current).
-[MIGRATE] Schema up to date (version 90).</pre></div>
+[MIGRATE] Schema up to date (version 93).</pre></div>
     <p class="muted">On the first start after a schema change you will see the change applied instead, once. On Linux you can watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
   </div>
 
@@ -3551,11 +3551,20 @@ max_connections = 500</pre></div></div>
   <div class="note"><div class="h">What a healthy gateway start looks like &mdash; from 0.9.0</div>
   <p>Two lines near the top tell you the database is correct. If you see both, the schema is current and you can stop reading.</p>
   <div class="code"><pre>[SCHEMA] setup_database.sql applied (idempotent; no-op when current).
-[MIGRATE] Schema up to date (version 90).</pre></div>
+[MIGRATE] Schema up to date (version 93).</pre></div>
   <p>On the <b>first</b> start after upgrading you will see the migration run instead, which is normal and happens once:</p>
-  <div class="code"><pre>[MIGRATE] 1 migration(s) pending; schema is at 0.
+  <div class="code"><pre>[MIGRATE] 3 migration(s) pending; schema is at 0.
 [MIGRATE] applying 0090_backfill_inventory ...
-[MIGRATE]   ok -&gt; schema now at 90</pre></div>
+[MIGRATE]   ok -&gt; schema now at 90
+[MIGRATE] applying 0091_key_by_hive [DESTRUCTIVE] ...
+[MIGRATE]   ok -&gt; schema now at 91
+[MIGRATE] applying 0092_position_scope_by_realm_and_map [DESTRUCTIVE VERB / VERIFIED NON-LOSSY] ...
+[MIGRATE]   rows before: {'player_sessions': 3}
+[MIGRATE]   rows after:  {'player_sessions': 3}  (non-lossy confirmed)
+[MIGRATE]   ok -&gt; schema now at 92
+[MIGRATE] applying 0093_move_weapon_to_session ...
+[MIGRATE]   ok -&gt; schema now at 93</pre></div>
+  <p class="muted"><b>0092 counts rows before and after and prints both.</b> It changes a primary key, which needs a destructive verb to express, so it takes a backup first and verifies nothing was lost &mdash; if a single row went missing it refuses to record itself and the gateway will not serve. That is the check working, not a problem. <b>0091 is the only one that needs <code class="inline">--allow-destructive</code></b>; the rest apply on a normal start.</p>
   <p class="muted">The gateway now applies the schema file itself on <b>every</b> start. It is written so that running it again changes nothing, and so that it can only ever add &mdash; it never drops or deletes. You do not run any SQL by hand, and there is no step to forget.</p></div>
 
   <div class="note warn"><div class="h">Symptom: <code class="inline">REFUSING TO START</code> &mdash; schema is INCOMPLETE</div>
