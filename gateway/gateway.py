@@ -519,7 +519,30 @@ app.config['JSON_SORT_KEYS'] = False
 # A mod expecting the death flag would have handshaked CLEAN against it,
 # then read every player as alive and silently restored gear to the dead.
 # The version exists to make exactly that loud, so it had to move.
-GATEWAY_VERSION = "0.9.1"
+# 0.9.2 (2026-08-29) — position is now scoped per realm and per map.
+# player_sessions gained share_group, map_name joined the PRIMARY KEY, and
+# every read and write of that table now carries all five key columns.
+#
+# The number MUST move with that. A 0.9.1 mod against this gateway sends no
+# gear_group on save, so every position collapses into ALPHA; a 0.9.2 mod
+# against a 0.9.1 gateway has its gear_group ignored and nothing is scoped.
+# Both are SILENT degradations, and the version handshake is the only thing
+# that turns either into a visible error. Two different gateways shipping as
+# 0.9.0 is exactly how the owner_dead divergence went unnoticed.
+# 0.9.3 (2026-08-30) - the held weapon moved to player_sessions.
+#
+# players.weapon is HIVE scoped: one value for the whole account, while gear is
+# REALM scoped. A player holding an AK in ALPHA and an M249 in BRAVO had the
+# second overwrite the first, and swapping back restored a weapon their ALPHA
+# loadout did not contain - proven in a host log at 20:48, where the client
+# polled for three seconds and correctly refused to equip a weapon that was not
+# in its slots. player_sessions.weapon inherits the realm+map key from 0092.
+#
+# The number moves because a 0.9.2 mod against this gateway reads the session
+# weapon that nothing has written yet, and a 0.9.3 mod against a 0.9.2 gateway
+# gets the hive-wide value back. Both degrade quietly; the handshake is what
+# makes either visible.
+GATEWAY_VERSION = "0.9.3"
 
 # --------------------------------------------------------
 # Server roster — multi-server hive.
@@ -1016,7 +1039,29 @@ def get_player(uid):
                 (sid, uid, current_hive_id()))
         conn.commit()
 
-        cursor.execute("SELECT * FROM player_sessions WHERE player_uid = %s AND server_id = %s", (uid, sid))
+        # Read the realm + map the mod is asking about BEFORE anything uses
+        # them. These moved up here when the session SELECT below started
+        # filtering on them: they used to be defined further down, so the
+        # query referenced them before assignment and get_player raised
+        # UnboundLocalError on every single load. The save quarantine caught
+        # the fallout - a failed load is never VERIFIED, so nothing was
+        # written - but every player saw a blank profile until it was fixed.
+        #
+        # BACKWARD COMPATIBLE: a mod that sends no gear_group falls back to
+        # the ALPHA default, which is what the resolver below already did.
+        _gear_group = request.args.get("gear_group", "")
+        _my_map     = request.args.get("map", "")
+
+        # FILTER BY EVERY KEY COLUMN. This read carried only uid + server_id
+        # while the PRIMARY KEY also holds hive_id (and, from this release,
+        # share_group and map_name), so it returned an ARBITRARY row as soon
+        # as more than one existed. The realm and map come from the query
+        # params the mod already sends on every load.
+        cursor.execute(
+            "SELECT * FROM player_sessions "
+            "WHERE player_uid = %s AND hive_id = %s AND server_id = %s "
+            "  AND share_group = %s AND map_name = %s",
+            (uid, current_hive_id(), sid, _gear_group or "ALPHA", _my_map or ""))
         sess = cursor.fetchone()
 
         player = dict(prof)
@@ -1056,8 +1101,6 @@ def get_player(uid):
         # legacy players.inventory column, so an older mod against a newer
         # gateway keeps working.
         # ------------------------------------------------------------------
-        _gear_group = request.args.get("gear_group", "")
-        _my_map     = request.args.get("map", "")
 
         if _gear_group:
             # ONE ROW, no ordering, no fallback clause (migration 0088).
@@ -1127,6 +1170,17 @@ def get_player(uid):
             player["recover_veh_prefab"] = sess.get("recover_veh_prefab")
             player["recover_veh_class"]  = sess.get("recover_veh_class")
             player["recover_session_id"] = sess.get("recover_session_id")
+            # THE HELD WEAPON NOW COMES FROM THE SESSION ROW, which is keyed by
+            # realm and map - so each realm returns what THAT realm's character
+            # was holding. players.weapon is hive-scoped and is DEPRECATED: one
+            # value shared across every realm is what made a BRAVO weapon come
+            # back in an ALPHA loadout that did not contain it.
+            #
+            # Falls back to the deprecated column only while it is still the
+            # only thing an older row has, so an upgrade mid-session does not
+            # blank someone's weapon before 0093 has seeded it.
+            if sess.get("weapon"):
+                player["weapon"] = sess.get("weapon")
         else:
             player["map_name"] = None
             player["pos_x"] = player["pos_y"] = player["pos_z"] = None
@@ -1171,6 +1225,14 @@ def save_player(uid):
     rotation_yaw = data.get("rotation_yaw")
     stance = data.get("stance", 0)
     is_alive = data.get("is_alive", 1)
+
+    # POSITION IS SCOPED PER REALM AND MAP (2026-08-29).
+    # The load already sends gear_group + map as query params; the save now
+    # carries the same pair so a write lands on the row the next load reads.
+    # A mod sending neither falls back to ALPHA and '', matching get_player's
+    # own gear_group fallback - read and write MUST agree on the default, or
+    # they address different rows and the player's position vanishes.
+    save_group = (data.get("gear_group") or "ALPHA")[:32]
 
     inventory = data.get("inventory")
     if isinstance(inventory, (list, dict)):
@@ -1227,7 +1289,17 @@ def save_player(uid):
                         display_name = VALUES(display_name),
                         money = VALUES(money),
                         faction = VALUES(faction),
-                        weapon = VALUES(weapon),
+                        -- AN ABSENT WEAPON MUST NOT DESTROY THE STORED ONE.
+                        -- The mod omits this field entirely when it has no
+                        -- weapon to report, so VALUES(weapon) is NULL and a
+                        -- plain assignment wiped a perfectly good value. That
+                        -- is why every player's weapon kept reverting to NULL.
+                        -- Same rule SaveInventory already follows by skipping
+                        -- an empty payload: an empty read never overwrites a
+                        -- known-good one. Sending an explicit empty string
+                        -- still clears it, so "I am holding nothing" remains
+                        -- expressible.
+                        weapon = COALESCE(VALUES(weapon), weapon),
                         inventory = VALUES(inventory),
                         bank = VALUES(bank),
                         current_server_id = VALUES(current_server_id),
@@ -1242,18 +1314,38 @@ def save_player(uid):
                         display_name = VALUES(display_name),
                         money = VALUES(money),
                         faction = VALUES(faction),
-                        weapon = VALUES(weapon),
+                        -- AN ABSENT WEAPON MUST NOT DESTROY THE STORED ONE.
+                        -- The mod omits this field entirely when it has no
+                        -- weapon to report, so VALUES(weapon) is NULL and a
+                        -- plain assignment wiped a perfectly good value. That
+                        -- is why every player's weapon kept reverting to NULL.
+                        -- Same rule SaveInventory already follows by skipping
+                        -- an empty payload: an empty read never overwrites a
+                        -- known-good one. Sending an explicit empty string
+                        -- still clears it, so "I am holding nothing" remains
+                        -- expressible.
+                        weapon = COALESCE(VALUES(weapon), weapon),
                         bank = VALUES(bank),
                         current_server_id = VALUES(current_server_id),
                         last_seen = CURRENT_TIMESTAMP
                 """, (uid, current_hive_id(), display_name, money, faction, weapon, bank, sid))
 
+            # EVERY KEY COLUMN MUST BE SUPPLIED. hive_id, share_group and
+            # map_name are all in this table's PRIMARY KEY; omit any one and
+            # MySQL inserts the column DEFAULT, collapsing every hive, realm
+            # and map onto a single row. Not theoretical: hive_id was added to
+            # this key in 0.9 and never added to these queries, so every
+            # position row on this box was written as hive 'default'.
             cursor.execute("""
-                INSERT INTO player_sessions (player_uid, server_id, map_name,
-                                             pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO player_sessions (player_uid, hive_id, server_id, share_group, map_name,
+                                             pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive, weapon)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
-                    map_name = VALUES(map_name),
+                    -- Same COALESCE rule as players.weapon had to learn: an
+                    -- ABSENT weapon must not destroy the stored one. The mod
+                    -- omits the field when it has nothing to report, and a
+                    -- plain assignment would write that NULL over a good value.
+                    weapon = COALESCE(VALUES(weapon), weapon),
                     pos_x = VALUES(pos_x),
                     pos_y = VALUES(pos_y),
                     pos_z = VALUES(pos_z),
@@ -1261,7 +1353,8 @@ def save_player(uid):
                     stance = VALUES(stance),
                     is_alive = VALUES(is_alive),
                     last_seen = CURRENT_TIMESTAMP
-            """, (uid, sid, map_name, pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive))
+            """, (uid, current_hive_id(), sid, save_group, map_name or "",
+                  pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive, weapon))
 
             conn.commit()
 
@@ -1336,6 +1429,13 @@ def save_vehicle_recovery(uid):
     prefab = data.get("recover_veh_prefab", "") or ""
     vclass = data.get("recover_veh_class", "") or ""
     session = data.get("recover_session_id", "") or ""
+    # The recovery token lives on the SAME row as the position, so it must be
+    # addressed with the same key. Without these two it would insert a row at
+    # the column defaults - a different row from the position - and the token
+    # would be written somewhere get_player never looks. Same ALPHA/'' default
+    # as everywhere else so all three writers agree.
+    rec_group = (data.get("gear_group") or "ALPHA")[:32]
+    rec_map   = (data.get("map_name") or "")[:64]
 
     conn = get_db()
     if not conn:
@@ -1343,15 +1443,15 @@ def save_vehicle_recovery(uid):
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO player_sessions (player_uid, server_id, recover_veh_prefab,
-                                         recover_veh_class, recover_session_id)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO player_sessions (player_uid, hive_id, server_id, share_group, map_name,
+                                         recover_veh_prefab, recover_veh_class, recover_session_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 recover_veh_prefab = VALUES(recover_veh_prefab),
                 recover_veh_class = VALUES(recover_veh_class),
                 recover_session_id = VALUES(recover_session_id),
                 last_seen = CURRENT_TIMESTAMP
-        """, (uid, sid, prefab, vclass, session))
+        """, (uid, current_hive_id(), sid, rec_group, rec_map, prefab, vclass, session))
         conn.commit()
         print(f"[GATEWAY] Vehicle recovery saved: {uid} @ {sid} class={vclass}")
         return jsonify({"status": "ok", "message": "recovery saved"})
@@ -1796,7 +1896,9 @@ def get_all_players():
             SELECT p.player_uid, p.display_name, p.money, p.bank, p.faction,
                    p.current_server_id, s.pos_x, s.pos_y, s.pos_z, s.is_alive, p.last_seen
             FROM players p
-            LEFT JOIN player_sessions s ON s.player_uid = p.player_uid AND s.server_id = %s
+            LEFT JOIN player_sessions s ON s.player_uid = p.player_uid
+                                        AND s.hive_id = p.hive_id
+                                        AND s.server_id = %s
             WHERE p.hive_id = %s
         """
         if search:
@@ -1831,8 +1933,8 @@ def server_summary():
         cursor.execute("SELECT COUNT(*) as total_players FROM players WHERE hive_id = %s", (current_hive_id(),))
         total = cursor.fetchone()["total_players"]
         cursor.execute("""
-            SELECT COUNT(*) as alive FROM player_sessions s
-            JOIN players p ON p.player_uid = s.player_uid
+            SELECT COUNT(DISTINCT s.player_uid) as alive FROM player_sessions s
+            JOIN players p ON p.player_uid = s.player_uid AND p.hive_id = s.hive_id
             WHERE p.hive_id = %s AND s.is_alive = 1
         """, (current_hive_id(),))
         alive = cursor.fetchone()["alive"]

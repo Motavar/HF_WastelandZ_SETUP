@@ -651,7 +651,112 @@ def _verify_player_data_key(conn):
     return False, msg
 
 
-def _backup(db_config, out_dir):
+# Tables an admin actually cares about having back. Counted before the dump so
+# the receipt states what was saved rather than just how many bytes it took.
+_RECEIPT_TABLES = (
+    "players", "player_sessions", "player_data",
+    "transactions", "player_stats_daily",
+)
+
+
+def _receipt_counts(conn):
+    """{table: rows} for the receipt, best effort. A table that does not exist
+    yet (upgrading from an older schema) is reported as absent, not as zero -
+    'absent' and 'empty' mean very different things when you are deciding
+    whether a restore lost something."""
+    out = {}
+    if conn is None:
+        return out
+    for t in _RECEIPT_TABLES:
+        try:
+            cur = conn.cursor()
+            cur.execute(f"SELECT COUNT(*) FROM {t}")
+            row = cur.fetchone()
+            cur.close()
+            out[t] = int(row[0]) if row else 0
+        except Exception:
+            out[t] = None      # absent on this schema version
+    return out
+
+
+def _write_receipt(path, db_config, counts, reason):
+    """Write the human half of the backup next to the dump.
+
+    A backup nobody can find, and that nobody knows how to restore, is not a
+    backup - it is a file. This states what was saved, when, why, and the
+    exact command to put it back, in the same folder as the dump itself so the
+    two cannot be separated.
+    """
+    receipt = path + ".RESTORE.txt"
+    lines = []
+    lines.append("=" * 68)
+    lines.append("  HF WastelandZ - DATABASE BACKUP RECEIPT")
+    lines.append("=" * 68)
+    lines.append("")
+    lines.append(f"  Taken     : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"  Reason    : {reason or 'pre-migration safety backup'}")
+    lines.append(f"  Database  : {db_config['database']} on {db_config['host']}:{db_config['port']}")
+    lines.append(f"  Dump file : {os.path.basename(path)}")
+    try:
+        lines.append(f"  Size      : {os.path.getsize(path):,} bytes")
+    except OSError:
+        pass
+    lines.append("")
+    lines.append("  WHAT IS IN IT")
+    lines.append("  " + "-" * 64)
+    if counts:
+        for t in _RECEIPT_TABLES:
+            n = counts.get(t, None)
+            if n is None:
+                lines.append(f"    {t:<22} (table not present at backup time)")
+            else:
+                lines.append(f"    {t:<22} {n:,} rows")
+    else:
+        lines.append("    (row counts unavailable - the dump itself is still complete)")
+    lines.append("")
+    lines.append("  Full schema + data for the whole database, including routines")
+    lines.append("  and triggers. This is a complete restore point, not a diff.")
+    lines.append("")
+    lines.append("  HOW TO RESTORE IT")
+    lines.append("  " + "-" * 64)
+    lines.append("    1. STOP the gateway. Restoring under a running gateway can")
+    lines.append("       interleave with live writes and leave a mixed state.")
+    lines.append("")
+    lines.append("    2. Restore the dump:")
+    lines.append("")
+    lines.append(f"       mysql -h {db_config['host']} -P {db_config['port']} -u {db_config['user']} -p {db_config['database']} < \"{os.path.basename(path)}\"")
+    lines.append("")
+    lines.append("       One line, no continuation character - that keeps it")
+    lines.append("       copy-pasteable on BOTH Linux and Windows. bash uses a")
+    lines.append("       trailing backslash to continue a line and cmd.exe uses a")
+    lines.append("       caret, so any wrapped form is wrong on one of them.")
+    lines.append("")
+    lines.append("       Run it from this folder, or give the full path to the .sql.")
+    lines.append("       Windows: use the MySQL Shell or a Command Prompt where")
+    lines.append("       mysql.exe is on PATH. Linux: any shell.")
+    lines.append("")
+    lines.append("")
+    lines.append("    3. Start the gateway. It re-applies setup_database.sql and any")
+    lines.append("       pending migrations on start, so a restored older database")
+    lines.append("       upgrades itself again from wherever it left off.")
+    lines.append("")
+    lines.append("  NOTE ON MIGRATIONS")
+    lines.append("  " + "-" * 64)
+    lines.append("    This dump includes the schema_migrations ledger as it was at")
+    lines.append("    backup time. Restoring therefore rewinds BOTH the data and the")
+    lines.append("    record of which migrations had run, which is what you want -")
+    lines.append("    the two must never disagree.")
+    lines.append("")
+    lines.append("=" * 68)
+    try:
+        with open(receipt, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("\n".join(lines) + "\n")
+        return receipt
+    except OSError:
+        return None
+
+
+def _backup(db_config, out_dir, conn=None, reason=""):
     """mysqldump before anything destructive.
 
     Returns the path on success, None on failure. A None return MUST block
@@ -672,6 +777,9 @@ def _backup(db_config, out_dir):
         "--triggers",
         db_config["database"],
     ]
+    # Counted BEFORE the dump so the receipt describes what went into it.
+    counts = _receipt_counts(conn)
+
     env = dict(os.environ)
     # Password via env, never argv - argv is world-readable in a process list.
     env["MYSQL_PWD"] = db_config["password"]
@@ -699,7 +807,26 @@ def _backup(db_config, out_dir):
         print("[MIGRATE] Backup file is empty - destructive migrations BLOCKED.")
         return None
 
-    print(f"[MIGRATE] Backup written: {path} ({os.path.getsize(path)} bytes)")
+    receipt = _write_receipt(path, db_config, counts, reason)
+
+    # Say it loudly and say where. An admin reading a wall of migration output
+    # needs to be able to find this line six months later in a log file.
+    print("")
+    print("=" * 70)
+    print("  DATABASE BACKED UP BEFORE MIGRATING")
+    print("=" * 70)
+    print(f"  Folder : {os.path.abspath(out_dir)}")
+    print(f"  File   : {os.path.basename(path)}  ({os.path.getsize(path):,} bytes)")
+    if receipt:
+        print(f"  Receipt: {os.path.basename(receipt)}   <- what is in it + how to restore")
+    if counts:
+        summary = ", ".join(
+            f"{t} {n:,}" for t, n in ((t, counts.get(t)) for t in _RECEIPT_TABLES) if n is not None
+        )
+        if summary:
+            print(f"  Saved  : {summary}")
+    print("=" * 70)
+    print("")
     return path
 
 
@@ -821,7 +948,9 @@ def run_migrations(conn, db_config, gateway_version, allow_destructive=False, ba
             # auto-applying a non-lossy migration waives the human gate, never
             # this. A non-lossy claim that cannot be backed up is still held.
             if not backup_done:
-                backup_path = _backup(db_config, os.path.join(base_dir, "backups"))
+                backup_path = _backup(
+                    db_config, os.path.join(base_dir, "backups"), conn,
+                    f"before migration {version:04d}_{name}")
                 if not backup_path:
                     print(f"[MIGRATE] {version:04d}_{name} HELD - destructive work requires a backup and none was taken.")
                     held = (

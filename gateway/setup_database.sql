@@ -743,3 +743,83 @@ SET @ddl = IF(@c = 0,
     'ALTER TABLE players ADD COLUMN deleted_at DATETIME DEFAULT NULL',
     'SELECT "players.deleted_at present" AS msg');
 PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ============================================================
+-- POSITION IS SCOPED PER REALM AND PER MAP  (2026-08-29)
+-- ============================================================
+-- Gear is keyed per realm on player_data.share_group. Position was keyed
+-- (player_uid, hive_id, server_id) only, so switching gear set kept the old
+-- position, and map_name - though present as a COLUMN - was outside the key,
+-- so only ONE position survived per server. Play Arland and your Eden spot
+-- was overwritten.
+--
+-- Third instance of a finding already made twice: keys that do not match the
+-- scope model. Widening a key can only SPLIT rows, never merge, so this is
+-- non-lossy. Every existing row keeps its position under its own map_name
+-- and a defaulted ALPHA realm.
+--
+-- ORDER MATTERS, and it is the reason these three steps are written out
+-- separately rather than folded together:
+--   1. normalise NULL map_name  (a 0.7.1 database has map_name DEFAULT NULL,
+--      and those rows would fail step 2 on a server with strict mode on)
+--   2. make map_name NOT NULL   (a PRIMARY KEY column cannot be nullable)
+--   3. add share_group
+-- The key widening itself is migration 0092 - see the note at the end.
+
+-- ---- 1. normalise NULL map_name BEFORE it becomes NOT NULL -----------
+-- Unconditional and idempotent: on a re-run there is nothing left to update.
+UPDATE player_sessions SET map_name = '' WHERE map_name IS NULL;
+
+-- ---- 2. player_sessions.map_name -> NOT NULL -------------------------
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_sessions' AND COLUMN_NAME = 'map_name'
+             AND IS_NULLABLE = 'YES');
+SET @ddl = IF(@c = 1,
+    'ALTER TABLE player_sessions MODIFY map_name VARCHAR(64) NOT NULL DEFAULT ''''',
+    'SELECT "player_sessions.map_name already NOT NULL" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- 3. player_sessions.share_group (which realm this position is in) --
+-- DEFAULT 'ALPHA' matches player_data.share_group and the ALPHA fallback the
+-- gateway and mod both use, so an upgraded row lands in the realm its owner
+-- was already playing.
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_sessions' AND COLUMN_NAME = 'share_group');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_sessions ADD COLUMN share_group VARCHAR(32) NOT NULL DEFAULT ''ALPHA''',
+    'SELECT "player_sessions.share_group present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- player_sessions.weapon (the weapon that was in their HANDS) -----
+-- Owner decision 2026-08-30: the held weapon belongs with the body state -
+-- beside position, yaw and stance - and NOT on `players`.
+--
+-- WHY IT MOVED. players.weapon is HIVE scoped: one value for the whole
+-- account. Gear is REALM scoped and position is realm+map scoped, so a
+-- player holding an AK in ALPHA and an M249 in BRAVO had the second
+-- overwrite the first. Swapping back restored a weapon their ALPHA loadout
+-- did not contain, the client could not equip what they did not own, and
+-- they spawned empty-handed.
+--
+-- Here it inherits the realm+map key from 0092, so each realm remembers what
+-- that realm's character was holding.
+--
+-- players.weapon is left in place and DEPRECATED - still written by older
+-- mods, no longer read by this gateway. Dropping a column an older build may
+-- still write is how a rollback loses data, so it stays.
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+             AND TABLE_NAME = 'player_sessions' AND COLUMN_NAME = 'weapon');
+SET @ddl = IF(@c = 0,
+    'ALTER TABLE player_sessions ADD COLUMN weapon VARCHAR(256) DEFAULT NULL',
+    'SELECT "player_sessions.weapon present" AS msg');
+PREPARE s FROM @ddl; EXECUTE s; DEALLOCATE PREPARE s;
+
+-- ---- the key widening itself lives in migration 0092 -----------------
+-- NOT HERE, and the gateway enforces that: this file is applied on EVERY
+-- start, so it must be additive only. A PRIMARY KEY cannot be changed in
+-- place - MySQL needs DROP PRIMARY KEY - and the schema guard matches the
+-- verb, refusing to start if it appears here. That guard is correct and
+-- was left alone. See migrations/0092_position_scope_by_realm_and_map.sql.
