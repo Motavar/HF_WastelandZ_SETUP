@@ -3250,11 +3250,17 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
     <tr><th>Table</th><th>Holds</th><th>Scope</th></tr>
     <tr><td><code class="inline">players</code></td><td>Money, bank, faction, identity</td><td><b>Hive-wide</b> &mdash; follows the player to every server</td></tr>
     <tr><td><code class="inline">player_data</code></td><td>Gear, and any future player-owned system</td><td><b>Per gear group</b> &mdash; see &ldquo;How new features get stored&rdquo; below</td></tr>
-    <tr><td><code class="inline">player_sessions</code></td><td>Position, stance, alive state, <code class="inline">/recover</code> token</td><td>Per server &mdash; where you logged off</td></tr>
+    <tr><td><code class="inline">player_sessions</code></td><td>Position, stance, <b>the weapon in their hands</b>, alive state, <code class="inline">/recover</code> token</td><td><b>Per server, per gear group, per map</b> &mdash; where you logged off, in that world</td></tr>
     <tr><td><code class="inline">transactions</code></td><td>Every money movement, append-only</td><td>Audit trail</td></tr>
     <tr><td><code class="inline">player_stats_daily</code></td><td>Kills, deaths, playtime</td><td>Per server, per day</td></tr>
     <tr><td><code class="inline">player_marker_prefs</code></td><td>Map / HUD marker choices</td><td>Hive-wide</td></tr>
   </table>
+
+  <div class="note tip"><div class="h">From gateway 0.9.3 &mdash; where you logged off is remembered per gear group and per map</div>
+  <p>Before this a player had <b>one</b> saved position per server. Switching gear group, or rotating the map away and back, overwrote it &mdash; so they returned to a spot belonging to a different world, or lost it entirely.</p>
+  <p>Now each combination of <b>server + gear group + map</b> remembers its own position, facing, stance and held weapon. Log off in ALPHA on Eden and your ALPHA-Eden spot is still there after playing BRAVO, or after the map rotated away and back.</p>
+  <p><b>Gear is unchanged and is still not map-scoped.</b> The same mods on a different map in the same group are the same gear, exactly as before. Only <i>where you were standing</i> gained the extra scoping, because coordinates only mean something on one map.</p>
+  <p class="muted">A player joining a gear group they have never played in has no saved position there, so they get a normal town spawn with their gear intact &mdash; the same as arriving from another server. Nothing is lost, and their other group&rsquo;s position is untouched and waiting.</p></div>
 
   <h4>Server &amp; world</h4>
   <table class="t">
