@@ -81,21 +81,23 @@
   .hv-def{display:block;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);margin-top:5px}
   @media(max-width:620px){.hv-row{grid-template-columns:1fr;gap:7px}.hv-arr{display:none}}
 
-  .hv-hives{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
-  .hv-hive{flex:1 1 320px;border:2px solid var(--rust);border-radius:10px;padding:14px;
-    background:var(--bg-card);display:flex;flex-direction:column;gap:11px}
-  .hv-hive.alt{border-color:var(--line-2);border-style:dashed}
-  .hv-cap{font-family:var(--font-display);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
-    color:var(--rust);font-weight:700}
-  .hv-hive.alt .hv-cap{color:var(--ink-faint)}
-  .hv-bank{font-size:13px;color:var(--ink-dim);margin:0}
-  .hv-realms{display:flex;gap:10px;flex-wrap:wrap}
-  .hv-realm{flex:1 1 132px;border:1px solid var(--line-2);border-radius:8px;padding:10px;
-    background:var(--bg-2);display:flex;flex-direction:column;gap:7px}
-  .hv-rname{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.14em;color:var(--sand)}
-  .hv-maps{display:flex;flex-direction:column;gap:5px}
-  .hv-map{font-size:13px;color:var(--ink);background:var(--bg-3);border:1px solid var(--line);
-    border-radius:5px;padding:5px 9px}
+  .dgwrap{background:var(--bg-card);border:1px solid var(--line-2);border-radius:10px;
+    padding:20px 18px;overflow-x:auto;margin:16px 0}
+  .dg{width:100%;min-width:660px;height:auto;display:block}
+  .dg-cap{fill:var(--ink-faint);font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+  .dg-pill{fill:var(--bg-2);stroke:var(--line-2);stroke-width:1.5}
+  .dg-pt{fill:var(--ink);font-family:var(--font-body);font-size:15px;font-weight:500;text-anchor:middle}
+  .dg-line{fill:none;stroke:var(--ink-faint);stroke-width:1.75}
+  .dg-arr{fill:var(--ink-faint)}
+  .dg-hive{fill:none;stroke:var(--rust);stroke-width:2.5}
+  .dg-hive-alt{fill:none;stroke:var(--ink-faint);stroke-width:2;stroke-dasharray:7 5}
+  .dg-hl{fill:var(--rust);font-family:var(--font-mono);font-size:13px;letter-spacing:.13em;font-weight:600}
+  .dg-hl-alt{fill:var(--ink-faint);font-family:var(--font-mono);font-size:13px;letter-spacing:.13em;font-weight:600}
+  .dg-hs{fill:var(--ink-dim);font-family:var(--font-body);font-size:13px}
+  .dg-grp{fill:var(--bg-3);stroke:var(--line-2);stroke-width:1.5}
+  .dg-gn{fill:var(--sand);font-family:var(--font-mono);font-size:15px;letter-spacing:.16em;font-weight:600;text-anchor:middle}
+  .dg-gs{fill:var(--ink);font-family:var(--font-body);font-size:14px;text-anchor:middle}
+  .dg-gs2{fill:var(--ink-faint);font-family:var(--font-body);font-size:12.5px;text-anchor:middle}
   h3{font-family:var(--font-display);font-weight:600;font-size:19px;letter-spacing:.02em;margin:26px 0 4px}
   .section-tag{font-family:var(--font-display);text-transform:uppercase;letter-spacing:.26em;
     font-size:11.5px;font-weight:600;color:var(--ink-faint)}
@@ -1284,167 +1286,139 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
   </div>
 </div></section>
 
-<!-- ============ HIVES / REALMS / GARAGE — applies to both operating systems ============ -->
+<!-- ============ HIVES / GEAR GROUPS — applies to both operating systems ============ -->
 <section><div class="wrap">
-  <div class="part-head"><span class="part-badge">Hives</span><h2>Hives, gear realms and garages</h2></div>
-  <p class="muted">Three settings decide what a player carries when they move &mdash; between your servers, between your maps, or into somebody else&rsquo;s cluster entirely. They are not the same thing, and getting them the wrong way round is how somebody opens an empty bank.</p>
+  <div class="part-head"><span class="part-badge">Hives</span><h2>Hives &amp; gear groups</h2></div>
+  <p class="muted">Your players' money and gear get saved on your server, not on their PCs. These settings decide who shares what.</p>
 
-  <div class="note tip"><div class="h">Why this exists</div>
-  <p>Because a rotation is not one world any more. Monday you join a friend&rsquo;s hive and play their maps. Tuesday you are back on your own rotation with your own economy. Saturday is an event &mdash; a different map, a fresh gear pool, everybody starting level. Sunday you are back to normal. Next month it is a different event with a different set of friends.</p>
-  <p>That is all <b>one mod</b> and <b>one server</b>. What changes is which pools a map joins when it loads, and you set that <b>per map</b> &mdash; so the rules change with the world, and nothing needs reconfiguring between rotations.</p></div>
-
-  <div class="note"><div class="h">The shape of it, one line each</div>
+  <h3>The short version</h3>
   <ul class="clean muted">
-    <li><b>A hive</b> is one world with one database. It holds the <b>money and the bank</b>.</li>
-    <li><b>A server</b> hosts a map. It does not choose what it shares &mdash; <b>the map it loads does</b>.</li>
-    <li><b>A realm</b> is that sharing set. Every server whose current map names the same realm draws from <b>one wardrobe</b>.</li>
+    <li>A <b>hive</b> is where money and banks are saved. It is basically the account.</li>
+    <li>A <b>gear group</b> is where loadouts are saved. One hive can hold as many gear groups as you want.</li>
+    <li>Every <b>map</b> has its own settings file, and that file picks which hive and which gear group the map uses.</li>
   </ul>
-  <p>So: load this map, and your gear is shared with <i>these</i> servers. Load another, and it is shared with <i>those</i>. Load a third, and you are in <b>another hive entirely</b>, sharing with the servers inside it.</p></div>
+  <p class="muted">A <b>gear group</b> is what the settings file calls <code class="inline">GEAR_SHARE_GROUP</code>. You will see it called a <b>realm</b> too. Same thing.</p>
 
-  <h3>What the map's own file decides</h3>
-  <p class="muted">Every map gets its own config file, and it holds three switches. Two of them pick a <b>realm</b>; the third can move the map to <b>a different hive entirely</b>.</p>
+  <h3>The picture</h3>
+  <p class="muted">One server, four maps in the rotation. The lines show where each map saves your players' stuff.</p>
+
+  <div class="dgwrap">
+<svg class="dg" viewBox="0 0 920 430" role="img" aria-label="Maps in your rotation, and which hive and gear group each one saves into">
+  <defs>
+    <marker id="dgarr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="dg-arr"/>
+    </marker>
+  </defs>
+
+  <text class="dg-cap" x="30" y="20">Maps in your rotation</text>
+
+  <rect class="dg-pill" x="30"  y="40" width="150" height="42" rx="21"/>
+  <text class="dg-pt"   x="105" y="66">Everon</text>
+
+  <rect class="dg-pill" x="196" y="40" width="150" height="42" rx="21"/>
+  <text class="dg-pt"   x="271" y="66">Arland</text>
+
+  <rect class="dg-pill" x="362" y="40" width="180" height="42" rx="21"/>
+  <text class="dg-pt"   x="452" y="66">Saturday Event</text>
+
+  <rect class="dg-pill" x="700" y="40" width="180" height="42" rx="21"/>
+  <text class="dg-pt"   x="790" y="66">Buddy&#8217;s Map</text>
+
+  <path class="dg-line" d="M105,82 V112 H175 V244" marker-end="url(#dgarr)"/>
+  <path class="dg-line" d="M271,82 V112 H175"/>
+  <path class="dg-line" d="M452,82 V112 H425 V244" marker-end="url(#dgarr)"/>
+  <path class="dg-line" d="M790,82 V112 H785 V244" marker-end="url(#dgarr)"/>
+
+  <rect class="dg-hive" x="40" y="196" width="520" height="196" rx="12"/>
+  <text class="dg-hl"   x="60" y="226">YOUR HIVE</text>
+  <text class="dg-hs"   x="152" y="226">your money + your bank</text>
+
+  <rect class="dg-grp" x="60"  y="250" width="230" height="112" rx="9"/>
+  <text class="dg-gn"  x="175" y="292">ALPHA</text>
+  <text class="dg-gs"  x="175" y="318">your gear</text>
+  <text class="dg-gs2" x="175" y="340">shared by both maps</text>
+
+  <rect class="dg-grp" x="310" y="250" width="230" height="112" rx="9"/>
+  <text class="dg-gn"  x="425" y="292">ZULU</text>
+  <text class="dg-gs"  x="425" y="318">event gear</text>
+  <text class="dg-gs2" x="425" y="340">everybody starts empty</text>
+
+  <rect class="dg-hive-alt" x="660" y="196" width="250" height="196" rx="12"/>
+  <text class="dg-hl-alt"   x="680" y="226">BUDDY&#8217;S HIVE</text>
+  <text class="dg-hs"       x="680" y="244">his money + his bank</text>
+
+  <rect class="dg-grp" x="680" y="266" width="210" height="96" rx="9"/>
+  <text class="dg-gn"  x="785" y="304">HIS GROUP</text>
+  <text class="dg-gs"  x="785" y="330">his gear</text>
+</svg>
+  </div>
+
+  <ul class="clean muted">
+    <li><b>Everon and Arland</b> both point at ALPHA, so a loadout follows the player between them.</li>
+    <li><b>Saturday Event</b> points at ZULU. Everybody starts that night with nothing, and their normal gear is sitting untouched in ALPHA waiting for Sunday.</li>
+    <li>All three are inside your hive, so <b>money never changes</b> no matter which map is up.</li>
+    <li><b>Buddy's Map</b> points at a whole different hive. Over there they use his money and his gear.</li>
+  </ul>
+
+  <div class="note tip"><div class="h">Why you would want this</div>
+  <p>Monday you join a friend's hive and play his maps. Tuesday you are back on your own rotation with your own economy. Saturday is an event — different map, fresh gear, everybody starting level. Sunday you are back to normal. Next month it is a different event with a different set of friends.</p>
+  <p>That is all one mod and one server. Every map already carries its own answer, so nothing gets reconfigured between rotations.</p></div>
+
+  <div class="note warn"><div class="h">&#9888; A different hive means a different wallet AND bank</div>
+  <p>Not just different gear. Rotating onto a map on somebody else's hive and back again does <b>not</b> lose anything — the money is sitting safely at home the whole time — but a player who walks up to an ATM over there and sees zero is going to think he got robbed, and you will spend the evening explaining it.</p>
+  <p>So use it for what it is for: <b>a shared event with another community</b>, a test hive, or a deliberately separate ruleset. Do <b>not</b> use it just to change loadouts between your own maps — that is what the gear group is for, and it leaves the bank alone.</p></div>
+
+  <h3>The settings that do this</h3>
+  <p class="muted">The first time your server loads a map, it writes a settings file for that map. Three lines in it matter here.</p>
 
   <div class="hv-switch">
-    <div class="hv-file">the map's own file &mdash; <b>HFWastelandZ_server_&lt;MapName&gt;.conf</b></div>
+    <div class="hv-file">this map's settings file &mdash; <b>HFWastelandZ_server_&lt;MapName&gt;.conf</b></div>
 
     <div class="hv-row">
       <div class="hv-key">GEAR_SHARE_GROUP</div>
       <div class="hv-arr">&rarr;</div>
-      <div class="hv-to"><b>which gear realm</b>The loadout a player spawns with. Shared with every server whose current map names the same realm.<span class="hv-def">default ALPHA</span></div>
+      <div class="hv-to"><b>which gear group</b>Where loadouts are saved. Anybody running a map set to the same group shares it.<span class="hv-def">starts at ALPHA &middot; takes a restart to change</span></div>
     </div>
 
     <div class="hv-row">
       <div class="hv-key">GARAGE_SHARE_GROUP</div>
       <div class="hv-arr">&rarr;</div>
-      <div class="hv-to"><b>which garage realm</b>Stored vehicles. A separate dial, so gear and garages can be shared differently.<span class="hv-def">default ALPHA</span></div>
+      <div class="hv-to"><b>which garage</b>Where parked vehicles are saved. Its own setting on purpose, so you can share gear without sharing cars.<span class="hv-def">starts at ALPHA</span></div>
     </div>
 
     <div class="hv-row">
       <div class="hv-key">PER_MAP_HIVE_ENABLED<br><i>+ _URL / _PORT / _KEY</i></div>
       <div class="hv-arr">&rarr;</div>
-      <div class="hv-to"><b>which hive</b>Money, bank and last faction &mdash; the whole economy. Leave it off and the map uses your own hive like everything else.<span class="hv-def">default 0 &mdash; off</span></div>
+      <div class="hv-to"><b>which hive</b>Where money and banks are saved. Leave it off and the map just uses your own hive, which is what almost everybody wants.<span class="hv-def">starts off &middot; takes a restart to change</span></div>
     </div>
   </div>
 
-  <p class="muted">The <b>hive</b> itself is normally set once, on the gateway, and every map inherits it. That third switch is the exception: it lets one map opt out and go somewhere else &mdash; a friend&rsquo;s cluster, or a test hive &mdash; without touching anything your other maps use.</p>
+  <p class="muted">The file lives here, one folder per map:</p>
+  <div class="code"><pre>&hellip;/profile/hf_wastelandz/configs/map/<b>&lt;MapName&gt;</b>/HFWastelandZ_server_<b>&lt;MapName&gt;</b>.conf</pre></div>
+  <p class="muted">Or set it in the game: <b>F8 &rarr; SERVER &rarr; HIVE CONFIG</b>. That writes the same file for you.</p>
 
-  <p class="muted">The <b>hive</b> is the outer boundary &mdash; two hives share <b>nothing at all</b>, and a player crossing into another one arrives with a fresh wallet. Inside a hive, the two <b>realms</b> slice up what is shared, so a player can roam your servers, keep their money everywhere, and carry gear only where that gear can actually exist.</p>
+  <div class="note warn"><div class="h">A new map starts at ALPHA, every time</div>
+  <p>The gear group is only read from that map's own file, and there is <b>no server-wide setting</b> for it. So a map you just added does not pick up what your other maps use — it comes up <code class="inline">ALPHA</code> no matter what.</p>
+  <p>If your whole rotation is supposed to share gear, the group has to go in <b>every map's file</b>. Nothing warns you at the time. What you see later is players arriving on the new map with nothing — and <b>they have not lost it</b>. It is sitting in the group they were in, and fixing the file brings it right back.</p>
+  <p class="muted">Wasteland-Z watches for this. When several players in a row load with no gear, the server log says so and names the group it is reading. That message is almost always this mistake.</p></div>
 
-  <div class="note tip"><div class="h">The case almost everyone actually wants</div>
-  <p><b>One hive, different gear realms.</b> Servers 1&ndash;3 run one mod set in realm ALPHA; servers 4&ndash;6 run a different mod set in BRAVO. All six share <b>one bank</b>. A player moves freely between them and keeps their money everywhere, but their ALPHA loadout does not follow them into BRAVO.</p>
-  <p class="muted">That last part is the whole point. Gear is stored as item references &mdash; an item whose mod is missing on the destination <b>cannot be restored there</b>. Realms are how you draw that line before it costs somebody a loadout, and <b>F8 &rarr; SERVER &rarr; HIVE CONFIG</b> lists every server in your realm and flags any whose mods differ from yours.</p></div>
-
-  <h3>Realm names are a fixed list</h3>
-  <p class="muted">Both realm settings take the same values &mdash; the NATO alphabet, or <code class="inline">PRIVATE</code>:</p>
+  <h3>Gear group names you can use</h3>
+  <p class="muted">NATO alphabet, or <code class="inline">PRIVATE</code>. It is a fixed list, not free text — a typo would quietly split your players into two pools and nobody would notice until somebody lost a loadout. Anything not on the list gets rejected and falls back to ALPHA.</p>
   <div class="code"><pre>ALPHA  BRAVO  CHARLIE  DELTA    ECHO     FOXTROT  GOLF   HOTEL  INDIA
 JULIET KILO   LIMA     MIKE     NOVEMBER OSCAR    PAPA   QUEBEC ROMEO
 SIERRA TANGO  UNIFORM  VICTOR   WHISKEY  XRAY     YANKEE ZULU
-PRIVATE   <span class="c">&larr; shares with nobody &mdash; a realm of one</span></pre></div>
-  <p class="muted">The list is fixed deliberately, and it is <b>not</b> free text. Matching between servers has to be exact, and a typo would split a pool silently &mdash; nobody would notice until a player lost their loadout. Anything not on the list is rejected at load, logged as an error, and falls back to <code class="inline">ALPHA</code>.</p>
+PRIVATE   <span class="c">&larr; shares with nobody &mdash; just this one map</span></pre></div>
 
-  <h3>Where you set the realms</h3>
-  <p class="muted">Each map gets its own file, created the first time the server loads that map:</p>
-  <div class="code"><pre>&hellip;/profile/hf_wastelandz/configs/map/<b>&lt;MapName&gt;</b>/HFWastelandZ_server_<b>&lt;MapName&gt;</b>.conf</pre></div>
-  <p class="muted">Or set it in-game from <b>F8 &rarr; SERVER &rarr; HIVE CONFIG</b>, which writes that same file for you.</p>
-
-  <div class="note warn"><div class="h">Realms are per map &mdash; always, with no server-wide default</div>
-  <p><code class="inline">GEAR_SHARE_GROUP</code> is read from the map&rsquo;s own file and <b>from nowhere else</b>. There is no server-level setting for it, so there is nothing for a new map to inherit: <b>add a map to your rotation and it comes up <code class="inline">ALPHA</code></b>, no matter what your other maps are set to.</p>
-  <p>If your whole rotation is meant to share one gear pool, that value has to be written into <b>every map&rsquo;s file</b>. Nothing warns you at the time &mdash; the symptom shows up later, as players arriving on the new map with nothing. <b>Their gear is not lost</b>: it is sitting in the realm they left, and putting the right value in the new map&rsquo;s file brings it straight back.</p>
-  <p class="muted">Wasteland-Z watches for this. When several players in a row load with no stored gear, the server log says so and names the realm it is reading &mdash; that message is almost always this mistake.</p></div>
-
-  <div class="note warn"><div class="h">A realm change takes effect at the next restart</div>
-  <p>You can change it whenever you like, from the file or from F8, but the running session keeps using the realm it loaded with. That is deliberate: swapping pools out from under a player who is mid-firefight would write their ALPHA-earned items &mdash; possibly from mods the other realm does not have &mdash; into the other realm&rsquo;s pool on their next autosave. Nothing would be destroyed, but the mixing is silent and there is no good moment for it.</p></div>
-
-  <h3>Garage is its own dial</h3>
-  <p class="muted">Kept separate from gear on purpose: an admin may want gear shared but stored vehicles local to each server, or exactly the other way around. It takes the same value list.</p>
-  <p class="muted">One difference is worth knowing. Gear is <b>one loadout</b>, so sharing means the same loadout follows the player. A garage is a <b>collection</b>, so sharing shows the <b>union</b> of everything stored across every server in that realm &mdash; still capped by <code class="inline">GARAGE_MAX_VEHICLES</code>.</p>
-
-  <h3>A map can join a different hive entirely</h3>
-  <p class="muted">Set <code class="inline">PER_MAP_HIVE_ENABLED 1</code> in the same per-map file and that map talks to <b>its own gateway</b> &mdash; its own URL, port and key, which may well be a friend&rsquo;s server. Rotate to that map and you are in their economy: their bank, their gear, their players. Applied at <b>startup only</b>; changing it needs a restart, because swapping gateway mid-session would strand every save already in flight.</p>
-
-  <div class="note danger"><div class="h">&#9888; A different hive is a different wallet and bank</div>
-  <p>Not just different gear. Rotating onto a map on another hive and back again is <b>not</b> data loss &mdash; the money is sitting safely in the other hive the whole time &mdash; but it looks exactly like it to a player who has just opened the ATM and found it empty, and you will spend the evening explaining that.</p>
-  <p>So use per-map hive for what it is for: <b>a shared event with another community</b>, a test hive, or a deliberately separate ruleset. Do <b>not</b> use it to vary loadouts between your own maps &mdash; that is what the gear realm is for, and it leaves the bank alone.</p></div>
-
-  <h3>Putting it together</h3>
-  <p class="muted">Because the map carries its own answer, a rotation can put its maps in different places. Here is one server&rsquo;s rotation, drawn where each map actually lands:</p>
-
-  <div class="hv-hives">
-    <div class="hv-hive">
-      <div class="hv-cap">Your hive</div>
-      <p class="hv-bank"><b>One bank.</b> Every map in this box shares the same money, however their gear is split.</p>
-      <div class="hv-realms">
-        <div class="hv-realm">
-          <div class="hv-rname">ALPHA</div>
-          <div class="hv-maps">
-            <div class="hv-map">Everon</div>
-            <div class="hv-map">Arland</div>
-          </div>
-        </div>
-        <div class="hv-realm">
-          <div class="hv-rname">ZULU</div>
-          <div class="hv-maps">
-            <div class="hv-map">Saturday event</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="hv-hive alt">
-      <div class="hv-cap">A friend&rsquo;s hive</div>
-      <p class="hv-bank"><b>Their bank.</b> Yours is untouched the whole time, and waiting when you rotate home.</p>
-      <div class="hv-realms">
-        <div class="hv-realm">
-          <div class="hv-rname">THEIR REALM</div>
-          <div class="hv-maps">
-            <div class="hv-map">Their map</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <p class="muted">Nothing about the <b>server</b> changes between those. It loads a map, the map says where it belongs, and the player&rsquo;s money and gear resolve from there. Same server, same mod, one line changed per map:</p>
-  <div class="tablewrap"><table class="rtab">
-    <tr><th>What you are running</th><th>Hive</th><th>Gear realm</th><th>What the player gets</th></tr>
-    <tr>
-      <td><b>Your normal rotation</b><br><span class="muted">several maps, one world</span></td>
-      <td>yours</td>
-      <td>the same on every map</td>
-      <td>Money, bank and gear follow them across the whole rotation.</td>
-    </tr>
-    <tr>
-      <td><b>A friend&rsquo;s cluster</b><br><span class="muted">one map points at their gateway</span></td>
-      <td><b>theirs</b><br><code class="inline">PER_MAP_HIVE_ENABLED 1</code></td>
-      <td>whatever theirs uses</td>
-      <td>Their economy while it runs &mdash; their bank, their gear. Yours is untouched and waiting.</td>
-    </tr>
-    <tr>
-      <td><b>Saturday event, fresh start</b><br><span class="muted">an event map on your own hive</span></td>
-      <td>yours</td>
-      <td>a realm nothing else uses</td>
-      <td>Keeps their money, starts the event with nothing. Normal gear is safe and comes back after.</td>
-    </tr>
-    <tr>
-      <td><b>An isolated map</b><br><span class="muted">shares with nothing at all</span></td>
-      <td>yours</td>
-      <td><code class="inline">PRIVATE</code></td>
-      <td>Keeps their money. Gear on this map stays on this map, permanently.</td>
-    </tr>
-    <tr>
-      <td><b>Back to normal</b></td>
-      <td>yours</td>
-      <td>back to the rotation&rsquo;s realm</td>
-      <td>Their normal loadout is exactly where they left it.</td>
-    </tr>
-  </table></div>
-  <p class="muted">None of that is reconfigured between rotations. Every map already carries its own answer, so the rules change when the world does.</p>
-
-  <div class="note"><div class="h">Where each setting lives, at a glance</div>
+  <h3>Two things that will bite you</h3>
   <ul class="clean muted">
-    <li><b>Hive</b> &mdash; gateway <code class="inline">config.py</code>. One gateway serves several hives from one database, so a hosting provider, or a few friends splitting a box, can run completely separate economies side by side. A server that names no hive joins the gateway default, so a single-hive setup needs nothing.</li>
-    <li><b>Gear realm, garage realm, per-map hive</b> &mdash; the map&rsquo;s own <code class="inline">HFWastelandZ_server_&lt;MapName&gt;.conf</code>, or <b>F8 &rarr; SERVER &rarr; HIVE CONFIG</b>.</li>
-    <li><b>New map, new file</b> &mdash; created on first load with both realms set to <code class="inline">ALPHA</code>. Change them before players arrive.</li>
+    <li><b>Everybody sharing a gear group should run the same mods.</b> Gear is saved as a list of item references, so an item from a mod the other server does not have cannot come back. <b>F8 &rarr; SERVER &rarr; HIVE CONFIG</b> lists everyone in your group and flags anybody whose mods do not match yours.</li>
+    <li><b>Changing the group takes a restart.</b> You can change it whenever you want, but the server keeps using the one it started with. That is on purpose — swapping it mid-round would dump gear somebody earned in one group into another group's pile on their next save.</li>
+  </ul>
+
+  <div class="note"><div class="h">Where each setting lives</div>
+  <ul class="clean muted">
+    <li><b>Hive</b> &mdash; the gateway's <code class="inline">config.py</code>. One gateway can serve several hives out of one database, so a host, or a few friends splitting a box, can run completely separate economies side by side. A server that names no hive just joins the default, so a normal single-hive setup needs nothing here.</li>
+    <li><b>Gear group, garage group, per-map hive</b> &mdash; the map's own <code class="inline">HFWastelandZ_server_&lt;MapName&gt;.conf</code>, or <b>F8 &rarr; SERVER &rarr; HIVE CONFIG</b>.</li>
   </ul></div>
 </div></section>
 
