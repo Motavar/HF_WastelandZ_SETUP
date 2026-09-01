@@ -63,6 +63,39 @@
   section{position:relative;z-index:1;padding:26px 0}
   h2{font-family:var(--font-display);font-weight:700;font-size:clamp(23px,3.4vw,30px);
     letter-spacing:.01em;margin:8px 0 6px;text-wrap:balance}
+
+  /* ---- hive / realm diagrams ---- */
+  .hv-switch{border:1px solid var(--line-2);border-radius:10px;background:var(--bg-card);overflow:hidden;margin:16px 0}
+  .hv-file{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-faint);background:var(--bg-3);
+    padding:10px 16px;border-bottom:1px solid var(--line)}
+  .hv-file b{color:var(--sand);font-weight:600}
+  .hv-row{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1.05fr);align-items:center;
+    gap:0 14px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .hv-row:last-child{border-bottom:0}
+  .hv-key{font-family:var(--font-mono);font-size:12.5px;color:var(--rust-soft);line-height:1.5;word-break:break-word}
+  .hv-key i{color:var(--ink-faint);font-style:normal;font-size:11.5px}
+  .hv-arr{color:var(--ink-faint);text-align:center;font-size:18px;line-height:1}
+  .hv-to{font-size:14px;color:var(--ink-dim)}
+  .hv-to b{display:block;font-family:var(--font-display);font-size:15px;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--ink);font-weight:700;margin-bottom:2px}
+  .hv-def{display:block;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);margin-top:5px}
+  @media(max-width:620px){.hv-row{grid-template-columns:1fr;gap:7px}.hv-arr{display:none}}
+
+  .hv-hives{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
+  .hv-hive{flex:1 1 320px;border:2px solid var(--rust);border-radius:10px;padding:14px;
+    background:var(--bg-card);display:flex;flex-direction:column;gap:11px}
+  .hv-hive.alt{border-color:var(--line-2);border-style:dashed}
+  .hv-cap{font-family:var(--font-display);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--rust);font-weight:700}
+  .hv-hive.alt .hv-cap{color:var(--ink-faint)}
+  .hv-bank{font-size:13px;color:var(--ink-dim);margin:0}
+  .hv-realms{display:flex;gap:10px;flex-wrap:wrap}
+  .hv-realm{flex:1 1 132px;border:1px solid var(--line-2);border-radius:8px;padding:10px;
+    background:var(--bg-2);display:flex;flex-direction:column;gap:7px}
+  .hv-rname{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.14em;color:var(--sand)}
+  .hv-maps{display:flex;flex-direction:column;gap:5px}
+  .hv-map{font-size:13px;color:var(--ink);background:var(--bg-3);border:1px solid var(--line);
+    border-radius:5px;padding:5px 9px}
   h3{font-family:var(--font-display);font-weight:600;font-size:19px;letter-spacing:.02em;margin:26px 0 4px}
   .section-tag{font-family:var(--font-display);text-transform:uppercase;letter-spacing:.26em;
     font-size:11.5px;font-weight:600;color:var(--ink-faint)}
@@ -1268,28 +1301,32 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
   </ul>
   <p>So: load this map, and your gear is shared with <i>these</i> servers. Load another, and it is shared with <i>those</i>. Load a third, and you are in <b>another hive entirely</b>, sharing with the servers inside it.</p></div>
 
-  <h3>The three dials</h3>
-  <div class="tablewrap"><table class="rtab">
-    <tr><th>Dial</th><th>What it carries</th><th>Set where</th><th>Default</th></tr>
-    <tr>
-      <td><b>Hive</b><br><code class="inline">hive_id</code></td>
-      <td><b>Money, bank and last faction.</b> The economy.</td>
-      <td>Gateway <code class="inline">config.py</code>, per server entry</td>
-      <td>the gateway default</td>
-    </tr>
-    <tr>
-      <td><b>Gear realm</b><br><code class="inline">GEAR_SHARE_GROUP</code></td>
-      <td><b>Gear only</b> &mdash; the loadout a player spawns with.</td>
-      <td>The <b>per-map</b> config file</td>
-      <td><code class="inline">ALPHA</code></td>
-    </tr>
-    <tr>
-      <td><b>Garage realm</b><br><code class="inline">GARAGE_SHARE_GROUP</code></td>
-      <td><b>Stored vehicles.</b> A separate dial, on purpose.</td>
-      <td>The same <b>per-map</b> file</td>
-      <td><code class="inline">ALPHA</code></td>
-    </tr>
-  </table></div>
+  <h3>What the map's own file decides</h3>
+  <p class="muted">Every map gets its own config file, and it holds three switches. Two of them pick a <b>realm</b>; the third can move the map to <b>a different hive entirely</b>.</p>
+
+  <div class="hv-switch">
+    <div class="hv-file">the map's own file &mdash; <b>HFWastelandZ_server_&lt;MapName&gt;.conf</b></div>
+
+    <div class="hv-row">
+      <div class="hv-key">GEAR_SHARE_GROUP</div>
+      <div class="hv-arr">&rarr;</div>
+      <div class="hv-to"><b>which gear realm</b>The loadout a player spawns with. Shared with every server whose current map names the same realm.<span class="hv-def">default ALPHA</span></div>
+    </div>
+
+    <div class="hv-row">
+      <div class="hv-key">GARAGE_SHARE_GROUP</div>
+      <div class="hv-arr">&rarr;</div>
+      <div class="hv-to"><b>which garage realm</b>Stored vehicles. A separate dial, so gear and garages can be shared differently.<span class="hv-def">default ALPHA</span></div>
+    </div>
+
+    <div class="hv-row">
+      <div class="hv-key">PER_MAP_HIVE_ENABLED<br><i>+ _URL / _PORT / _KEY</i></div>
+      <div class="hv-arr">&rarr;</div>
+      <div class="hv-to"><b>which hive</b>Money, bank and last faction &mdash; the whole economy. Leave it off and the map uses your own hive like everything else.<span class="hv-def">default 0 &mdash; off</span></div>
+    </div>
+  </div>
+
+  <p class="muted">The <b>hive</b> itself is normally set once, on the gateway, and every map inherits it. That third switch is the exception: it lets one map opt out and go somewhere else &mdash; a friend&rsquo;s cluster, or a test hive &mdash; without touching anything your other maps use.</p>
 
   <p class="muted">The <b>hive</b> is the outer boundary &mdash; two hives share <b>nothing at all</b>, and a player crossing into another one arrives with a fresh wallet. Inside a hive, the two <b>realms</b> slice up what is shared, so a player can roam your servers, keep their money everywhere, and carry gear only where that gear can actually exist.</p>
 
@@ -1330,7 +1367,44 @@ PRIVATE   <span class="c">&larr; shares with nobody &mdash; a realm of one</span
   <p>So use per-map hive for what it is for: <b>a shared event with another community</b>, a test hive, or a deliberately separate ruleset. Do <b>not</b> use it to vary loadouts between your own maps &mdash; that is what the gear realm is for, and it leaves the bank alone.</p></div>
 
   <h3>Putting it together</h3>
-  <p class="muted">Same server, same mod, one line changed per map &mdash; the rotation from the top of this section:</p>
+  <p class="muted">Because the map carries its own answer, a rotation can put its maps in different places. Here is one server&rsquo;s rotation, drawn where each map actually lands:</p>
+
+  <div class="hv-hives">
+    <div class="hv-hive">
+      <div class="hv-cap">Your hive</div>
+      <p class="hv-bank"><b>One bank.</b> Every map in this box shares the same money, however their gear is split.</p>
+      <div class="hv-realms">
+        <div class="hv-realm">
+          <div class="hv-rname">ALPHA</div>
+          <div class="hv-maps">
+            <div class="hv-map">Everon</div>
+            <div class="hv-map">Arland</div>
+          </div>
+        </div>
+        <div class="hv-realm">
+          <div class="hv-rname">ZULU</div>
+          <div class="hv-maps">
+            <div class="hv-map">Saturday event</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hv-hive alt">
+      <div class="hv-cap">A friend&rsquo;s hive</div>
+      <p class="hv-bank"><b>Their bank.</b> Yours is untouched the whole time, and waiting when you rotate home.</p>
+      <div class="hv-realms">
+        <div class="hv-realm">
+          <div class="hv-rname">THEIR REALM</div>
+          <div class="hv-maps">
+            <div class="hv-map">Their map</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="muted">Nothing about the <b>server</b> changes between those. It loads a map, the map says where it belongs, and the player&rsquo;s money and gear resolve from there. Same server, same mod, one line changed per map:</p>
   <div class="tablewrap"><table class="rtab">
     <tr><th>What you are running</th><th>Hive</th><th>Gear realm</th><th>What the player gets</th></tr>
     <tr>
