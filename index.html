@@ -3309,7 +3309,7 @@ copy gateway.py.bak gateway.py</pre></div>
   <p class="muted">A release can change <code class="inline">gateway.py</code> alone, or it can also change the Python packages (<code class="inline">requirements.txt</code>), the config template (<code class="inline">config.example.py</code>), or the database schema (<code class="inline">setup_database.sql</code>). <b>The five steps above cover all of it</b>, which is why there is no second procedure and nothing for you to decide. Run them the same way every time.</p>
   <div class="note danger"><div class="h">Your config.py is safe &mdash; leave it alone</div><p><code class="inline">config.py</code> holds your database password and gateway key and is <b>never stored in the repo</b>, so <code class="inline">git pull</code> and the copy step both leave it untouched &mdash; there is no <code class="inline">config.py</code> in the kit to copy over yours. Never overwrite it. If a release adds a new setting, the gateway writes that setting into your file on the next start and tells you it did, keeping your values and backing the file up first.</p></div>
   <div class="note"><div class="h">Database changes apply themselves &mdash; you never run SQL</div>
-  <p>From gateway <b>0.9.0</b> the gateway applies <code class="inline">setup_database.sql</code> on <b>every</b> start. That file is written so running it again changes nothing, and so it can only ever <b>add</b> &mdash; it never drops a table or deletes a row. A brand-new install and a five-year-old one therefore end up with exactly the same database, because both run the same file.</p>
+  <p>The gateway applies <code class="inline">setup_database.sql</code> on <b>every</b> start. That file is written so running it again changes nothing, and so it can only ever <b>add</b> &mdash; it never drops a table or deletes a row. A brand-new install and a five-year-old one therefore end up with exactly the same database, because both run the same file.</p>
   <p>Anything that <b>removes</b> something is kept separate, recorded in the database itself so it cannot run twice, and is <b>never applied automatically</b>. A fresh install runs <code class="inline">setup_database.sql</code> the same way; there is no separate first-time path to get wrong.</p>
   <p>Two things it will refuse to do rather than risk your data. It will not run an update that <b>deletes</b> anything unless you deliberately start it with <code class="inline">--allow-destructive</code>, and even then only after it has taken its own backup first &mdash; if the backup fails, the update is refused. And if the database is <b>newer</b> than the gateway (you rolled the gateway back but not the data), it refuses to start rather than write a format it does not understand.</p>
   <p class="muted">Watch the console on the first restart after an update. You will see a line per applied change, ending with the schema version. If nothing is pending it simply says the schema is up to date.</p></div>
@@ -3392,7 +3392,7 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
   <p class="muted">You never need to touch these &mdash; <code class="inline">setup_database.sql</code> creates them and the gateway keeps them current. This is here so you know what your server stores, and what a backup contains.</p>
 
   <div class="note tip"><div class="h">The database updates itself &mdash; there is no SQL step</div>
-  <p>From gateway <b>0.9.0</b> the gateway applies <code class="inline">setup_database.sql</code> on <b>every</b> start. Update the file, restart, done. You do not run SQL by hand, and there is no migration step to forget.</p>
+  <p>The gateway applies <code class="inline">setup_database.sql</code> on <b>every</b> start. Update the file, restart, done. You do not run SQL by hand, and there is no migration step to forget.</p>
   <p>That file is written so that <b>running it again changes nothing</b>, and so that it can only ever <b>add</b> &mdash; it never drops a table or deletes a row. Applying it to a database that is already current is a no-op; applying it to an old one brings it forward. A brand-new install and a five-year-old one end up with exactly the same database, because both run the same file.</p>
   <p class="muted">Anything that <i>removes</i> something is kept separate and is never applied automatically &mdash; the gateway stops and tells you the exact command instead, after taking a backup. See <b>Troubleshooting</b> if you ever see <code class="inline">REFUSING TO START</code>.</p></div>
 
@@ -3407,7 +3407,7 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
     <tr><td><code class="inline">player_marker_prefs</code></td><td>Map / HUD marker choices</td><td>Hive-wide</td></tr>
   </table>
 
-  <div class="note tip"><div class="h">From gateway 0.9.3 &mdash; where you logged off is remembered per gear group and per map</div>
+  <div class="note tip"><div class="h">Where you logged off is remembered per gear group and per map</div>
   <p>Before this a player had <b>one</b> saved position per server. Switching gear group, or rotating the map away and back, overwrote it &mdash; so they returned to a spot belonging to a different world, or lost it entirely.</p>
   <p>Now each combination of <b>server + gear group + map</b> remembers its own position, facing, stance and held weapon. Log off in ALPHA on Eden and your ALPHA-Eden spot is still there after playing BRAVO, or after the map rotated away and back.</p>
   <p><b>Gear is unchanged and is still not map-scoped.</b> The same mods on a different map in the same group are the same gear, exactly as before. Only <i>where you were standing</i> gained the extra scoping, because coordinates only mean something on one map.</p>
@@ -3608,6 +3608,11 @@ sudo journalctl -u wz-server -f</pre></div>
     <tr><td>Current</td><td><b>Gateway 0.9.4</b> + <code class="inline">waitress</code></td><td><b>Update the gateway in the same sitting as the mod.</b> Gear stops saving until you do &mdash; the older gateway has no endpoint for it &mdash; and without <code class="inline">waitress</code> the gateway falls back to a development web server that drops requests under a reconnect burst. A dropped save is a lost save.</td></tr>
   </table></div>
 
+  <div class="note tip"><div class="h">Coming from the live release? It is one jump &mdash; 0.7.1 straight to 0.9.4</div>
+  <p>The Workshop gives you <b>mod 1.0.16</b> with <b>gateway 0.7.1</b> today. Beta is <b>gateway 0.9.4</b>. There is nothing to install in between &mdash; you do <b>not</b> step through 0.8, 0.9.0, 0.9.3 or any other number, and you should ignore any older version you see mentioned in a release note. Drop in the 0.9.4 <code class="inline">gateway.py</code>, start it, and it brings the database up to date on its own.</p>
+  <p>Every schema change between 0.7.1 and 0.9.4 is applied by the gateway at startup, in order, and recorded so it never runs twice. <b>You do not run SQL by hand.</b> The only piece that is not automatic is <code class="inline">waitress</code> &mdash; install it with the requirements before you start.</p>
+  <p class="muted"><b>Take a database backup first.</b> Not because this upgrade is expected to need one, but because the time you skip it is the time you want it.</p></div>
+
   <div class="note warn"><div class="h">Gateway 0.9.4 &mdash; update the mod and the gateway together</div>
   <p>This release moves gear into a new table. The mod and the gateway have to agree about that, so <b>do both in one sitting</b>. The order does not matter, but the gap does.</p>
   <p><b>While only the mod is updated:</b> players still connect, and <b>money and bank are completely unaffected</b> &mdash; but gear <b>stops being saved</b>, because the older gateway has no endpoint to save it to. Nothing is lost that was already stored; new changes simply are not written until the gateway catches up.</p>
@@ -3703,9 +3708,9 @@ max_connections = 500</pre></div></div>
   <div class="note"><div class="h">Symptom: <code class="inline">GATEWAY VERSION MISMATCH</code> banner in the server console</div>
   <p><b>Cause:</b> the gateway is older than the mod expects. The mod pings the gateway every 60 seconds and prints this until they line up.</p>
   <p><b>Fix:</b> replace <code class="inline">gateway.py</code> and restart the gateway &mdash; see the <b>Update Gateway</b> tab. This is a <b>warning, not a block</b>: the game keeps running while you sort it out. Check the release note for that version to see what specifically is degraded in the meantime.</p>
-  <p><b>From gateway 0.9.0:</b> what is degraded is <b>gear saving</b> &mdash; the older gateway has no endpoint for it. Money, bank and everything else keep working normally, and nothing already saved is lost. Update the gateway and gear resumes saving on the next autosave.</p></div>
+  <p><b>On gateway 0.9.4:</b> what is degraded is <b>gear saving</b> &mdash; the older gateway has no endpoint for it. Money, bank and everything else keep working normally, and nothing already saved is lost. Update the gateway and gear resumes saving on the next autosave.</p></div>
 
-  <div class="note"><div class="h">What a healthy gateway start looks like &mdash; from 0.9.0</div>
+  <div class="note"><div class="h">What a healthy gateway start looks like</div>
   <p>Two lines near the top tell you the database is correct. If you see both, the schema is current and you can stop reading.</p>
   <div class="code"><pre>[SCHEMA] setup_database.sql applied (idempotent; no-op when current).
 [MIGRATE] Schema up to date (version 93).</pre></div>
