@@ -15,7 +15,7 @@ risk. The full disclaimer is shown when you open the guide.
 | Branch | Channel | Gateway | For |
 |---|---|---|---|
 | **`main`** | **Production** | **0.7.1** | Everyone running a live server. This is what you want. |
-| `beta` | Test | 0.9.0 | Testing the next release. **Never on a live server.** |
+| `beta` | Test | 0.9.4 | Testing the next release. **Never on a live server.** |
 
 Both keep the kit at the same path, `gateway/`, so the setup and update steps are
 identical on either. Only the clone differs:
@@ -25,11 +25,11 @@ git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git            # produc
 git clone -b beta https://github.com/Motavar/HF_WastelandZ_SETUP.git    # beta
 ```
 
-> **A newer gateway is not better.** Gateway `0.9.0` on `beta` pairs with an
+> **A newer gateway is not better.** Gateway `0.9.4` on `beta` pairs with an
 > unreleased mod build. Run it against mod 1.0.16 and gear keeps saving — which is
-> the trap. Starting 0.9.0 copies your gear into its new table once; that copy then
+> the trap. Starting 0.9.4 copies your gear into its new table once; that copy then
 > goes stale while players carry on writing the old one. Update the mod later and
-> gear **appears to roll back** to the day you started 0.9.0.
+> gear **appears to roll back** to the day you started 0.9.4.
 
 See **[RELEASES.md](RELEASES.md)** for the version history and how to upgrade.
 
