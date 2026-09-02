@@ -2040,6 +2040,73 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
 </div></div>
 
 <section><div class="wrap">
+  <h3>The short version</h3>
+  <ul class="clean muted">
+    <li>A <b>hive</b> is where your players' money, bank <b>and gear</b> are saved. It is basically their account.</li>
+    <li>Every server you point at the same hive shares all of it. A player hops between them and nothing changes.</li>
+    <li>A server in a <b>different</b> hive is a different account. Nothing crosses between them.</li>
+  </ul>
+
+  <h3>The picture</h3>
+  <p class="muted">One hive, however many maps and servers you run. The lines show where each map saves your players' stuff.</p>
+
+  <div class="dgwrap">
+<svg class="dg" viewBox="0 0 920 430" role="img" aria-label="On this release one hive holds money, bank and gear together, shared by every map in it">
+  <defs>
+    <marker id="dgarrp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="dg-arr"/>
+    </marker>
+  </defs>
+
+  <text class="dg-cap" x="30" y="20">Maps in your rotation</text>
+
+  <rect class="dg-pill" x="30"  y="40" width="150" height="42" rx="21"/>
+  <text class="dg-pt"   x="105" y="66">Everon</text>
+
+  <rect class="dg-pill" x="196" y="40" width="150" height="42" rx="21"/>
+  <text class="dg-pt"   x="271" y="66">Arland</text>
+
+  <rect class="dg-pill" x="362" y="40" width="180" height="42" rx="21"/>
+  <text class="dg-pt"   x="452" y="66">Any other map</text>
+
+  <rect class="dg-pill" x="700" y="40" width="180" height="42" rx="21"/>
+  <text class="dg-pt"   x="790" y="66">Buddy&#8217;s Map</text>
+
+  <path class="dg-line" d="M105,82 V112 H300 V244" marker-end="url(#dgarrp)"/>
+  <path class="dg-line" d="M271,82 V112 H300"/>
+  <path class="dg-line" d="M452,82 V112 H300"/>
+  <path class="dg-line" d="M790,82 V112 H785 V244" marker-end="url(#dgarrp)"/>
+
+  <rect class="dg-hive" x="40" y="196" width="520" height="196" rx="12"/>
+  <text class="dg-hl"   x="60" y="226">YOUR HIVE</text>
+  <text class="dg-hs"   x="152" y="226">one save for everything</text>
+
+  <rect class="dg-grp" x="60"  y="250" width="480" height="112" rx="9"/>
+  <text class="dg-gn"  x="300" y="290">MONEY &#183; BANK &#183; GEAR</text>
+  <text class="dg-gs"  x="300" y="318">all together, on this release</text>
+  <text class="dg-gs2" x="300" y="340">every map above shares all of it</text>
+
+  <rect class="dg-hive-alt" x="660" y="196" width="250" height="196" rx="12"/>
+  <text class="dg-hl-alt"   x="680" y="226">BUDDY&#8217;S HIVE</text>
+  <text class="dg-hs"       x="680" y="244">his money, bank and gear</text>
+
+  <rect class="dg-grp" x="680" y="266" width="210" height="96" rx="9"/>
+  <text class="dg-gs"  x="785" y="308">a separate save</text>
+  <text class="dg-gs2" x="785" y="330">yours is untouched</text>
+</svg>
+  </div>
+
+  <ul class="clean muted">
+    <li>Every map pointed at your hive shares <b>one</b> save &mdash; money, bank and gear all together.</li>
+    <li>A map pointed at somebody else's hive uses <b>their</b> save. Yours sits untouched until you rotate back.</li>
+  </ul>
+
+  <div class="note warn"><div class="h">&#9888; One hive means one shared wardrobe as well as one bank</div>
+  <p>On this release there is <b>no way</b> to share money but keep gear separate &mdash; a hive shares both. So every server in a hive should run <b>the same mods</b>. Gear is saved as a list of item references, and an item whose mod is missing on the destination cannot be restored there.</p></div>
+</div></section>
+
+
+<section><div class="wrap">
   <div class="part-head"><span class="part-badge">Hives</span><h2>One gateway, one database, several hives</h2></div>
   <p class="muted">Two settings decide what your players carry between servers, and they are not the same thing. Getting them the wrong way round is how somebody opens an empty bank.</p>
 
