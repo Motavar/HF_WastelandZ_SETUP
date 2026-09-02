@@ -542,7 +542,28 @@ app.config['JSON_SORT_KEYS'] = False
 # weapon that nothing has written yet, and a 0.9.3 mod against a 0.9.2 gateway
 # gets the hive-wide value back. Both degrade quietly; the handshake is what
 # makes either visible.
-GATEWAY_VERSION = "0.9.3"
+# 0.9.4 (2026-08-31) - the write stamp, and the realm list the join card asks
+# for.
+#
+# Every player save now records the (server_id, boot_session_id) that wrote
+# it, and the load hands it back. That lets one comparison separate "you
+# played here earlier this run" from "this server has restarted since you
+# left" - a distinction nothing could draw before, and the reason a returning
+# player after a crash was held to the strict last-location rule they had no
+# way to satisfy. The column has existed and sat NULL since 0.9.0; only the
+# read and the write were missing. See PLAYER_GEAR_STATE_CARD.md S8.
+#
+# data_list gained ?groups=1: the realm names holding a namespace, as one flat
+# CSV and no payloads, because the join card names where the gear actually is
+# and Enforce cannot parse the full listing.
+#
+# The number moves because both directions degrade in silence. A 0.9.3 mod
+# against this gateway sends no stamp, so every row saves NULL and every
+# rejoin reads as a restart - the forgiving direction, but permanently on. A
+# 0.9.4 mod against a 0.9.3 gateway sends a stamp nothing stores and reads
+# back an empty one, reaching the identical always-restarted state with no
+# error anywhere. That is precisely the failure the handshake exists for.
+GATEWAY_VERSION = "0.9.4"
 
 # --------------------------------------------------------
 # Server roster — multi-server hive.
@@ -1170,6 +1191,12 @@ def get_player(uid):
             player["recover_veh_prefab"] = sess.get("recover_veh_prefab")
             player["recover_veh_class"]  = sess.get("recover_veh_class")
             player["recover_session_id"] = sess.get("recover_session_id")
+            # THE WRITE STAMP - which boot of THIS server last wrote this row.
+            # The SELECT * above has always fetched it; the response is built
+            # key by key, so a column not named here never reaches the mod.
+            # That is why the column sat NULL and inert: not a broken write,
+            # an unbuilt read. See save_player and PLAYER_GEAR_STATE_CARD S8.
+            player["boot_session_id"]    = sess.get("boot_session_id") or ""
             # THE HELD WEAPON NOW COMES FROM THE SESSION ROW, which is keyed by
             # realm and map - so each realm returns what THAT realm's character
             # was holding. players.weapon is hive-scoped and is DEPRECATED: one
@@ -1190,6 +1217,11 @@ def get_player(uid):
             player["recover_veh_prefab"] = None
             player["recover_veh_class"] = None
             player["recover_session_id"] = None
+            # No row for this realm+map on this server. No row means no write,
+            # no write means no stamp - and an empty stamp reads as "assume
+            # the server restarted", which is the forgiving answer and the
+            # correct one for a player who has never saved here.
+            player["boot_session_id"] = ""
         return jsonify({"status": "ok", "player": player})
 
     except mysql.connector.Error as err:
@@ -1233,6 +1265,18 @@ def save_player(uid):
     # own gear_group fallback - read and write MUST agree on the default, or
     # they address different rows and the player's position vanishes.
     save_group = (data.get("gear_group") or "ALPHA")[:32]
+
+    # THE WRITE STAMP (2026-08-31, gw 0.9.4). Which boot of which server
+    # wrote this row. server_id is already in the key, so this column only
+    # has to supply the run - and the pair then answers "is the saved state
+    # still current" with one comparison and no flags.
+    #
+    # Only ever written by a SAVE. That is the whole point: arrival_grace
+    # exists because a LOAD mutated the value a LOAD was reading, so a second
+    # read during one arrival contradicted the first. Nothing here is
+    # reachable from get_player, so repeated loads cannot disturb it.
+    # See docs/design/PLAYER_GEAR_STATE_CARD.md S8.
+    boot_session_id = (data.get("boot_session_id") or "")[:64] or None
 
     inventory = data.get("inventory")
     if isinstance(inventory, (list, dict)):
@@ -1338,8 +1382,9 @@ def save_player(uid):
             # position row on this box was written as hive 'default'.
             cursor.execute("""
                 INSERT INTO player_sessions (player_uid, hive_id, server_id, share_group, map_name,
-                                             pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive, weapon)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                             pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive, weapon,
+                                             boot_session_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     -- Same COALESCE rule as players.weapon had to learn: an
                     -- ABSENT weapon must not destroy the stored one. The mod
@@ -1352,9 +1397,21 @@ def save_player(uid):
                     rotation_yaw = VALUES(rotation_yaw),
                     stance = VALUES(stance),
                     is_alive = VALUES(is_alive),
+                    -- PLAIN ASSIGNMENT, deliberately NOT the COALESCE the
+                    -- weapon above needs. They look alike and mean opposite
+                    -- things. An absent weapon means "I have nothing to
+                    -- report", so the stored value stands. An absent stamp
+                    -- means "the writer did not identify its run" - which is
+                    -- itself the answer, and keeping the previous run's id
+                    -- would let this row claim it was written by a boot that
+                    -- did not write it. NULL reads as "unknown, assume
+                    -- restarted", the forgiving direction, matching
+                    -- HFServerSession.HasRestartedSince() on an empty id.
+                    boot_session_id = VALUES(boot_session_id),
                     last_seen = CURRENT_TIMESTAMP
             """, (uid, current_hive_id(), sid, save_group, map_name or "",
-                  pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive, weapon))
+                  pos_x, pos_y, pos_z, rotation_yaw, stance, is_alive, weapon,
+                  boot_session_id))
 
             conn.commit()
 
@@ -2590,6 +2647,26 @@ def data_list(uid, namespace):
     for answering "where IS their gear" when a player says it vanished -
     which is almost always a group they are no longer in, with the row
     sitting untouched exactly where they left it.
+
+    ?groups=1 answers the same question in a form the MOD can actually read
+    (gw 0.9.4). Two reasons the full listing above cannot serve the join
+    card that now asks this question on the player's behalf:
+
+      1. Enforce cannot parse it. HFRestClient.ParseStringField finds the
+         FIRST "field" and reads a flat string, so it cannot walk an array
+         of objects whose keys repeat. Hand-rolled bracket matching is
+         exactly where this class of bug lives - the same reasoning that
+         put the gear resolver in get_player instead of the mod.
+
+      2. It returns every payload. One call per join drags back every
+         loadout that player owns; at 128 simultaneous logins that is real
+         bandwidth for a question whose whole answer is a list of names.
+
+    So the groups form returns ONE flat comma-separated string and no
+    payloads at all: {"groups": "ALPHA,BRAVO"}. CSV because that is already
+    how this mod moves lists across a boundary Enforce cannot parse
+    structurally, and it splits with IndexOf(",") the way HFAdminBanList
+    already does.
     """
     if not check_auth("LOAD"):
         return jsonify({"status": "error", "message": "unauthorized"}), 401
@@ -2601,6 +2678,27 @@ def data_list(uid, namespace):
         return jsonify({"status": "error", "message": "database unavailable"}), 503
     try:
         cursor = conn.cursor(dictionary=True)
+
+        if request.args.get("groups"):
+            cursor.execute("""
+                SELECT DISTINCT share_group
+                  FROM player_data
+                 WHERE player_uid = %s AND hive_id = %s AND namespace = %s
+                 ORDER BY share_group
+            """, (uid, current_hive_id(), namespace))
+            # A comma inside a name would split one realm into two, and the
+            # mod would name a group that does not exist. Dropped rather
+            # than escaped: the mod's own config writers already REFUSE a
+            # comma in a stored value (HFLootPoolConfig, HFWorldLootConfig),
+            # so a realm containing one is already outside what this system
+            # supports and inventing an escape scheme here would be the only
+            # place that understood it.
+            names = [str(r.get("share_group") or "").replace(",", "")
+                     for r in cursor.fetchall()]
+            names = [n for n in names if n]
+            return jsonify({"status": "ok", "namespace": namespace,
+                            "groups": ",".join(names)})
+
         cursor.execute("""
             SELECT share_group, scope_map, server_id, map_name,
                    format_ver, payload, updated_at
@@ -3261,8 +3359,27 @@ def hive_register():
                 addon_hash   = VALUES(addon_hash),
                 addon_list   = VALUES(addon_list),
                 players_online  = VALUES(players_online),
-                boot_session_id = VALUES(boot_session_id),
-                started_at      = VALUES(started_at)
+                -- started_at MEANS started_at again (gw 0.9.4). It was
+                -- rewritten by every register, and a reregister fires
+                -- whenever the GATEWAY lost the row - so the column was
+                -- named started_at and behaved like last_registered_at.
+                -- The boot session is the honest test for "is this a new
+                -- run": same id, same run, leave the timestamp alone.
+                -- <=> is NULL-safe, so an older mod that sends no session
+                -- id compares '' to '' and keeps the stored timestamp
+                -- rather than resetting it on every re-register.
+                --
+                -- ORDER IS LOAD-BEARING, and it is the trap in this idiom.
+                -- MySQL evaluates these assignments LEFT TO RIGHT, and a
+                -- column read after it has been assigned yields the NEW
+                -- value. Written the other way round - boot_session_id
+                -- first - the comparison below would compare the incoming
+                -- id to itself, be true on every single register, and
+                -- started_at would never move again. Silently: the syntax
+                -- is valid and the column merely freezes.
+                started_at      = IF(hive_servers.boot_session_id <=> VALUES(boot_session_id),
+                                     hive_servers.started_at, VALUES(started_at)),
+                boot_session_id = VALUES(boot_session_id)
         """, (
             current_hive_id(), sid,
             (data.get("display_name") or "")[:128],
