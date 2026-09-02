@@ -296,11 +296,11 @@
     </div>
     <span class="chanwhich">
       <span class="p-txt"><b>Mod 1.0.16</b> &middot; gateway <b>0.7.1</b> &mdash; the live Workshop release. Use this one.</span>
-      <span class="b-txt"><b>Next release</b> &middot; gateway <b>0.9.3</b> &mdash; in testing. Not on the Workshop yet.</span>
+      <span class="b-txt"><b>Next release</b> &middot; gateway <b>0.9.4</b> &mdash; in testing. Not on the Workshop yet.</span>
     </span>
   </div>
   <div class="betaflag">
-    <b>You are reading the BETA guide.</b> It documents an unreleased mod build and gateway 0.9.3. Running it against mod 1.0.16 &mdash; the version the Workshop gives you today &mdash; <b>silently stops saving gear</b>. Switch to <b>Production</b> unless you are deliberately testing the next release.
+    <b>You are reading the BETA guide.</b> It documents an unreleased mod build and gateway 0.9.4. Running it against mod 1.0.16 &mdash; the version the Workshop gives you today &mdash; <b>silently stops saving gear</b>. Switch to <b>Production</b> unless you are deliberately testing the next release.
   </div>
 </div>
 
@@ -365,7 +365,7 @@
   <div class="code"><pre>/opt/
 ├── wastelandz/                <span class="c"># THIS KIT (git clone) — reference copies, read-only</span>
 │   ├── gateway-1.0.16/          <span class="c"># CURRENT RELEASE gateway + setup_database.sql + config.example.py</span>
-│   ├── gateway/                 <span class="c"># next release (0.9.3) — in testing, do NOT use yet</span>
+│   ├── gateway/                 <span class="c"># next release (0.9.4) — in testing, do NOT use yet</span>
 │   ├── configs/                 <span class="c"># reference *.example HF settings (optional pre-tuning)</span>
 │   ├── missions/                <span class="c"># mission reward templates + in-game authoring guide</span>
 │   └── server/                  <span class="c"># systemd + server1/2.json examples + SteamCMD script</span>
@@ -3529,7 +3529,7 @@ sudo journalctl -u wz-server -f</pre></div>
   </table></div>
 
   <div class="note warn"><div class="h">A gateway and database change is coming &mdash; it is not live yet</div>
-  <p>The next release moves gear into a new table and requires <b>gateway 0.9.3</b>. It is <b>not</b> on the Workshop yet, and you should not install it. When it ships, the mod and the gateway have to be updated <b>in one sitting</b> &mdash; the order does not matter, but the gap does.</p>
+  <p>The next release moves gear into a new table and requires <b>gateway 0.9.4</b>. It is <b>not</b> on the Workshop yet, and you should not install it. When it ships, the mod and the gateway have to be updated <b>in one sitting</b> &mdash; the order does not matter, but the gap does.</p>
   <p><b>Your bank will not be at risk in that upgrade.</b> Money and bank live in the same columns, in the same table, before and after. The upgrade does not read them, move them or rewrite them. Gear is <b>copied</b> into the new table, not moved.</p>
   <p class="muted">You can read the whole procedure now under the <b>Beta</b> channel. Do not run it against mod 1.0.16 &mdash; gear saves silently stop being read back.</p></div>
   <div class="note tip"><div class="h">Config files are never rewritten out from under you</div><p>New settings are added to your existing <code class="inline">.conf</code> files on first boot after an update, with defaults. Your values are kept. You do not need to delete anything, and there has never been a release that required you to.</p></div>
@@ -3605,10 +3605,10 @@ sudo journalctl -u wz-server -f</pre></div>
     <tr><th>From</th><th>Requirement</th><th>If you skip it</th></tr>
     <tr><td>2026-08-16 onward</td><td><b>Arma Reforger 1.8.0.10</b></td><td>The Game script module fails to compile and <b>the server does not start</b>. There is no 1.7-compatible build.</td></tr>
     <tr><td>2026-07-16 onward</td><td><b>Gateway 0.7.1</b></td><td>Admin <code class="inline">/money</code> drops are not written to the database and vanish on restart. Everything else keeps working.</td></tr>
-    <tr><td>Current</td><td><b>Gateway 0.9.3</b> + <code class="inline">waitress</code></td><td><b>Update the gateway in the same sitting as the mod.</b> Gear stops saving until you do &mdash; the older gateway has no endpoint for it &mdash; and without <code class="inline">waitress</code> the gateway falls back to a development web server that drops requests under a reconnect burst. A dropped save is a lost save.</td></tr>
+    <tr><td>Current</td><td><b>Gateway 0.9.4</b> + <code class="inline">waitress</code></td><td><b>Update the gateway in the same sitting as the mod.</b> Gear stops saving until you do &mdash; the older gateway has no endpoint for it &mdash; and without <code class="inline">waitress</code> the gateway falls back to a development web server that drops requests under a reconnect burst. A dropped save is a lost save.</td></tr>
   </table></div>
 
-  <div class="note warn"><div class="h">Gateway 0.9.3 &mdash; update the mod and the gateway together</div>
+  <div class="note warn"><div class="h">Gateway 0.9.4 &mdash; update the mod and the gateway together</div>
   <p>This release moves gear into a new table. The mod and the gateway have to agree about that, so <b>do both in one sitting</b>. The order does not matter, but the gap does.</p>
   <p><b>While only the mod is updated:</b> players still connect, and <b>money and bank are completely unaffected</b> &mdash; but gear <b>stops being saved</b>, because the older gateway has no endpoint to save it to. Nothing is lost that was already stored; new changes simply are not written until the gateway catches up.</p>
   <p><b>Your bank is not at risk in this upgrade.</b> Money and bank live in the same columns, in the same table, before and after. The upgrade does not read them, move them or rewrite them.</p>
@@ -3636,7 +3636,7 @@ sudo journalctl -u wz-server -f</pre></div>
   <p><b>Cause:</b> the gateway is older than the mod expects. The mod pings the gateway every 60 seconds and prints this until they line up.</p>
   <p><b>Fix:</b> replace <code class="inline">gateway.py</code> and restart the gateway &mdash; see the <b>Update Gateway</b> tab. This is a <b>warning, not a block</b>: the game keeps running while you sort it out.</p>
   <p>The banner names both versions. <b>The one after &ldquo;Expected&rdquo; is the gateway your mod needs</b> &mdash; on mod 1.0.16 that is <code class="inline">0.7.1</code>. If it says the gateway is <b>newer</b> than expected, you have installed the beta gateway by mistake: copy from <code class="inline">gateway-1.0.16/</code> instead.</p>
-  <div class="note danger" style="margin-top:10px"><div class="h">Running gateway 0.9.3 on mod 1.0.16 stops gear saving, silently</div>
+  <div class="note danger" style="margin-top:10px"><div class="h">Running gateway 0.9.4 on mod 1.0.16 stops gear saving, silently</div>
   <p>The two disagree about where gear lives. Saves are accepted and written under a key the mod never reads back, so the save returns success and <b>nothing in any log reports a problem</b> &mdash; players simply stop keeping changes to their loadout.</p>
   <p><b>Fix:</b> copy <code class="inline">gateway-1.0.16/</code> over your gateway folder and restart. Gear already stored is untouched and comes back.</p></div></div>
 
