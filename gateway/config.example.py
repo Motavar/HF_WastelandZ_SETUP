@@ -11,7 +11,10 @@ DB_PORT = 3306
 DB_USER = "wastelandz"
 DB_PASSWORD = "CHANGE_ME"
 DB_NAME = "wastelandz"
-DB_POOL_SIZE = 32              # Pooled MySQL connections (max 32).
+DB_POOL_SIZE_v2 = 32           # Pooled MySQL connections (max 32).
+                               # Replaces DB_POOL_SIZE, which shipped as 10 and is
+                               # removed from config.py automatically on first start
+                               # of gateway 0.9.5 or newer (a backup is taken first).
                                # Must be >= HTTP_THREADS x number of servers, or
                                # bursts queue on the database and can 503 - and a
                                # 503 on a save is a lost write. The gateway warns

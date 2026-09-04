@@ -36,6 +36,7 @@ import mysql.connector
 from mysql.connector import pooling
 import json
 import sys
+import ast
 import os
 import re
 import time
@@ -91,17 +92,25 @@ CONFIG_AUTOFILL = [
     ("HIVE_ID", "default",
      "Which hive this gateway serves. Servers sharing a hive share money and\n"
      "# bank. Leave alone unless you run more than one independent hive."),
-    ("DB_POOL_SIZE", 32,
+    ("DB_POOL_SIZE_v2", 32,
      "Pooled MySQL connections. 32 is the connector's maximum.\n"
      "# Keep HTTP_THREADS x number_of_servers <= this, or bursts return 503 —\n"
-     "# and a 503 on a save is a lost save."),
+     "# and a 503 on a save is a lost save.\n"
+     "#\n"
+     "# REPLACES DB_POOL_SIZE, which shipped as 10 and is retired on startup.\n"
+     "# Ten was fine while the development HTTP server dropped excess requests\n"
+     "# at the socket; with waitress they reach the pool instead and 22 of 32\n"
+     "# would have taken an HTTP 503. Raising the OLD default could not reach\n"
+     "# anyone: every 0.7.x config.py already contains that line, and the\n"
+     "# autofill only ever adds what is MISSING."),
     ("HTTP_SERVER", "auto",
      "auto | waitress | werkzeug. 'auto' uses waitress when installed and\n"
      "# falls back to Flask's development server, which drops requests under a\n"
      "# reconnect burst. pip install waitress."),
     ("HTTP_THREADS", 16,
      "Request threads per listening server. Lower this as you add servers —\n"
-     "# see DB_POOL_SIZE above. 2 servers -> 16, 6 -> 5, 10 -> 3, 16+ -> 2."),
+     "# see DB_POOL_SIZE_v2 above. 1-2 servers -> 16, 3 -> 10, 4 -> 8,\n"
+     "# 6 -> 5, 10 -> 3, 16+ -> 2."),
     ("FLASK_DEBUG", False,
      "Never True on a live server: it exposes an interactive debugger."),
     ("MONITORING_ENABLED", False,
@@ -199,6 +208,104 @@ def ensure_config_defaults():
 
 
 ensure_config_defaults()
+
+
+# --------------------------------------------------------
+# RETIRING A SETTING - the only code that DELETES from config.py.
+#
+# WHY A DELETE EXISTS AT ALL. DB_POOL_SIZE shipped as 10 in 0.7.1. That was
+# correct while werkzeug dropped excess requests at the socket, before they
+# could ever reach the pool. waitress does not: 16 threads x 2 listeners is 32
+# requests in flight, and a pool of 10 leaves 22 of them taking an HTTP 503 -
+# which on a save is a lost write. Changing the DEFAULT fixes nobody, because
+# every 0.7.x config.py already contains the line and ensure_config_defaults()
+# only ever adds what is MISSING. So the NAME is retired instead: the autofill
+# above adds DB_POOL_SIZE_v2 at 32, this removes the dead line, and no admin is
+# left tuning a setting that nothing reads.
+#
+# WRITTEN TO FAIL CLOSED. The comment at the top of ensure_config_defaults()
+# records what a bad write to this file costs: an unparseable config.py and a
+# gateway that dies on a SyntaxError in a file the admin did not write.
+# Deleting a line is strictly riskier than appending one, so:
+#
+#   - Only a TOP-LEVEL assignment is matched, anchored at column 0. The name
+#     inside a comment, a string, or an indented block is left alone.
+#     DB_POOL_SIZE_v2 cannot match it: the next character is "_", which is
+#     neither whitespace nor "=".
+#   - The result is ast.parse()d BEFORE anything is written. If it does not
+#     parse, NOTHING is written and the original file stands. A stale setting
+#     is harmless; an unparseable config.py stops the gateway.
+#   - A timestamped backup is taken first, exactly as the autofill does.
+#   - Every failure path is non-fatal and says what it did. The value this
+#     build actually uses is already live in memory either way.
+# --------------------------------------------------------
+RETIRED_CONFIG_KEYS = ["DB_POOL_SIZE"]
+
+
+def retire_legacy_config_keys():
+    """Delete settings this build no longer reads from the admin's config.py."""
+    present = [k for k in RETIRED_CONFIG_KEYS if hasattr(config, k)]
+    if not present:
+        return
+
+    path = getattr(config, "__file__", None)
+    if not path:
+        return
+
+    try:
+        with open(path, "r", encoding="utf-8", newline="") as fh:
+            original = fh.read()
+    except Exception as exc:
+        print(f"[GATEWAY] could not read config.py to retire old settings ({exc})")
+        return
+
+    matchers = [(k, re.compile(r"^" + re.escape(k) + r"\s*=")) for k in present]
+    kept, dropped = [], []
+    for line in original.splitlines(keepends=True):
+        hit = next((k for k, rx in matchers if rx.match(line)), None)
+        if hit:
+            dropped.append((hit, line.strip()))
+        else:
+            kept.append(line)
+
+    if not dropped:
+        return
+
+    updated = "".join(kept)
+
+    try:
+        ast.parse(updated)
+    except SyntaxError as exc:
+        names = ", ".join(k for k, _ in dropped)
+        print(f"[GATEWAY] removing {names} would leave config.py unparseable ({exc})")
+        print("[GATEWAY]   config.py left exactly as it was")
+        return
+
+    try:
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup = f"{path}.bak-{stamp}"
+        with open(backup, "w", encoding="utf-8", newline="") as fh:
+            fh.write(original)
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(updated)
+    except Exception as exc:
+        print(f"[GATEWAY] could NOT rewrite config.py to retire old settings ({exc})")
+        print("[GATEWAY]   left as it was; this build ignores the old setting anyway")
+        return
+
+    for name, text in dropped:
+        print(f"[GATEWAY] retired {name} from config.py - this build does not read it")
+        print(f"[GATEWAY]   removed:  {text}")
+    print(f"[GATEWAY]   previous file saved as {os.path.basename(backup)}")
+
+    # Drop it from the imported module too, so nothing in this run can read the
+    # stale value by accident.
+    for name, _ in dropped:
+        if hasattr(config, name):
+            delattr(config, name)
+
+
+retire_legacy_config_keys()
 
 
 # --------------------------------------------------------
@@ -563,7 +670,7 @@ app.config['JSON_SORT_KEYS'] = False
 # 0.9.4 mod against a 0.9.3 gateway sends a stamp nothing stores and reads
 # back an empty one, reaching the identical always-restarted state with no
 # error anywhere. That is precisely the failure the handshake exists for.
-GATEWAY_VERSION = "0.9.4"
+GATEWAY_VERSION = "0.9.5"
 
 # --------------------------------------------------------
 # Server roster — multi-server hive.
@@ -710,7 +817,7 @@ def _pool_size():
 
     A 503 on a save is a LOST WRITE, which is exactly what must not happen.
     """
-    return min(int(getattr(config, "DB_POOL_SIZE", 32)), 32)
+    return min(int(getattr(config, "DB_POOL_SIZE_v2", 32)), 32)
 
 
 def _init_db_pool():
