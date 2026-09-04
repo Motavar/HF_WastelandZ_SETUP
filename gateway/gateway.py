@@ -133,6 +133,76 @@ CONFIG_AUTOFILL = [
 ]
 
 
+# --------------------------------------------------------
+# CONFIG FILE MAINTENANCE - shared by the autofill and the retirement.
+#
+# WHY THESE ARE SHARED. Both paths edit the SAME file on the SAME start, and
+# both used to take their own backup and write with the platform default. That
+# produced two .bak- files per boot and, on Windows, appended CRLF lines to an
+# LF file. Neither breaks anything - Python does not care about mixed endings -
+# but a self-maintaining config that leaves litter and mangles line endings is
+# hard to trust, and trust is the whole point of a file the gateway edits on an
+# admin's behalf.
+#
+# LINE ENDINGS. Every read and write below passes newline="", which switches
+# off universal-newline translation in BOTH directions. Without it, reading on
+# any platform turns CRLF into LF and writing on Windows turns LF back into
+# CRLF, so a Linux admin's LF config.py silently becomes CRLF the first time a
+# Windows gateway touches it - and vice versa. With it, whatever the admin
+# wrote is what stays on disk, and appended lines match what is already there.
+# --------------------------------------------------------
+
+# One backup per process, however many paths want one.
+_CONFIG_BACKUP = None
+
+
+def _config_eol(text):
+    """The line ending this file already uses. Default LF for a new file."""
+    m = re.search(r"\r\n|\r|\n", text)
+    return m.group(0) if m else "\n"
+
+
+def _config_lines(text):
+    """Split into lines KEEPING terminators, exactly where Python would.
+
+    str.splitlines() also breaks on form feed, vertical tab and the Unicode
+    separators, none of which end a line in Python source. A form feed is legal
+    in a .py file, so splitlines() could split a line Python considers whole.
+    """
+    return re.findall(r"[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+$", text)
+
+
+def _backup_config_once(path, text):
+    """Write ONE timestamped backup per boot; return its basename.
+
+    NEVER OVERWRITES AN EXISTING BACKUP. The stamp is only second-resolution,
+    so two starts inside the same second would collide and the second one would
+    destroy the first - and the backup it destroyed could be the only copy of
+    what the admin had before any of this ran. "x" is exclusive creation: it
+    raises rather than truncate, and the suffix loop walks to a free name.
+    """
+    global _CONFIG_BACKUP
+    if _CONFIG_BACKUP:
+        return os.path.basename(_CONFIG_BACKUP)
+
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    base = f"{path}.bak-{stamp}"
+    candidate, n = base, 1
+    while True:
+        try:
+            with open(candidate, "x", encoding="utf-8", newline="") as fh:
+                fh.write(text)
+            break
+        except FileExistsError:
+            n += 1
+            candidate = f"{base}-{n}"
+            if n > 50:                    # give up rather than spin forever
+                raise
+
+    _CONFIG_BACKUP = candidate
+    return os.path.basename(candidate)
+
+
 def ensure_config_defaults():
     """Append settings this build expects but this config.py does not define."""
     # Every name must be a legal Python identifier before it is written.
@@ -171,16 +241,14 @@ def ensure_config_defaults():
 
     try:
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup = f"{path}.bak-{stamp}"
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, "r", encoding="utf-8", newline="") as fh:
             existing = fh.read()
-        with open(backup, "w", encoding="utf-8") as fh:
-            fh.write(existing)
 
+        eol = _config_eol(existing)
         lines = []
         # A file not ending in a newline would glue our first line onto the
         # admin's last one.
-        if existing and not existing.endswith("\n"):
+        if existing and not existing.endswith(("\n", "\r")):
             lines.append("")
         lines.append("")
         lines.append("# " + "-" * 58)
@@ -194,11 +262,23 @@ def ensure_config_defaults():
             lines.append(f"{name} = {value!r}")
         lines.append("")
 
-        with open(path, "a", encoding="utf-8") as fh:
-            fh.write("\n".join(lines))
+        # The comment blocks above embed literal \n inside their text, so the
+        # appended block is normalised to this file's ending as a whole rather
+        # than only at the joins.
+        block = eol.join(lines).replace("\r\n", "\n").replace("\n", eol)
+        updated = existing + block
+
+        # Same guard the retirement uses: never leave a config.py that Python
+        # cannot read. The values are already live in memory, so refusing to
+        # write costs the admin nothing but a repeat of this message next boot.
+        ast.parse(updated)
+
+        backup_name = _backup_config_once(path, existing)
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(updated)
 
         print(f"[GATEWAY]   written to config.py with this build's defaults")
-        print(f"[GATEWAY]   previous file saved as {os.path.basename(backup)}")
+        print(f"[GATEWAY]   previous file saved as {backup_name}")
     except Exception as exc:
         # Not fatal. The values are already live for this run.
         print(f"[GATEWAY]   could NOT write config.py ({exc})")
@@ -261,7 +341,7 @@ def retire_legacy_config_keys():
 
     matchers = [(k, re.compile(r"^" + re.escape(k) + r"\s*=")) for k in present]
     kept, dropped = [], []
-    for line in original.splitlines(keepends=True):
+    for line in _config_lines(original):
         hit = next((k for k, rx in matchers if rx.match(line)), None)
         if hit:
             dropped.append((hit, line.strip()))
@@ -282,10 +362,7 @@ def retire_legacy_config_keys():
         return
 
     try:
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup = f"{path}.bak-{stamp}"
-        with open(backup, "w", encoding="utf-8", newline="") as fh:
-            fh.write(original)
+        backup_name = _backup_config_once(path, original)
         with open(path, "w", encoding="utf-8", newline="") as fh:
             fh.write(updated)
     except Exception as exc:
@@ -296,7 +373,7 @@ def retire_legacy_config_keys():
     for name, text in dropped:
         print(f"[GATEWAY] retired {name} from config.py - this build does not read it")
         print(f"[GATEWAY]   removed:  {text}")
-    print(f"[GATEWAY]   previous file saved as {os.path.basename(backup)}")
+    print(f"[GATEWAY]   previous file saved as {backup_name}")
 
     # Drop it from the imported module too, so nothing in this run can read the
     # stale value by accident.
