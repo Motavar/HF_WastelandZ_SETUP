@@ -3141,7 +3141,7 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
   <div class="step"><span class="n">3</span>
     <h4>After a big update, you do not have to do anything</h4>
     <p>The gateway checks its own settings on every start. If a release added one your <code class="inline">config.py</code> does not have, it <b>writes it in for you</b> with that release&rsquo;s default and tells you it did &mdash; the same way the game server fills in new keys in its <code class="inline">.conf</code> files.</p>
-    <div class="code"><pre>[GATEWAY] config.py is missing 3 setting(s): DB_POOL_SIZE, HTTP_SERVER, HTTP_THREADS
+    <div class="code"><pre>[GATEWAY] config.py is missing 3 setting(s): DB_POOL_SIZE_v2, HTTP_SERVER, HTTP_THREADS
 [GATEWAY]   written to config.py with this build's defaults
 [GATEWAY]   previous file saved as config.py.bak-20260824-081500</pre></div>
     <p class="muted">Your own values are never edited or reordered &mdash; settings are only ever <b>added</b>. It backs the file up first, and the new entries arrive with a comment explaining each one, so you can read them and change your mind.</p>
@@ -3420,7 +3420,18 @@ copy gateway.py.bak gateway.py</pre></div>
   <p class="muted">Measured on a two-server hive: the development server plateaued around 620 requests/second and began failing at 32 simultaneous requests (65 of 640 dropped). With waitress and the default connection pool the same load ran <b>1000 requests/second with zero failures</b>. Day to day a busy hive only needs a handful of requests a second &mdash; the difference shows up in bursts, like everyone reconnecting after a restart.</p></div>
   <div class="note"><div class="h">If you see &ldquo;database unavailable&rdquo; under load</div>
   <p>That is the connection pool running out, not the database being down. The gateway keeps a fixed set of MySQL connections and lends one to each request; if more requests arrive at once than there are connections, the extras have nowhere to go.</p>
-  <p>It already retries briefly before giving up, and the defaults (<code class="inline">DB_POOL_SIZE = 32</code>, <code class="inline">HTTP_THREADS = 16</code>) are matched for a two-server gateway. If you run <b>more servers through one gateway</b>, either lower <code class="inline">HTTP_THREADS</code> or raise <code class="inline">DB_POOL_SIZE</code> &mdash; 32 is the maximum the MySQL connector allows. The gateway prints a warning at startup if these two do not line up, so you do not have to work it out yourself.</p></div>
+  <p>It already retries briefly before giving up, and the defaults (<code class="inline">DB_POOL_SIZE_v2 = 32</code>, <code class="inline">HTTP_THREADS = 16</code>) are matched for a two-server gateway. Run <b>more servers through one gateway</b> and you must lower <code class="inline">HTTP_THREADS</code> to fit &mdash; the rule is <code class="inline">HTTP_THREADS &times; number_of_servers &le; DB_POOL_SIZE_v2</code>.</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Servers on one gateway</th><th>HTTP_THREADS</th><th>DB_POOL_SIZE_v2</th></tr>
+    <tr><td><span class="role">1</span></td><td><span class="role">16</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">2</span></td><td><span class="role">16</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">3</span></td><td><span class="role">10</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">4</span></td><td><span class="role">8</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">6</span></td><td><span class="role">5</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">10</span></td><td><span class="role">3</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">16+</span></td><td><span class="role">2</span></td><td><span class="role">32</span></td></tr>
+  </table></div>
+  <p class="muted"><b>At three servers or more, lowering <code class="inline">HTTP_THREADS</code> is the only option.</b> <code class="inline">DB_POOL_SIZE_v2</code> is already at 32, the MySQL connector’s hard maximum, so there is nothing left to raise. The gateway prints a warning at startup if these two do not line up, so you do not have to work it out yourself.</p></div>
 </div></section>
 
 <section><div class="wrap">
@@ -3458,7 +3469,7 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
   <div class="step"><span class="n">3</span>
     <h4>After a big update, you do not have to do anything</h4>
     <p>The gateway checks its own settings on every start. If a release added one your <code class="inline">config.py</code> does not have, it <b>writes it in for you</b> with that release&rsquo;s default and tells you it did &mdash; the same way the game server fills in new keys in its <code class="inline">.conf</code> files.</p>
-    <div class="code"><pre>[GATEWAY] config.py is missing 3 setting(s): DB_POOL_SIZE, HTTP_SERVER, HTTP_THREADS
+    <div class="code"><pre>[GATEWAY] config.py is missing 3 setting(s): DB_POOL_SIZE_v2, HTTP_SERVER, HTTP_THREADS
 [GATEWAY]   written to config.py with this build's defaults
 [GATEWAY]   previous file saved as config.py.bak-20260824-081500</pre></div>
     <p class="muted">Your own values are never edited or reordered &mdash; settings are only ever <b>added</b>. It backs the file up first, and the new entries arrive with a comment explaining each one, so you can read them and change your mind.</p>
@@ -3771,7 +3782,18 @@ sudo journalctl -u wz-server -f</pre></div>
 
   <div class="note warn"><div class="h">Symptom: HTTP 503 <code class="inline">database unavailable</code> under load</div>
   <p><b>Cause:</b> the connection pool is exhausted. The gateway lends one database connection per in-flight request.</p>
-  <p><b>Fix:</b> keep <code class="inline">HTTP_THREADS &times; number_of_servers &le; DB_POOL_SIZE</code>. With the maximum <code class="inline">DB_POOL_SIZE</code> of 32: 2 servers &rarr; 16 threads, 6 servers &rarr; 5, 10 servers &rarr; 3, 16+ &rarr; 2. The gateway warns at startup when these do not line up.</p></div>
+  <p><b>Fix:</b> keep <code class="inline">HTTP_THREADS &times; number_of_servers &le; DB_POOL_SIZE_v2</code>. <code class="inline">DB_POOL_SIZE_v2</code> stays at 32 &mdash; the MySQL connector’s hard maximum &mdash; so it is <code class="inline">HTTP_THREADS</code> that comes down as you add servers:</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Servers on one gateway</th><th>HTTP_THREADS</th><th>DB_POOL_SIZE_v2</th></tr>
+    <tr><td><span class="role">1</span></td><td><span class="role">16</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">2</span></td><td><span class="role">16</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">3</span></td><td><span class="role">10</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">4</span></td><td><span class="role">8</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">6</span></td><td><span class="role">5</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">10</span></td><td><span class="role">3</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">16+</span></td><td><span class="role">2</span></td><td><span class="role">32</span></td></tr>
+  </table></div>
+  <p class="muted">The gateway warns at startup when these do not line up.</p></div>
 
   <div class="note"><div class="h">Symptom: the gateway cannot connect to MySQL at all once you run several</div>
   <p><b>Cause:</b> MySQL&rsquo;s default <code class="inline">max_connections</code> is 151, which allows roughly four gateway processes at a pool size of 32.</p>
@@ -3847,7 +3869,18 @@ max_connections = 500</pre></div></div>
 
   <div class="note warn"><div class="h">Symptom: HTTP 503 <code class="inline">database unavailable</code> under load</div>
   <p><b>Cause:</b> the connection pool is exhausted. The gateway lends one database connection per in-flight request.</p>
-  <p><b>Fix:</b> keep <code class="inline">HTTP_THREADS &times; number_of_servers &le; DB_POOL_SIZE</code>. With the maximum <code class="inline">DB_POOL_SIZE</code> of 32: 2 servers &rarr; 16 threads, 6 servers &rarr; 5, 10 servers &rarr; 3, 16+ &rarr; 2. The gateway warns at startup when these do not line up.</p></div>
+  <p><b>Fix:</b> keep <code class="inline">HTTP_THREADS &times; number_of_servers &le; DB_POOL_SIZE_v2</code>. <code class="inline">DB_POOL_SIZE_v2</code> stays at 32 &mdash; the MySQL connector’s hard maximum &mdash; so it is <code class="inline">HTTP_THREADS</code> that comes down as you add servers:</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Servers on one gateway</th><th>HTTP_THREADS</th><th>DB_POOL_SIZE_v2</th></tr>
+    <tr><td><span class="role">1</span></td><td><span class="role">16</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">2</span></td><td><span class="role">16</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">3</span></td><td><span class="role">10</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">4</span></td><td><span class="role">8</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">6</span></td><td><span class="role">5</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">10</span></td><td><span class="role">3</span></td><td><span class="role">32</span></td></tr>
+    <tr><td><span class="role">16+</span></td><td><span class="role">2</span></td><td><span class="role">32</span></td></tr>
+  </table></div>
+  <p class="muted">The gateway warns at startup when these do not line up.</p></div>
 
   <div class="note"><div class="h">Symptom: the gateway cannot connect to MySQL at all once you run several</div>
   <p><b>Cause:</b> MySQL&rsquo;s default <code class="inline">max_connections</code> is 151, which allows roughly four gateway processes at a pool size of 32.</p>
