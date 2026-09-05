@@ -57,6 +57,301 @@ except ImportError:
 
 
 # --------------------------------------------------------
+# LOGGING IS INSTALLED FIRST, AND THAT ORDER IS DELIBERATE.
+#
+# The two functions below EDIT config.py - one appends settings, one deletes a
+# retired one - and what they report is the only account an admin has of a
+# program changing a file they wrote. Installed after them, the tee had not
+# replaced sys.stdout yet, so those lines reached the console and NOTHING else:
+# absent from gateway.log on every platform, and on Windows gone for good the
+# moment the console window closed. The .bak- file was the only surviving trace.
+#
+# Moving logging first is safe because `import config` has already run. Any
+# LOG_* an admin set is therefore readable NOW, and the autofill never changes
+# a setting that exists - it only adds missing ones, using the very defaults
+# _install_logging() already falls back to (gateway.log, 5, 3, True). So the
+# outcome is identical for a configured admin and for a bare config alike.
+# --------------------------------------------------------
+# --------------------------------------------------------
+# LOGGING — timestamped console, plus a rotating file that maintains itself.
+#
+# WHY A TEE RATHER THAN 95 EDITED print() CALLS. Every existing print keeps
+# working untouched, and so does every print added later - nobody has to
+# remember a convention. It also catches what matters most: an unhandled
+# traceback goes to STDERR, so teeing that too means a crash leaves its stack
+# in the file instead of only in a console window that has already closed.
+#
+# WHY SIZE-CAPPED AND NOT PER-DAY. Daily files accumulate forever and become a
+# chore nobody does. This has a hard ceiling - LOG_MAX_MB x (LOG_BACKUPS + 1) -
+# and once it reaches it, it stays there. Nothing to prune, nothing to
+# schedule, and disk usage you can state in advance.
+#
+# The console is left exactly as it was. An admin watching the window sees the
+# same lines, now with a time in front.
+# --------------------------------------------------------
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def _strip_ansi(text):
+    """Escape codes are for a terminal, never for a file.
+
+    The startup banner already emitted BOLD/RESET before any of this existed,
+    so without stripping, the log filled with \x1b[1m litter that breaks grep
+    and makes every line awkward to read in an editor.
+    """
+    return _ANSI_RE.sub("", text)
+
+
+def _terminal_supports_colour():
+    """TERM tells you what the far end of an SSH session actually is.
+
+    isatty() only says "something interactive is attached" - it is true for a
+    dumb terminal, a serial console and a CI harness alike. TERM is what
+    distinguishes them, and it is the variable every other tool checks:
+
+      unset   - no terminal type advertised, assume nothing
+      dumb    - explicitly says it cannot do this
+
+    PuTTY, xterm, Windows Terminal and a plain SSH login all advertise
+    something real (xterm, xterm-256color, vt100) and handle the basic ANSI
+    set fine.
+    """
+    if os.name == "nt":
+        return True                  # decided by _enable_windows_ansi instead
+    term = os.environ.get("TERM", "")
+    return bool(term) and term != "dumb"
+
+
+def _enable_windows_ansi():
+    """Turn on virtual-terminal processing so Windows renders ANSI.
+
+    Windows 10+ supports it but does NOT enable it for a plain console by
+    default. Modern Terminal does; conhost often does not. Wrapped in a broad
+    except because on an old build, a redirected handle, or a non-Windows
+    Python this simply is not available - and colour is never worth an
+    exception on startup.
+    """
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        # -11 = STD_OUTPUT_HANDLE. 7 = PROCESSED_OUTPUT | WRAP_AT_EOL |
+        # VIRTUAL_TERMINAL_PROCESSING.
+        return bool(k.SetConsoleMode(k.GetStdHandle(-11), 7))
+    except Exception:
+        return False
+
+
+class _Colour:
+    """Decides once whether colour is safe, then paints by line content.
+
+    Three ways to end up with no colour, all deliberate:
+      - LOG_COLOR = False in config.py
+      - NO_COLOR set in the environment (the de-facto convention)
+      - output is not a terminal, i.e. piped to a file or a service log,
+        where escape codes are noise rather than formatting
+    """
+
+    RESET = "\x1b[0m"
+
+    def __init__(self, enabled):
+        self.on = bool(enabled)
+
+    def paint(self, stamp, line):
+        if not self.on:
+            return f"{stamp} {line}"
+
+        # ORIGINAL ANSI ONLY - 30-37 plus bold/dim. The 90-97 "bright" range
+        # is an aixterm extension: xterm, PuTTY and Windows Terminal render
+        # it, a strict VT100 need not, and no colour here is worth a line of
+        # garbage on somebody's serial console.
+        body = ""
+        if "Traceback" in line or line.startswith("ERR ") or "Error" in line:
+            body = "\x1b[31m"                              # red
+        elif "WARN" in line or "WARNING" in line or "missing" in line:
+            body = "\x1b[33m"                              # yellow
+        elif line.startswith("[MIGRATE]"):
+            body = "\x1b[36m"                              # cyan
+        elif "OK" in line or "created" in line or "up." in line:
+            body = "\x1b[32m"                              # green
+
+        # Dim timestamp so the eye lands on the message. A terminal without
+        # dim ignores the code and prints normally, so no fallback is needed.
+        if not body:
+            return f"\x1b[2m{stamp}{self.RESET} {line}"
+        return f"\x1b[2m{stamp}{self.RESET} {body}{line}{self.RESET}"
+
+
+class _TeeStream:
+    """Line-buffered tee. BOTH console and file get a timestamp per line.
+
+    Buffers until a newline because print() emits the text and the "\n" as
+    SEPARATE writes - stamping every write would drop a timestamp into the
+    middle of a line. Whatever is left unterminated is flushed on exit.
+
+    The console is stamped as well as the file. It was not, briefly, on the
+    reasoning that an admin watching the window wanted it unchanged - which was
+    wrong. A console line with no time on it is the one you cannot correlate
+    with anything later, and "when did the pool come up" is exactly the
+    question a startup log gets asked.
+    """
+
+    def __init__(self, real, sink, tag, colour):
+        self._real = real
+        self._sink = sink
+        self._tag = tag
+        self._colour = colour
+        self._buf = ""
+
+    def _stamp(self):
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def _line(self, line):
+        # Full date AND time on the console, same as the file. A server
+        # window can stay open for weeks, so a bare clock time is ambiguous
+        # the moment you scroll back past midnight.
+        try:
+            self._real.write(self._colour.paint(self._stamp(), line) + "\n")
+        except Exception:
+            pass
+        if self._sink:
+            # Plain text to disk, always. Colour is a property of the terminal
+            # you are looking at, not of the event that happened.
+            self._sink.emit(self._tag, _strip_ansi(line))
+
+    def write(self, text):
+        self._buf += text
+        while "\n" in self._buf:
+            line, self._buf = self._buf.split("\n", 1)
+            self._line(line)
+
+    def flush(self):
+        if self._buf:
+            line, self._buf = self._buf, ""
+            self._line(line)
+        try:
+            self._real.flush()
+        except Exception:
+            pass
+
+    def isatty(self):
+        try:
+            return self._real.isatty()
+        except Exception:
+            return False
+
+
+class _RotatingSink:
+    """Append lines, roll over at a size cap, keep a fixed number of old files.
+
+    Deliberately not logging.handlers.RotatingFileHandler: that wants to OWN
+    formatting and levels, and everything here is already a formatted print.
+    This just needs "append a line, roll when big".
+    """
+
+    def __init__(self, path, max_bytes, backups):
+        self._path = path
+        self._max = max_bytes
+        self._backups = backups
+        self._fh = None
+        self._open()
+
+    def _open(self):
+        try:
+            d = os.path.dirname(self._path)
+            if d and not os.path.isdir(d):
+                os.makedirs(d, exist_ok=True)
+            self._fh = open(self._path, "a", encoding="utf-8", errors="replace")
+        except Exception as exc:
+            # Never take the gateway down over a log file. Console still works.
+            sys.__stderr__.write(f"[GATEWAY] log file unavailable ({exc}) — console only\n")
+            self._fh = None
+
+    def _roll(self):
+        """gateway.log -> .2, .2 -> .3, ... and the oldest is dropped.
+
+        Backups are numbered from 2 so the live file keeps its plain name -
+        an admin tailing gateway.log never has to think about which one is
+        current.
+
+        Walked OLDEST FIRST. Going the other way would rename .2 onto .3
+        before .3 had moved, destroying a file that should have survived.
+        """
+        try:
+            self._fh.close()
+        except Exception:
+            pass
+        try:
+            oldest = self._backups + 1        # e.g. backups=3 -> .4 is dropped
+            if os.path.exists(f"{self._path}.{oldest}"):
+                os.remove(f"{self._path}.{oldest}")
+
+            for i in range(oldest - 1, 1, -1):     # .3 -> .4, then .2 -> .3
+                src = f"{self._path}.{i}"
+                if os.path.exists(src):
+                    os.rename(src, f"{self._path}.{i + 1}")
+
+            if os.path.exists(self._path):         # live file -> .2
+                os.rename(self._path, f"{self._path}.2")
+        except Exception:
+            pass
+        self._open()
+
+    def emit(self, tag, line):
+        if not self._fh:
+            return
+        try:
+            stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self._fh.write(f"{stamp} {tag} {line}\n")
+            self._fh.flush()          # flush every line: a crash must not lose the last one
+            if self._max > 0 and self._fh.tell() >= self._max:
+                self._roll()
+        except Exception:
+            pass
+
+
+def _install_logging():
+    # LOG_FILE "" means CONSOLE ONLY - not "no timestamps". Returning early
+    # here skipped installing the tee altogether, so switching the file off
+    # also silently switched the timestamps off, which is not what the setting
+    # says and not what anyone would want.
+    path = str(getattr(config, "LOG_FILE", "gateway.log"))
+    sink = None
+    max_mb = 0
+    backups = 0
+    if path:
+        if not os.path.isabs(path):
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
+        max_mb = float(getattr(config, "LOG_MAX_MB", 5))
+        backups = int(getattr(config, "LOG_BACKUPS", 3))
+        sink = _RotatingSink(path, int(max_mb * 1024 * 1024), backups)
+
+    want = bool(getattr(config, "LOG_COLOR", True))
+    if os.environ.get("NO_COLOR"):
+        want = False
+    tty = False
+    try:
+        tty = sys.__stdout__.isatty()
+    except Exception:
+        tty = False
+    colour = _Colour(want and tty and _terminal_supports_colour()
+                     and _enable_windows_ansi())
+
+    sys.stdout = _TeeStream(sys.__stdout__, sink, "    ", colour)
+    sys.stderr = _TeeStream(sys.__stderr__, sink, "ERR ", colour)
+
+    if sink:
+        total = max_mb * (backups + 1)
+        print(f"[GATEWAY] logging to {path} (max {max_mb:g} MB x {backups + 1} files = {total:g} MB ceiling)")
+    else:
+        print("[GATEWAY] LOG_FILE is empty — console only, still timestamped")
+
+
+_install_logging()
+
+
+# --------------------------------------------------------
 # SELF-HEALING CONFIG — write missing optional settings on startup.
 #
 # Same idea the mod uses for its .conf files: a release that ADDS a setting
@@ -385,283 +680,6 @@ def retire_legacy_config_keys():
 retire_legacy_config_keys()
 
 
-# --------------------------------------------------------
-# LOGGING — timestamped console, plus a rotating file that maintains itself.
-#
-# WHY A TEE RATHER THAN 95 EDITED print() CALLS. Every existing print keeps
-# working untouched, and so does every print added later - nobody has to
-# remember a convention. It also catches what matters most: an unhandled
-# traceback goes to STDERR, so teeing that too means a crash leaves its stack
-# in the file instead of only in a console window that has already closed.
-#
-# WHY SIZE-CAPPED AND NOT PER-DAY. Daily files accumulate forever and become a
-# chore nobody does. This has a hard ceiling - LOG_MAX_MB x (LOG_BACKUPS + 1) -
-# and once it reaches it, it stays there. Nothing to prune, nothing to
-# schedule, and disk usage you can state in advance.
-#
-# The console is left exactly as it was. An admin watching the window sees the
-# same lines, now with a time in front.
-# --------------------------------------------------------
-_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
-
-
-def _strip_ansi(text):
-    """Escape codes are for a terminal, never for a file.
-
-    The startup banner already emitted BOLD/RESET before any of this existed,
-    so without stripping, the log filled with \x1b[1m litter that breaks grep
-    and makes every line awkward to read in an editor.
-    """
-    return _ANSI_RE.sub("", text)
-
-
-def _terminal_supports_colour():
-    """TERM tells you what the far end of an SSH session actually is.
-
-    isatty() only says "something interactive is attached" - it is true for a
-    dumb terminal, a serial console and a CI harness alike. TERM is what
-    distinguishes them, and it is the variable every other tool checks:
-
-      unset   - no terminal type advertised, assume nothing
-      dumb    - explicitly says it cannot do this
-
-    PuTTY, xterm, Windows Terminal and a plain SSH login all advertise
-    something real (xterm, xterm-256color, vt100) and handle the basic ANSI
-    set fine.
-    """
-    if os.name == "nt":
-        return True                  # decided by _enable_windows_ansi instead
-    term = os.environ.get("TERM", "")
-    return bool(term) and term != "dumb"
-
-
-def _enable_windows_ansi():
-    """Turn on virtual-terminal processing so Windows renders ANSI.
-
-    Windows 10+ supports it but does NOT enable it for a plain console by
-    default. Modern Terminal does; conhost often does not. Wrapped in a broad
-    except because on an old build, a redirected handle, or a non-Windows
-    Python this simply is not available - and colour is never worth an
-    exception on startup.
-    """
-    if os.name != "nt":
-        return True
-    try:
-        import ctypes
-        k = ctypes.windll.kernel32
-        # -11 = STD_OUTPUT_HANDLE. 7 = PROCESSED_OUTPUT | WRAP_AT_EOL |
-        # VIRTUAL_TERMINAL_PROCESSING.
-        return bool(k.SetConsoleMode(k.GetStdHandle(-11), 7))
-    except Exception:
-        return False
-
-
-class _Colour:
-    """Decides once whether colour is safe, then paints by line content.
-
-    Three ways to end up with no colour, all deliberate:
-      - LOG_COLOR = False in config.py
-      - NO_COLOR set in the environment (the de-facto convention)
-      - output is not a terminal, i.e. piped to a file or a service log,
-        where escape codes are noise rather than formatting
-    """
-
-    RESET = "\x1b[0m"
-
-    def __init__(self, enabled):
-        self.on = bool(enabled)
-
-    def paint(self, stamp, line):
-        if not self.on:
-            return f"{stamp} {line}"
-
-        # ORIGINAL ANSI ONLY - 30-37 plus bold/dim. The 90-97 "bright" range
-        # is an aixterm extension: xterm, PuTTY and Windows Terminal render
-        # it, a strict VT100 need not, and no colour here is worth a line of
-        # garbage on somebody's serial console.
-        body = ""
-        if "Traceback" in line or line.startswith("ERR ") or "Error" in line:
-            body = "\x1b[31m"                              # red
-        elif "WARN" in line or "WARNING" in line or "missing" in line:
-            body = "\x1b[33m"                              # yellow
-        elif line.startswith("[MIGRATE]"):
-            body = "\x1b[36m"                              # cyan
-        elif "OK" in line or "created" in line or "up." in line:
-            body = "\x1b[32m"                              # green
-
-        # Dim timestamp so the eye lands on the message. A terminal without
-        # dim ignores the code and prints normally, so no fallback is needed.
-        if not body:
-            return f"\x1b[2m{stamp}{self.RESET} {line}"
-        return f"\x1b[2m{stamp}{self.RESET} {body}{line}{self.RESET}"
-
-
-class _TeeStream:
-    """Line-buffered tee. BOTH console and file get a timestamp per line.
-
-    Buffers until a newline because print() emits the text and the "\n" as
-    SEPARATE writes - stamping every write would drop a timestamp into the
-    middle of a line. Whatever is left unterminated is flushed on exit.
-
-    The console is stamped as well as the file. It was not, briefly, on the
-    reasoning that an admin watching the window wanted it unchanged - which was
-    wrong. A console line with no time on it is the one you cannot correlate
-    with anything later, and "when did the pool come up" is exactly the
-    question a startup log gets asked.
-    """
-
-    def __init__(self, real, sink, tag, colour):
-        self._real = real
-        self._sink = sink
-        self._tag = tag
-        self._colour = colour
-        self._buf = ""
-
-    def _stamp(self):
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    def _line(self, line):
-        # Full date AND time on the console, same as the file. A server
-        # window can stay open for weeks, so a bare clock time is ambiguous
-        # the moment you scroll back past midnight.
-        try:
-            self._real.write(self._colour.paint(self._stamp(), line) + "\n")
-        except Exception:
-            pass
-        if self._sink:
-            # Plain text to disk, always. Colour is a property of the terminal
-            # you are looking at, not of the event that happened.
-            self._sink.emit(self._tag, _strip_ansi(line))
-
-    def write(self, text):
-        self._buf += text
-        while "\n" in self._buf:
-            line, self._buf = self._buf.split("\n", 1)
-            self._line(line)
-
-    def flush(self):
-        if self._buf:
-            line, self._buf = self._buf, ""
-            self._line(line)
-        try:
-            self._real.flush()
-        except Exception:
-            pass
-
-    def isatty(self):
-        try:
-            return self._real.isatty()
-        except Exception:
-            return False
-
-
-class _RotatingSink:
-    """Append lines, roll over at a size cap, keep a fixed number of old files.
-
-    Deliberately not logging.handlers.RotatingFileHandler: that wants to OWN
-    formatting and levels, and everything here is already a formatted print.
-    This just needs "append a line, roll when big".
-    """
-
-    def __init__(self, path, max_bytes, backups):
-        self._path = path
-        self._max = max_bytes
-        self._backups = backups
-        self._fh = None
-        self._open()
-
-    def _open(self):
-        try:
-            d = os.path.dirname(self._path)
-            if d and not os.path.isdir(d):
-                os.makedirs(d, exist_ok=True)
-            self._fh = open(self._path, "a", encoding="utf-8", errors="replace")
-        except Exception as exc:
-            # Never take the gateway down over a log file. Console still works.
-            sys.__stderr__.write(f"[GATEWAY] log file unavailable ({exc}) — console only\n")
-            self._fh = None
-
-    def _roll(self):
-        """gateway.log -> .2, .2 -> .3, ... and the oldest is dropped.
-
-        Backups are numbered from 2 so the live file keeps its plain name -
-        an admin tailing gateway.log never has to think about which one is
-        current.
-
-        Walked OLDEST FIRST. Going the other way would rename .2 onto .3
-        before .3 had moved, destroying a file that should have survived.
-        """
-        try:
-            self._fh.close()
-        except Exception:
-            pass
-        try:
-            oldest = self._backups + 1        # e.g. backups=3 -> .4 is dropped
-            if os.path.exists(f"{self._path}.{oldest}"):
-                os.remove(f"{self._path}.{oldest}")
-
-            for i in range(oldest - 1, 1, -1):     # .3 -> .4, then .2 -> .3
-                src = f"{self._path}.{i}"
-                if os.path.exists(src):
-                    os.rename(src, f"{self._path}.{i + 1}")
-
-            if os.path.exists(self._path):         # live file -> .2
-                os.rename(self._path, f"{self._path}.2")
-        except Exception:
-            pass
-        self._open()
-
-    def emit(self, tag, line):
-        if not self._fh:
-            return
-        try:
-            stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self._fh.write(f"{stamp} {tag} {line}\n")
-            self._fh.flush()          # flush every line: a crash must not lose the last one
-            if self._max > 0 and self._fh.tell() >= self._max:
-                self._roll()
-        except Exception:
-            pass
-
-
-def _install_logging():
-    # LOG_FILE "" means CONSOLE ONLY - not "no timestamps". Returning early
-    # here skipped installing the tee altogether, so switching the file off
-    # also silently switched the timestamps off, which is not what the setting
-    # says and not what anyone would want.
-    path = str(getattr(config, "LOG_FILE", "gateway.log"))
-    sink = None
-    max_mb = 0
-    backups = 0
-    if path:
-        if not os.path.isabs(path):
-            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
-        max_mb = float(getattr(config, "LOG_MAX_MB", 5))
-        backups = int(getattr(config, "LOG_BACKUPS", 3))
-        sink = _RotatingSink(path, int(max_mb * 1024 * 1024), backups)
-
-    want = bool(getattr(config, "LOG_COLOR", True))
-    if os.environ.get("NO_COLOR"):
-        want = False
-    tty = False
-    try:
-        tty = sys.__stdout__.isatty()
-    except Exception:
-        tty = False
-    colour = _Colour(want and tty and _terminal_supports_colour()
-                     and _enable_windows_ansi())
-
-    sys.stdout = _TeeStream(sys.__stdout__, sink, "    ", colour)
-    sys.stderr = _TeeStream(sys.__stderr__, sink, "ERR ", colour)
-
-    if sink:
-        total = max_mb * (backups + 1)
-        print(f"[GATEWAY] logging to {path} (max {max_mb:g} MB x {backups + 1} files = {total:g} MB ceiling)")
-    else:
-        print("[GATEWAY] LOG_FILE is empty — console only, still timestamped")
-
-
-_install_logging()
 
 # --------------------------------------------------------
 # Load crypto module
