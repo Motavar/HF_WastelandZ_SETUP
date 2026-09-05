@@ -43,6 +43,51 @@ live database. It also asserts that **this** gateway's own `config.py` passes.
 
 ---
 
+## `test_config_maintenance.py` — safe, and needs no `config.py`
+
+```
+python tests/test_config_maintenance.py
+```
+
+The gateway **edits a file the admin wrote**. This is what says it may not
+damage it.
+
+Two paths write to `config.py` on the same start: `ensure_config_defaults()`
+appends settings this build expects, and `retire_legacy_config_keys()` deletes
+settings it no longer reads. The second is the only code in the gateway that
+**deletes** from an admin's own file, and the whole suite exists because of it.
+
+Every fault below was found by writing these cases, not by an admin losing
+something:
+
+- **Line endings flipping between operating systems.** The autofill appended
+  with the platform default and read without `newline=""`, so reading turned
+  CRLF into LF and writing on Windows turned it back. A Linux admin's LF
+  `config.py` became CRLF simply by being touched by a Windows gateway, and the
+  reverse on the other side. Nothing breaks — Python does not care — but a file
+  that rewrites itself when nobody asked is a file nobody trusts.
+- **A backup destroying an earlier backup.** The name carries a
+  second-resolution timestamp and was opened `"w"`. Two starts inside one
+  second collided and the second truncated the first — and what it destroyed
+  could be the only copy of what the admin had before any of this ran.
+- **Two backups per boot**, one from each path, left beside `config.py`.
+- **Splitting a line Python considers whole.** `str.splitlines()` also breaks on
+  form feed, vertical tab and the Unicode separators, none of which end a line
+  in Python source. A form feed is legal in a `.py` file.
+
+It also proves both **fail-closed** guards: neither path writes anything if the
+result would not `ast.parse()`. A stale setting is harmless; a `config.py`
+Python cannot read stops the gateway.
+
+The functions are extracted from `gateway.py` by AST and run in a sandbox, so
+the suite exercises the **shipped source** rather than a copy that can drift
+away from it. Nothing imports `gateway.py` and nothing starts.
+
+> Unlike the others, this one needs **no `config.py` and no database** — every
+> case runs against a temporary file — so it also runs from the downloaded kit.
+
+---
+
 ## `test_endpoints.py` — safe
 
 ```
