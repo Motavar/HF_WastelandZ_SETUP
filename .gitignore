@@ -1,10 +1,14 @@
-# Secrets — never commit
-gateway/config.py
-# ...and every backup of it. The gateway's self-healing config writer
-# creates config.py.bak-* files that carry a REAL DB_PASSWORD and
-# API_KEY. This repo is PUBLIC, so the bare filename is not enough.
-gateway/config.py.bak*
-gateway/config.py.*.bak
+# Secrets — never commit.
+#
+# THIS REPO IS PUBLIC, so a miss here is a disclosure, not an inconvenience.
+# Matched as a pattern rather than by name: an exact list only covers the names
+# someone already thought of, and it has been caught out twice in the gateway
+# repo — first by config.py.bak-* files, then by a manual backup Windows named
+# "config - Copy.py". The glob covers copies, numbered duplicates, .bak, .old
+# and whatever comes next. config.example.py is negated back in because it is
+# the template and holds only CHANGE_ME placeholders.
+gateway/config*
+!gateway/config.example.py
 gateway/*.log
 gateway/backups/
 
