@@ -3142,6 +3142,27 @@ def data_put(uid, namespace, group):
             return jsonify({"status": "ok", "message": "chunk buffered",
                             "complete": False, "have": have, "total": chunk_total})
 
+        # ── AN ASSEMBLED PAYLOAD MUST STILL BE VALID JSON ────────────
+        # The whole-body path gets this for free: Flask parses the payload as
+        # part of the request, so a malformed one never reaches the write. A
+        # reassembled payload has had no such check, and the failure it guards
+        # against is the expensive kind - a part that arrived truncated, or a
+        # join that went wrong, would write syntactically broken gear that
+        # looks fine in the row and fails to restore on the player's next
+        # login, which is when they find out.
+        #
+        # Refusing here writes nothing, so the previous row stands and the mod
+        # re-sends on the next save. Cheap check, and the only place the
+        # integrity of a chunked write can be established.
+        try:
+            json.loads(assembled)
+        except ValueError as err:
+            print(f"[GATEWAY] chunk batch REJECTED: {uid} ns={namespace} group={group} "
+                  f"- {chunk_total} parts assembled to {len(assembled)} chars but the "
+                  f"result is not valid JSON ({err}). Nothing written; the stored row stands.")
+            return jsonify({"status": "error",
+                            "message": "assembled payload is not valid JSON"}), 400
+
         print(f"[GATEWAY] chunk batch COMPLETE: {uid} ns={namespace} group={group} "
               f"({chunk_total} parts, {len(assembled)} chars assembled)")
         payload = assembled
