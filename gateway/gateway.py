@@ -765,7 +765,7 @@ app.config['JSON_SORT_KEYS'] = False
 # 0.9.4 mod against a 0.9.3 gateway sends a stamp nothing stores and reads
 # back an empty one, reaching the identical always-restarted state with no
 # error anywhere. That is precisely the failure the handshake exists for.
-GATEWAY_VERSION = "0.9.5"
+GATEWAY_VERSION = "0.9.6"
 
 # --------------------------------------------------------
 # Server roster — multi-server hive.
@@ -2757,6 +2757,97 @@ def money_drops_wipe():
 # in the mod, next to the config file that sets it.
 # ============================================================
 
+# ------------------------------------------------------------------
+# OVERSIZE PAYLOADS ARRIVE IN PIECES (0.9.6)
+#
+# WHY. Enfusion's REST POST body has a ceiling. It is documented in the mod
+# repo at docs/archive/TODO_ARCHIVE.md:2259 - "Inventory save fails for large
+# inventories (80+ items / 8000+ chars)" - and measured again 2026-09-07:
+# across 408 successful writes the largest body ever accepted was 7578 chars,
+# and a 9867-char body was refused 495 times in a row.
+#
+# THE GATEWAY IS NOT THE LIMIT, and that was measured too, not assumed. Full
+# CRUD against this endpoint with a throwaway uid stored and returned a
+# 1,000,059-char payload byte-for-byte identical. The body simply does not
+# arrive from the game.
+#
+# That was recorded as FIXED in Session #37 and it was not. DD#49 split player
+# STATE onto its own endpoint, which removed state from the inventory's request
+# and made the COMBINED case fit. A single inventory over the ceiling was never
+# addressed, so it returned the moment one loadout passed 8000 chars alone.
+#
+# The mod already solved this shape once, for RPC: 3000-char chunks under a
+# documented 4000-6000 limit, in five subsystems. This is that pattern on the
+# REST path.
+#
+# COMMIT IS ALL-OR-NOTHING. Parts accumulate here and the row is written ONCE,
+# when the last one lands. A batch that never completes writes nothing and the
+# stored row stands - strictly safer than the single POST it replaces, which
+# could only succeed or vanish.
+#
+# Keyed by the full row address PLUS the batch id, so two servers writing the
+# same player, or one player saving twice in quick succession, cannot mix
+# parts. Out-of-order arrival is fine: parts are addressed by sequence number,
+# never appended.
+# ------------------------------------------------------------------
+_CHUNK_BUF = {}                 # key -> {"parts": {seq: text}, "total": n, "ts": epoch}
+_CHUNK_TTL_SEC = 120            # an incomplete batch older than this is abandoned
+_CHUNK_MAX_PARTS = 128          # 128 x 4000 = 512K of gear, far beyond any real loadout
+_CHUNK_MAX_CHARS = 2_000_000    # hard cap on one assembled payload
+
+
+def _chunk_gc(now):
+    """Drop batches that never completed. Bounded memory, no background thread."""
+    for key in [k for k, v in _CHUNK_BUF.items() if now - v["ts"] > _CHUNK_TTL_SEC]:
+        stale = _CHUNK_BUF.pop(key, None)
+        if stale:
+            print(f"[GATEWAY] chunk batch ABANDONED after {_CHUNK_TTL_SEC}s: {key} "
+                  f"({len(stale['parts'])}/{stale['total']} parts) - nothing written, "
+                  f"the stored row is untouched")
+
+
+def _chunk_accept(key, seq, total, part):
+    """Buffer one part. Returns the assembled payload when complete, else None.
+
+    Raises ValueError on anything malformed - the caller answers 400. A bad
+    part must never be able to half-write a row.
+    """
+    now = time.time()
+    _chunk_gc(now)
+
+    if not isinstance(seq, int) or not isinstance(total, int):
+        raise ValueError("chunk_seq and chunk_total must be integers")
+    if total < 1 or total > _CHUNK_MAX_PARTS:
+        raise ValueError(f"chunk_total out of range 1..{_CHUNK_MAX_PARTS}")
+    if seq < 1 or seq > total:
+        raise ValueError("chunk_seq out of range 1..chunk_total")
+    if not isinstance(part, str):
+        raise ValueError("chunked payload must be a string")
+
+    entry = _CHUNK_BUF.get(key)
+    # A changed total means a NEW batch reusing the id. Start clean rather than
+    # blending two payloads, which is how a corrupt row gets written.
+    if entry is None or entry["total"] != total:
+        entry = {"parts": {}, "total": total, "ts": now}
+        _CHUNK_BUF[key] = entry
+
+    entry["parts"][seq] = part
+    entry["ts"] = now
+
+    running = sum(len(p) for p in entry["parts"].values())
+    if running > _CHUNK_MAX_CHARS:
+        _CHUNK_BUF.pop(key, None)
+        raise ValueError(f"assembled payload exceeds {_CHUNK_MAX_CHARS} chars")
+
+    if len(entry["parts"]) < total:
+        return None
+
+    # Ordered by sequence number, never by arrival.
+    assembled = "".join(entry["parts"][i] for i in range(1, total + 1))
+    _CHUNK_BUF.pop(key, None)
+    return assembled
+
+
 def _csvsafe(value):
     """Strip the row/field separators out of a value.
 
@@ -3022,6 +3113,39 @@ def data_put(uid, namespace, group):
 
     payload = data.get("payload")
 
+    # ── ONE PART OF AN OVERSIZE PAYLOAD (0.9.6) ──────────────────────
+    # See _chunk_accept. Absent chunk_total means an ordinary whole-body
+    # write and nothing below changes. A buffered part answers ok with
+    # complete=false and writes NOTHING; only the part that completes the
+    # set falls through to the write, carrying the assembled payload.
+    #
+    # complete=false matters to the caller: the mod must not mark a payload
+    # as stored until the row has actually been written, or a lost part
+    # would leave it believing gear is saved that never landed.
+    chunk_total = data.get("chunk_total")
+    if chunk_total is not None:
+        chunk_id = str(data.get("chunk_id") or "")[:64]
+        if not chunk_id:
+            return jsonify({"status": "error", "message": "chunk_id required"}), 400
+        scope_map_c = (data.get("scope_map") or "")[:64]
+        if not _valid_scope_map(scope_map_c):
+            return jsonify({"status": "error", "message": "bad scope_map"}), 400
+        key = (uid, current_hive_id(), group, namespace, scope_map_c, chunk_id)
+        try:
+            assembled = _chunk_accept(key, data.get("chunk_seq"), chunk_total, payload)
+        except ValueError as err:
+            _CHUNK_BUF.pop(key, None)
+            return jsonify({"status": "error", "message": str(err)}), 400
+
+        if assembled is None:
+            have = len(_CHUNK_BUF.get(key, {}).get("parts", {}))
+            return jsonify({"status": "ok", "message": "chunk buffered",
+                            "complete": False, "have": have, "total": chunk_total})
+
+        print(f"[GATEWAY] chunk batch COMPLETE: {uid} ns={namespace} group={group} "
+              f"({chunk_total} parts, {len(assembled)} chars assembled)")
+        payload = assembled
+
     # FLAG-ONLY UPDATE. A body carrying owner_dead and no payload updates
     # just that column and leaves the stored gear untouched.
     #
@@ -3126,7 +3250,12 @@ def data_put(uid, namespace, group):
         _db_retry(_write, "data_put")
         print(f"[GATEWAY] data saved: {uid} ns={namespace} group={group} "
               f"map={scope_map or '-'} by={sid} ({len(payload)} chars)")
-        return jsonify({"status": "ok", "message": "saved"})
+        # complete=true says the ROW IS WRITTEN, which is the only thing the
+        # caller may treat as stored. A buffered chunk above answers false.
+        # Sent on every whole-body write too, so one field answers the question
+        # on both paths and the mod never has to infer it from the absence of
+        # something.
+        return jsonify({"status": "ok", "message": "saved", "complete": True})
     except mysql.connector.Error as err:
         # A write that fails here leaves the PREVIOUS value in place,
         # which is the outcome to want: stale gear beats garbage gear,
