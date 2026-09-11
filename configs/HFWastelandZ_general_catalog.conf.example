@@ -17,8 +17,6 @@
 #   SectionName
 #     DisplayName  {GUID}Prefabs/Path/Item.et  PRICE
 #
-# All entries below have REAL per-prefab resource GUIDs extracted
-# directly from data/resourceDatabase.rdb on 2026-04-21.
 # ============================================================
 #
 # PRICING NOTES (suggested starting values — admin-tunable):
