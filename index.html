@@ -3807,21 +3807,30 @@ sudo journalctl -u wz-server -f</pre></div>
 
 <section><div class="wrap">
   <span class="section-tag">Version requirements</span>
-  <h2>What each release expects</h2>
-  <p class="muted">A release note that raises a requirement says so at the top. These are the ones that have moved so far.</p>
-  <p class="muted"><b>Full release history, with what each one needed and how to move between them: <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/RELEASES.md">RELEASES.md</a>.</b> Documentation for an older release is the repo at that release&rsquo;s tag &mdash; the guide as it stood at 1.0.16 is at <code class="inline">blob/v1.0.16/index.html</code>.</p>
+  <h2>Which gateway your mod needs</h2>
+  <p class="muted">Two numbers have to match. That is the whole rule.</p>
+
   <div class="tablewrap"><table class="rtab">
-    <tr><th>From</th><th>Requirement</th><th>If you skip it</th></tr>
-    <tr><td>2026-08-16 onward</td><td><b>Arma Reforger 1.8.0.10</b></td><td>The Game script module fails to compile and <b>the server does not start</b>. There is no 1.7-compatible build.</td></tr>
-    <tr><td>2026-07-16 onward</td><td><b>Gateway 0.7.1</b></td><td>Admin <code class="inline">/money</code> drops are not written to the database and vanish on restart. Everything else keeps working.</td></tr>
-    <tr><td>Current (mod 1.0.16)</td><td><b>Gateway 0.7.1</b></td><td>This is the current requirement and it has not moved since 2026-07-16. If your gateway already says <code class="inline">v0.7.1</code> at startup, there is nothing to do.</td></tr>
+    <tr><th>Your mod</th><th>Needs gateway</th><th>Folder in the kit</th></tr>
+    <tr><td><b>1.0.18</b></td><td><b>0.9.6</b></td><td><code class="inline">gateway-1.0.18/</code></td></tr>
+    <tr><td><b>1.0.16</b></td><td><b>0.7.1</b></td><td><code class="inline">gateway-1.0.16/</code></td></tr>
   </table></div>
 
-  <div class="note warn"><div class="h">A gateway and database change is coming &mdash; it is not live yet</div>
-  <p>The next release moves gear into a new table and requires <b>gateway 0.9.0</b>. It is <b>not</b> on the Workshop yet, and you should not install it. When it ships, the mod and the gateway have to be updated <b>in one sitting</b> &mdash; the order does not matter, but the gap does.</p>
-  <p><b>Your bank will not be at risk in that upgrade.</b> Money and bank live in the same columns, in the same table, before and after. The upgrade does not read them, move them or rewrite them. Gear is <b>copied</b> into the new table, not moved.</p>
-  <p class="muted">Select <b>Mod 1.0.18</b> above for the whole procedure. Do not run gateway 0.9.6 against mod 1.0.16 &mdash; gear saves silently stop being read back.</p></div>
-  <div class="note tip"><div class="h">Config files are never rewritten out from under you</div><p>New settings are added to your existing <code class="inline">.conf</code> files on first boot after an update, with defaults. Your values are kept. You do not need to delete anything, and there has never been a release that required you to.</p></div>
+  <div class="note warn"><div class="h">They are not interchangeable</div>
+  <p>The mod checks the gateway version at startup. If they do not match it prints
+  <code class="inline">GATEWAY VERSION MISMATCH</code> every 60 seconds &mdash; <b>and keeps running
+  anyway</b>, while saves fail. It is a warning, not a stop, so the console is the only place it shows.</p>
+  <p><b>So update both in the same sitting.</b> Never leave a server on a mismatched pair overnight.</p></div>
+
+  <div class="note"><div class="h">Also required</div>
+  <p><b>Arma Reforger 1.8.0.10 or newer</b>, for any mod from 2026-08-16 onward. On an older game build the
+  Game script module fails to compile and the server does not start. There is no older-compatible build to
+  fall back to &mdash; see the <b>Upgrade the Game (Steam)</b> tab.</p></div>
+
+  <div class="note tip"><div class="h">Your config files are never overwritten</div>
+  <p>New settings are added to your existing <code class="inline">.conf</code> files on first boot after an
+  update, at their defaults. Your values are kept, and no release has ever required you to delete
+  anything.</p></div>
 </div></section>
 </main>
 
@@ -3888,20 +3897,30 @@ sudo journalctl -u wz-server -f</pre></div>
 
 <section><div class="wrap">
   <span class="section-tag">Version requirements</span>
-  <h2>What each release expects</h2>
-  <p class="muted">A release note that raises a requirement says so at the top. These are the ones that have moved so far.</p>
+  <h2>Which gateway your mod needs</h2>
+  <p class="muted">Two numbers have to match. That is the whole rule.</p>
+
   <div class="tablewrap"><table class="rtab">
-    <tr><th>From</th><th>Requirement</th><th>If you skip it</th></tr>
-    <tr><td>2026-08-16 onward</td><td><b>Arma Reforger 1.8.0.10</b></td><td>The Game script module fails to compile and <b>the server does not start</b>. There is no 1.7-compatible build.</td></tr>
-    <tr><td>2026-07-16 onward</td><td><b>Gateway 0.7.1</b></td><td>Admin <code class="inline">/money</code> drops are not written to the database and vanish on restart. Everything else keeps working.</td></tr>
+    <tr><th>Your mod</th><th>Needs gateway</th><th>Folder in the kit</th></tr>
+    <tr><td><b>1.0.18</b></td><td><b>0.9.6</b></td><td><code class="inline">gateway-1.0.18/</code></td></tr>
+    <tr><td><b>1.0.16</b></td><td><b>0.7.1</b></td><td><code class="inline">gateway-1.0.16/</code></td></tr>
   </table></div>
 
-  <div class="note warn"><div class="h">When the next release lands: <b>update the mod first</b></div>
-  <p>The order is <b>not</b> symmetric. Do the mod, then the gateway.</p>
-  <p><b>Mod first</b> &mdash; the new mod calls an endpoint 0.7.1 does not have, so gear stops saving until the gateway catches up. Money and bank are unaffected, nothing already stored is lost, and it resumes on the next autosave once you update. <b>You can see it happening.</b></p>
-  <p><b>Gateway first</b> &mdash; everything looks fine, and that is the problem. The old mod keeps writing the legacy column and the new gateway accepts it, but the upgrade has already copied your gear into the new table. That copy then sits still while players keep playing. Update the mod days later and their gear <b>appears to roll back</b> to the day you upgraded the gateway.</p>
-  <p class="muted">Your bank is not at risk either way &mdash; money and bank are the same columns in the same table, before and after, and the upgrade never touches them.</p></div>
-  <div class="note tip"><div class="h">Config files are never rewritten out from under you</div><p>New settings are added to your existing <code class="inline">.conf</code> files on first boot after an update, with defaults. Your values are kept. You do not need to delete anything, and there has never been a release that required you to.</p></div>
+  <div class="note warn"><div class="h">They are not interchangeable</div>
+  <p>The mod checks the gateway version at startup. If they do not match it prints
+  <code class="inline">GATEWAY VERSION MISMATCH</code> every 60 seconds &mdash; <b>and keeps running
+  anyway</b>, while saves fail. It is a warning, not a stop, so the console is the only place it shows.</p>
+  <p><b>So update both in the same sitting.</b> Never leave a server on a mismatched pair overnight.</p></div>
+
+  <div class="note"><div class="h">Also required</div>
+  <p><b>Arma Reforger 1.8.0.10 or newer</b>, for any mod from 2026-08-16 onward. On an older game build the
+  Game script module fails to compile and the server does not start. There is no older-compatible build to
+  fall back to &mdash; see the <b>Upgrade the Game (Steam)</b> tab.</p></div>
+
+  <div class="note tip"><div class="h">Your config files are never overwritten</div>
+  <p>New settings are added to your existing <code class="inline">.conf</code> files on first boot after an
+  update, at their defaults. Your values are kept, and no release has ever required you to delete
+  anything.</p></div>
 </div></section>
 </main>
 
