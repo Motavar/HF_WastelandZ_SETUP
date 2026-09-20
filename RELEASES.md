@@ -14,9 +14,8 @@ behind. That is what this file is for.
 | | Version | Where |
 |---|---|---|
 | **Mod** | **1.0.16** | Workshop — automatic, nothing to do |
-| **Gateway** | **0.7.1** | `gateway/` on the `main` branch of this repo |
+| **Gateway** | **0.7.1** | `gateway-1.0.16/` in this repo |
 | **Game server** | **Arma Reforger 1.8.0.10** or newer | SteamCMD |
-| **Database** | 9 tables, from `gateway/setup_database.sql` | you run it once, by hand |
 
 Check your gateway by looking at the first line it prints on start:
 
@@ -24,18 +23,9 @@ Check your gateway by looking at the first line it prints on start:
   WastelandZ Gateway v0.7.1
 ```
 
-If it says anything else, see the table below.
-
-> **A newer gateway is not better.** `0.9.0` exists on the `beta` branch and pairs
-> with an unreleased mod build. Run it against mod 1.0.16 and gear keeps saving —
-> which is exactly the trap. Starting 0.9.0 copies your gear into its new table
-> once; that copy then sits still while players keep writing the old column. Update
-> the mod later and gear **appears to roll back** to the day you started 0.9.0.
-> Stay on 0.7.1 until the release notes here say otherwise.
->
-> **When the next release does land, update the mod FIRST, then the gateway.** The
-> order is not symmetric: mod-first fails visibly and recovers, gateway-first looks
-> fine and drifts.
+> **Mod 1.0.18 and gateway 0.9.6 are in this repo and ready**, in
+> `gateway-1.0.18/`. The mod is **not on the Workshop yet** — until it is,
+> stay on 1.0.16 / 0.7.1. Running 0.9.6 against mod 1.0.16 stops gear saving.
 
 ---
 
@@ -156,8 +146,8 @@ extra `config.py` copy **outside** the folder you are about to overwrite.
 
 **3. Copy the gateway files across**
 
-`cp -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/` on Linux,
-`xcopy /E /Y D:\wastelandz\gateway D:\wastelandz-gateway\` on Windows.
+`sudo cp -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/` on Linux,
+`xcopy /E /Y D:\wastelandz\gateway-1.0.18 D:\wastelandz-gateway\` on Windows.
 
 There is no `config.py` in the repo, so nothing can overwrite yours.
 
@@ -173,22 +163,18 @@ just installed.
 
 ---
 
-## Branches
+## One branch, one kit per release
 
-| Branch | Channel | Gateway | Who it is for |
-|---|---|---|---|
-| `main` | **Production** | 0.7.1 | Everyone running a live server |
-| `beta` | **Test** | 0.9.0 | Testing the next release, never on a live server |
+Everything ships from `main`. Which gateway you get is decided by the **folder**
+you copy, not by a branch:
 
-Both keep the kit at the same path — `gateway/` — so the setup and update steps are
-identical. Only the clone differs:
+| Your mod | Needs gateway | Folder |
+|---|---|---|
+| 1.0.18 | 0.9.6 | `gateway-1.0.18/` |
+| 1.0.16 | 0.7.1 | `gateway-1.0.16/` |
 
 ```
-git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git            # production
-git clone -b beta https://github.com/Motavar/HF_WastelandZ_SETUP.git    # beta
+git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git
 ```
 
-**Documentation for an older release** is the repo at that release's tag. The docs
-as they stood at 1.0.16 are at
-`https://github.com/Motavar/HF_WastelandZ_SETUP/blob/v1.0.16/index.html`, and the
-kit that shipped with it is `gateway/` on the same tag.
+We keep the current release plus the two before it.
