@@ -280,7 +280,7 @@
   .pill.soon{color:#1a1206;background:var(--warn)}
 </style>
 </head>
-<body data-os="windows" data-view="server" data-channel="v1018">
+<body data-os="linux" data-view="server" data-channel="v1018">
 
 <header class="top">
   <div class="wrap">
@@ -321,8 +321,8 @@
       </button>
     </div>
     <p class="prodpick-foot">Not sure? Your server console prints it on start as
-      <code class="inline">[HF] WastelandZ &lt;version&gt;</code>. Running something older than 1.0.16?
-      Upgrade to 1.0.16 first, then follow the 1.0.18 steps.</p>
+        <code class="inline">[HF] WastelandZ &lt;version&gt;</code>. On anything older? The Workshop
+        always gives you the current release, so updating the mod lands you on 1.0.18.</p>
   </div>
 </div>
 
@@ -341,6 +341,7 @@
 <main class="view view-server chan production">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Dedicated Server</div>
+<div class="os-bar"><div class="wrap"><span class="label">Choose your system</span><div class="seg" role="tablist" aria-label="Operating system"><button role="tab" data-os="linux" aria-selected="true">Linux</button><button role="tab" data-os="windows" aria-selected="false">Windows</button></div><span class="spacer"></span><span class="label" style="opacity:.75">Commands below switch with this.</span></div></div>
   <h1>Set up your server, step by step.</h1>
   <p class="lede">Everything, in the order you run it — install the Arma Reforger server, make the database, start the gateway, and wire them together with simple start/stop scripts. No prior server experience needed. Pick your operating system below and follow the numbered steps.</p>
 </div></div>
@@ -367,7 +368,7 @@
 
   <h3>What's in this download</h3>
   <div class="files"><dl>
-    <dt>gateway/</dt><dd>The gateway program. Copy this whole folder to your server and run it.</dd>
+    <dt>gateway-1.0.16/</dt><dd>The gateway program &mdash; version <b>0.7.1</b>. Copy this whole folder to your server and run it.</dd>
     <dt>gateway-1.0.16/setup_database.sql</dt><dd>Every database table, defined in one file. <b>You run it once, by hand</b>, when you first set up the database &mdash; step 3 below. It only ever adds, so running it again changes nothing.</dd>
     <dt>gateway-1.0.16/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
     <dt>gateway-1.0.16/start_gateway.bat</dt><dd>Windows one-click start.</dd>
@@ -387,7 +388,7 @@
   <p class="muted">After setup you have three top-level folders (Linux <code class="inline">/opt/</code> shown below; Windows mirrors this under <code class="inline">C:\reforger\</code> plus your gateway folder). The spot that trips people up: HF&rsquo;s live config files sit under the profile&rsquo;s extra <b><code class="inline">profile/</code></b> subfolder.</p>
   <div class="code"><pre>/opt/
 ├── wastelandz/                <span class="c"># THIS KIT (git clone) — reference copies, read-only</span>
-│   ├── gateway/                 <span class="c"># gateway program + setup_database.sql + config.example.py</span>
+│   ├── gateway-1.0.16/       <span class="c"># gateway 0.7.1 - copy THIS folder</span>
 │   ├── configs/                 <span class="c"># reference *.example HF settings (optional pre-tuning)</span>
 │   ├── missions/                <span class="c"># mission reward templates + in-game authoring guide</span>
 │   └── server/                  <span class="c"># systemd + server1/2.json examples + SteamCMD script</span>
@@ -424,8 +425,8 @@
 <div class="os-bar"><div class="wrap">
   <span class="label">Choose your system</span>
   <div class="seg" role="tablist" aria-label="Operating system">
-    <button role="tab" data-os="windows" aria-selected="true">Windows</button>
-    <button role="tab" data-os="linux" aria-selected="false">Linux</button>
+    <button role="tab" data-os="windows" aria-selected="false">Windows</button>
+    <button role="tab" data-os="linux" aria-selected="true">Linux</button>
   </div>
   <span class="spacer"></span>
 </div></div>
@@ -1222,7 +1223,7 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
 
   <h3>What's in this download</h3>
   <div class="files"><dl>
-    <dt>gateway/</dt><dd>The gateway program. Copy this whole folder to your server and run it.</dd>
+    <dt>gateway-1.0.18/</dt><dd>The gateway program &mdash; version <b>0.9.6</b>. Copy this whole folder to your server and run it.</dd>
     <dt>gateway-1.0.18/setup_database.sql</dt><dd>Every database table, defined in one file. <b>The gateway applies it on every start</b>, so you never run SQL by hand and there is no separate first-time step. It only ever adds &mdash; running it again changes nothing.</dd>
     <dt>gateway-1.0.18/migrate.py</dt><dd>Applies the schema on start, then any pending data change. Records what it applied so nothing runs twice.</dd>
     <dt>gateway-1.0.18/tests/</dt><dd>The tests we run against the gateway, shipped so you can run them yourself. One of them <b>wipes</b> a database and says so &mdash; read its README first.</dd>
@@ -1244,7 +1245,7 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
   <p class="muted">After setup you have three top-level folders (Linux <code class="inline">/opt/</code> shown below; Windows mirrors this under <code class="inline">C:\reforger\</code> plus your gateway folder). The spot that trips people up: HF&rsquo;s live config files sit under the profile&rsquo;s extra <b><code class="inline">profile/</code></b> subfolder.</p>
   <div class="code"><pre>/opt/
 ├── wastelandz/                <span class="c"># THIS KIT (git clone) — reference copies, read-only</span>
-│   ├── gateway/                 <span class="c"># gateway program + setup_database.sql + config.example.py</span>
+│   ├── gateway-1.0.18/       <span class="c"># gateway 0.9.6 - copy THIS folder</span>
 │   ├── configs/                 <span class="c"># reference *.example HF settings (optional pre-tuning)</span>
 │   ├── missions/                <span class="c"># mission reward templates + in-game authoring guide</span>
 │   └── server/                  <span class="c"># systemd + server1/2.json examples + SteamCMD script</span>
@@ -1281,8 +1282,8 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
 <div class="os-bar"><div class="wrap">
   <span class="label">Choose your system</span>
   <div class="seg" role="tablist" aria-label="Operating system">
-    <button role="tab" data-os="windows" aria-selected="true">Windows</button>
-    <button role="tab" data-os="linux" aria-selected="false">Linux</button>
+    <button role="tab" data-os="windows" aria-selected="false">Windows</button>
+    <button role="tab" data-os="linux" aria-selected="true">Linux</button>
   </div>
   <span class="spacer"></span>
 </div></div>
@@ -2971,7 +2972,7 @@ copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
 cd /opt/wastelandz
 git checkout main
 git pull
-grep GATEWAY_VERSION gateway-1.0.16/gateway.py
+grep -m1 ^GATEWAY_VERSION gateway-1.0.16/gateway.py
 
 <span class="c"># Windows</span>
 cd D:\wastelandz
@@ -2979,7 +2980,7 @@ git checkout main
 git pull
 
 <span class="c"># confirm what you just pulled</span>
-findstr GATEWAY_VERSION gateway\gateway.py</pre></div>
+findstr /b GATEWAY_VERSION gateway-1.0.16\gateway.py</pre></div>
     <p class="muted">That last line prints the version now sitting in the kit. Nothing has been copied to your gateway folder yet &mdash; that is step 3.</p>
     <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip">Download the ZIP</a> and unpack it over the same folder. Same result.</p>
   </div>
@@ -3198,8 +3199,8 @@ Specifically tell me:
     <p>Stop the game server and the gateway first, so nothing is mid-write.</p>
 
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM 1 - make a folder named for TODAY, and go to it. Type today's date.</span>
-<span class="p">mkdir</span> D:\wz-backups6-09-20
-<span class="p">cd</span> /d D:\wz-backups6-09-20
+<span class="p">mkdir</span> D:\wz-backups\2026-09-20
+<span class="p">cd</span> /d D:\wz-backups\2026-09-20
 
 <span class="c">REM 2 - print where you are. THIS is where the backup is about to land.</span>
 <span class="p">cd</span>
@@ -3208,7 +3209,7 @@ Specifically tell me:
 <span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wz-backup-before-0.9.6.sql
 
 <span class="c">REM 4 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
-<span class="p">xcopy</span> /E /I /Y D:\wastelandz-gateway D:\wz-backups6-09-20\gateway-BACKUP</pre></div></div>
+<span class="p">xcopy</span> /E /I /Y D:\wastelandz-gateway D:\wz-backups\2026-09-20\gateway-BACKUP</pre></div></div>
 
     <div class="os-panel linux"><div class="code"><pre><span class="c"># 1 - make a folder named for TODAY, and go to it. Type today's date.</span>
 <span class="p">sudo</span> mkdir -p /opt/wz-backups/2026-09-20
@@ -3225,7 +3226,7 @@ Specifically tell me:
 
     <div class="note"><div class="h">Check it actually worked</div>
     <p>A backup you did not look at is not a backup. The file must exist and must not be empty:</p>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wz-backups6-09-20</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wz-backups\2026-09-20</pre></div></div>
     <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -lh /opt/wz-backups/2026-09-20/</pre></div></div>
     <p class="muted">You should see <code class="inline">wz-backup-before-0.9.6.sql</code> and a
     <code class="inline">gateway-BACKUP</code> folder. Expect the .sql to be megabytes, not a few bytes
@@ -3314,8 +3315,8 @@ Specifically tell me:
     newest files &mdash; that is a success, not an error.</p></div>
 
     <div class="note warn"><div class="h">Check you got the right one, before you copy anything</div>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> GATEWAY_VERSION gateway-1.0.18\gateway.py</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> GATEWAY_VERSION gateway-1.0.18/gateway.py</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> /b GATEWAY_VERSION gateway-1.0.18\gateway.py</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> -m1 ^GATEWAY_VERSION gateway-1.0.18/gateway.py</pre></div></div>
     <p>It must print <code class="inline">GATEWAY_VERSION = "0.9.6"</code>. If it says 0.7.1 you are
     looking at <code class="inline">gateway-1.0.16/</code>, which is the previous release.</p></div>
   </div></div>
@@ -3332,9 +3333,9 @@ Specifically tell me:
 
     <div class="note"><div class="h">Confirm the copy landed</div>
     <p>Check the <b>running</b> folder now, not the kit:</p>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> GATEWAY_VERSION D:\wastelandz-gateway\gateway.py
+    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> /b GATEWAY_VERSION D:\wastelandz-gateway\gateway.py
 <span class="p">dir</span> D:\wastelandz-gateway\migrations</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> GATEWAY_VERSION /opt/wastelandz-gateway/gateway.py
+    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> -m1 ^GATEWAY_VERSION /opt/wastelandz-gateway/gateway.py
 <span class="p">ls</span> /opt/wastelandz-gateway/migrations</pre></div></div>
     <p><code class="inline">0.9.6</code>, and a <code class="inline">migrations</code> folder holding four
     <code class="inline">.sql</code> files. <b>If migrations/ is missing the upgrade will not run</b> &mdash;
@@ -3448,8 +3449,8 @@ FLUSH PRIVILEGES;</pre></div>
     <code class="inline">gateway-1.0.18</code> folder.</p></div>
     <p>Copy that folder to where you want the gateway to live &mdash;
     <code class="inline">D:\wastelandz-gateway</code> or <code class="inline">/opt/wastelandz-gateway</code>.</p>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> GATEWAY_VERSION D:\wastelandz-gateway\gateway.py</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> GATEWAY_VERSION /opt/wastelandz-gateway/gateway.py</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> /b GATEWAY_VERSION D:\wastelandz-gateway\gateway.py</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> -m1 ^GATEWAY_VERSION /opt/wastelandz-gateway/gateway.py</pre></div></div>
     <p class="muted">Must say <code class="inline">0.9.6</code>.</p>
   </div></div>
 
@@ -3531,14 +3532,14 @@ copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
     <div class="code"><pre><span class="c"># Linux</span>
 cd /opt/wastelandz
 git pull
-grep GATEWAY_VERSION gateway-1.0.18/gateway.py
+grep -m1 ^GATEWAY_VERSION gateway-1.0.18/gateway.py
 
 <span class="c"># Windows</span>
 cd D:\wastelandz
 git pull
 
 <span class="c"># confirm what you just pulled</span>
-findstr GATEWAY_VERSION gateway\gateway.py</pre></div>
+findstr /b GATEWAY_VERSION gateway-1.0.18\gateway.py</pre></div>
     <p class="muted">That last line prints the version now sitting in the kit. Nothing has been copied to your gateway folder yet &mdash; that is step 3.</p>
     <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip">Download the ZIP</a> and unpack it over the same folder. Same result.</p>
   </div>
@@ -3942,10 +3943,10 @@ sudo journalctl -u wz-server -f</pre></div>
   <div class="note"><div class="h">Symptom: <code class="inline">GATEWAY VERSION MISMATCH</code> banner in the server console</div>
   <p><b>Cause:</b> the gateway is older than the mod expects. The mod pings the gateway every 60 seconds and prints this until they line up.</p>
   <p><b>Fix:</b> replace <code class="inline">gateway.py</code> and restart the gateway &mdash; see the <b>Update Gateway</b> tab. This is a <b>warning, not a block</b>: the game keeps running while you sort it out.</p>
-  <p>The banner names both versions. <b>The one after &ldquo;Expected&rdquo; is the gateway your mod needs</b> &mdash; on mod 1.0.16 that is <code class="inline">0.7.1</code>. If it says the gateway is <b>newer</b> than expected, you have installed the beta gateway by mistake: copy from <code class="inline">gateway/</code> instead.</p>
+  <p>The banner names both versions. <b>The one after &ldquo;Expected&rdquo; is the gateway your mod needs</b> &mdash; on mod 1.0.18 that is <code class="inline">0.9.6</code>, and on 1.0.16 it is <code class="inline">0.7.1</code>. If it says the gateway is <b>newer</b> than expected, you copied from the wrong kit &mdash; use <code class="inline">gateway-1.0.16/</code> for mod 1.0.16 and <code class="inline">gateway-1.0.18/</code> for mod 1.0.18.</p>
   <div class="note warn" style="margin-top:10px"><div class="h">If you installed gateway 0.9.0 by mistake</div>
   <p>Gear keeps saving &mdash; 1.0.16 writes the legacy column and 0.9.0 still honours it &mdash; so nothing breaks today. The catch is that starting 0.9.0 copies your gear into its new table once, and that copy then goes stale while players carry on. Update the mod later and gear <b>appears to roll back</b> to the day you started 0.9.0.</p>
-  <p><b>Fix:</b> go back to the 0.7.1 kit &mdash; copy <code class="inline">gateway/</code> from a <b>main</b>-branch clone over your gateway folder and restart. Do it before the next mod release, not after.</p></div></div>
+  <p><b>Fix:</b> go back to the 0.7.1 kit &mdash; copy <code class="inline">gateway-1.0.16/</code> from the kit over your gateway folder and restart. Do it before the next mod release, not after.</p></div></div>
 
   <div class="note"><div class="h">What a healthy gateway start looks like</div>
   <p>The banner at the top names the version, the hive and the database. Check the version first &mdash; it is the fastest way to catch a gateway copied from the wrong folder.</p>
