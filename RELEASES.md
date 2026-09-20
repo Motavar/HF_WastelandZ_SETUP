@@ -13,21 +13,24 @@ behind. That is what this file is for.
 
 | | Version | Where |
 |---|---|---|
-| **Mod** | **1.0.16** | Workshop — automatic, nothing to do |
-| **Gateway** | **0.7.1** | `gateway-1.0.16/` in this repo |
+| **Mod** | **1.0.18** | Workshop — automatic, nothing to do |
+| **Gateway** | **0.9.6** | `gateway-1.0.18/` in this repo |
 | **Game server** | **Arma Reforger 1.8.0.10** or newer | SteamCMD |
 
 Check your gateway by looking at the first line it prints on start:
 
 ```
-  WastelandZ Gateway v0.7.1
+  WastelandZ Gateway v0.9.6
 ```
 
-> **Mod 1.0.18 and gateway 0.9.6 are in this repo and ready**, in
-> `gateway-1.0.18/`. The mod is **not on the Workshop yet** — until it is,
-> stay on 1.0.16 / 0.7.1. Running 0.9.6 against mod 1.0.16 stops gear saving.
+> **1.0.18 upgrades the database.** Back up before you start 0.9.6 for the
+> first time — once the database is upgraded an older gateway refuses to start
+> against it, so the dump is the only way back.
 
----
+> **Still on mod 1.0.16?** Gateway `0.7.1` is still in `gateway-1.0.16/` and
+> still works. Do not run 0.9.6 against 1.0.16, or 0.7.1 against 1.0.18 —
+> either pairing stops gear saving.
+
 
 ## Version history
 

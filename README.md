@@ -16,17 +16,18 @@ risk. The full disclaimer is shown when you open the guide.
 **The mod updates itself** from the Reforger Workshop every time your server
 starts. **The gateway is the part you host**, and it has to match the mod.
 
-| Your mod | Needs gateway | Folder in this repo |
-|---|---|---|
-| **1.0.18** | **0.9.6** | [`gateway-1.0.18/`](gateway-1.0.18) |
-| **1.0.16** | **0.7.1** | [`gateway-1.0.16/`](gateway-1.0.16) |
+| Your mod | Needs gateway | Folder in this repo | |
+|---|---|---|---|
+| **1.0.18** | **0.9.6** | [`gateway-1.0.18/`](gateway-1.0.18) | **Current release** |
+| 1.0.16 | 0.7.1 | [`gateway-1.0.16/`](gateway-1.0.16) | Legacy — kept for servers not yet upgraded |
 
 Not sure which you have? Your server console prints it on start as
 `[HF] WastelandZ <version>`.
 
-> ⚠ **Mod 1.0.16 and gateway 0.7.1 are what the Workshop serves today.** The
-> 1.0.18 kit is here and ready, but the mod is not on the Workshop yet — until
-> it is, **stay on 1.0.16 / 0.7.1.**
+> **Mod 1.0.18 is the current release.** It needs gateway **0.9.6** and it
+> **upgrades your database** — read the backup step before you start.
+> Still on 1.0.16? The 0.7.1 kit is still here and still works; upgrade when
+> you are ready.
 
 > ⚠ **The two halves are not interchangeable.** The mod checks the gateway
 > version at startup. On a mismatch it prints `GATEWAY VERSION MISMATCH` every
@@ -118,7 +119,7 @@ no ZIP needed.)
 |---|---|
 | `index.html` | The step-by-step setup guide (open it in a browser). |
 | `gateway-1.0.18/` | Gateway **0.9.6** — for mod 1.0.18. Includes `migrate.py`, the pending migrations and the test suite. |
-| `gateway-1.0.16/` | Gateway **0.7.1** — for mod 1.0.16, the current Workshop release. |
+| `gateway-1.0.16/` | Gateway **0.7.1** — for mod 1.0.16. Legacy, kept for servers not yet upgraded. |
 | `RELEASES.md` | Version history and which gateway each mod needs. |
 | `gateway-1.0.18/setup_database.sql` | Every database table, defined in one file. **The gateway applies it on every start**, so you never run SQL by hand. It only ever adds — running it again changes nothing. |
 | `gateway-1.0.18/migrate.py` | Applies the schema on start, then any pending data change. Records what it applied so nothing runs twice, and refuses to remove anything unless you deliberately pass `--allow-destructive`. |
