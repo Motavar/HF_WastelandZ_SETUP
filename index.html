@@ -3363,11 +3363,19 @@ Specifically tell me:
     <p>A backup you did not look at is not a backup. The file must exist and must not be empty:</p>
     <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> backup-2026-09-20.sql</pre></div></div>
     <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -lh ~/backup-2026-09-20.sql</pre></div></div>
-    <p class="muted">You should see <code class="inline">wz-backup-before-0.9.6.sql</code> and a
-    <code class="inline">gateway-BACKUP</code> folder. Expect the .sql to be megabytes, not a few bytes
-    &mdash; a tiny file means mysqldump failed and printed the reason above the prompt.</p>
-    <p class="muted"><b>Write down that folder path.</b> If anything goes wrong later, this is what you
-    restore from, and it is the only way back to gateway 0.7.1.</p></div>
+    <p class="muted">Expect <b>megabytes</b>, not a few bytes &mdash; a tiny file means mysqldump
+    failed and printed the reason just above the prompt.</p>
+    <p>Two more checks worth ten seconds, because a dump that will not restore is worse than no
+    dump at all:</p>
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># must start with the dump header, not a warning</span>
+<span class="p">head</span> -3 ~/backup-2026-09-20.sql
+
+<span class="c"># must end with "Dump completed" - proves it finished, not died halfway</span>
+<span class="p">tail</span> -1 ~/backup-2026-09-20.sql</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM must start with the dump header, not a warning</span>
+<span class="p">more</span> /E +0 backup-2026-09-20.sql | findstr /n "^" | findstr "^1: ^2: ^3:"</pre></div></div>
+    <p class="muted"><b>That .sql file is the only way back to gateway 0.7.1.</b> Keep it somewhere
+    you will find it again.</p></div>
   </div></div>
 
   <div class="step"><div class="n">3</div><div class="t">
