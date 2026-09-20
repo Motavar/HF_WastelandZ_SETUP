@@ -3345,39 +3345,24 @@ Specifically tell me:
     rollback.</p>
     <p>Stop the game server and the gateway first, so nothing is mid-write.</p>
 
-    <div class="os-panel windows"><div class="code"><pre><span class="c">REM 1 - make a folder named for TODAY, and go to it. Type today's date.</span>
-<span class="p">mkdir</span> D:\wz-backups\2026-09-20
-<span class="p">cd</span> /d D:\wz-backups\2026-09-20
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM The database. This asks for the DATABASE password - the one in</span>
+<span class="c">REM config.py. Paste it at the prompt; do not type it after -p.</span>
+<span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; backup-2026-09-20.sql
 
-<span class="c">REM 2 - print where you are. THIS is where the backup is about to land.</span>
-<span class="p">cd</span>
+<span class="c">REM The gateway folder, which holds YOUR config.py.</span>
+<span class="p">xcopy</span> /E /I /Y D:\wastelandz-gateway gateway-backup-2026-09-20</pre></div></div>
 
-<span class="c">REM 3 - the database. One file containing every player, wallet and loadout.</span>
-<span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wz-backup-before-0.9.6.sql
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># The database. Your LINUX password when it asks - sudo lets mysqldump</span>
+<span class="c"># in through the local socket, so MySQL never asks for its own password.</span>
+<span class="p">sudo</span> mysqldump wastelandz &gt; ~/backup-2026-09-20.sql
 
-<span class="c">REM 4 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
-<span class="p">xcopy</span> /E /I /Y D:\wastelandz-gateway D:\wz-backups\2026-09-20\gateway-BACKUP</pre></div></div>
-
-    <div class="os-panel linux"><div class="code"><pre><span class="c"># 1 - make a folder named for TODAY, and go to it. Type today's date.</span>
-<span class="p">sudo</span> mkdir -p /opt/wz-backups/2026-09-20
-<span class="c"># hand the folder to you, or the &gt; redirect below cannot write into it</span>
-<span class="p">sudo</span> chown -R $USER:$USER /opt/wz-backups
-<span class="p">cd</span> /opt/wz-backups/2026-09-20
-
-<span class="c"># 2 - print where you are. THIS is where the backup is about to land.</span>
-<span class="p">pwd</span>
-
-<span class="c"># 3 - the database. One file containing every player, wallet and loadout.</span>
-<span class="c"># no sudo - mysqldump logs in to MySQL with -u/-p, not to Linux</span>
-<span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wz-backup-before-0.9.6.sql
-
-<span class="c"># 4 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
-<span class="p">sudo</span> cp -r /opt/wastelandz-gateway /opt/wz-backups/2026-09-20/gateway-BACKUP</pre></div></div>
+<span class="c"># The gateway folder, which holds YOUR config.py (password + API keys).</span>
+<span class="p">sudo</span> cp -r /opt/wastelandz-gateway ~/gateway-backup-2026-09-20</pre></div></div>
 
     <div class="note"><div class="h">Check it actually worked</div>
     <p>A backup you did not look at is not a backup. The file must exist and must not be empty:</p>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wz-backups\2026-09-20</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -lh /opt/wz-backups/2026-09-20/</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> backup-2026-09-20.sql</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -lh ~/backup-2026-09-20.sql</pre></div></div>
     <p class="muted">You should see <code class="inline">wz-backup-before-0.9.6.sql</code> and a
     <code class="inline">gateway-BACKUP</code> folder. Expect the .sql to be megabytes, not a few bytes
     &mdash; a tiny file means mysqldump failed and printed the reason above the prompt.</p>
