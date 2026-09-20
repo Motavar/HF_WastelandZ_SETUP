@@ -387,7 +387,7 @@
   <h3>Where everything lives on your server</h3>
   <p class="muted">After setup you have three top-level folders (Linux <code class="inline">/opt/</code> shown below; Windows mirrors this under <code class="inline">C:\reforger\</code> plus your gateway folder). The spot that trips people up: HF&rsquo;s live config files sit under the profile&rsquo;s extra <b><code class="inline">profile/</code></b> subfolder.</p>
   <div class="code"><pre>/opt/
-├── wastelandz/                <span class="c"># THIS KIT (git clone) — reference copies, read-only</span>
+├── wastelandz_setup/          <span class="c"># THIS KIT (git clone) — reference copies, read-only</span>
 │   ├── gateway-1.0.16/       <span class="c"># gateway 0.7.1 - copy THIS folder</span>
 │   ├── configs/                 <span class="c"># reference *.example HF settings (optional pre-tuning)</span>
 │   ├── missions/                <span class="c"># mission reward templates + in-game authoring guide</span>
@@ -1328,7 +1328,7 @@ rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
   <h3>Where everything lives on your server</h3>
   <p class="muted">After setup you have three top-level folders (Linux <code class="inline">/opt/</code> shown below; Windows mirrors this under <code class="inline">C:\reforger\</code> plus your gateway folder). The spot that trips people up: HF&rsquo;s live config files sit under the profile&rsquo;s extra <b><code class="inline">profile/</code></b> subfolder.</p>
   <div class="code"><pre>/opt/
-├── wastelandz/                <span class="c"># THIS KIT (git clone) — reference copies, read-only</span>
+├── wastelandz_setup/          <span class="c"># THIS KIT (git clone) — reference copies, read-only</span>
 │   ├── gateway-1.0.18/       <span class="c"># gateway 0.9.6 - copy THIS folder</span>
 │   ├── configs/                 <span class="c"># reference *.example HF settings (optional pre-tuning)</span>
 │   ├── missions/                <span class="c"># mission reward templates + in-game authoring guide</span>
@@ -3462,27 +3462,20 @@ Specifically tell me:
 <span class="c"># give the kit back to you so git and your editor can use it</span>
 <span class="p">sudo</span> chown -R $USER:$USER /opt/wastelandz_setup</pre></div></div>
 
-    <div class="note warn"><div class="h">Upgrading a kit you installed before 2026-09-20? Check for a leftover folder</div>
-    <p>Unpacking <b>updates and adds</b> files. It cannot <b>remove</b> one that was deleted from the
-    repo &mdash; so if you installed before the kit was split per release, the old
-    <code class="inline">gateway/</code> folder is still sitting there at <b>0.7.1</b>, beside the two
-    new ones.</p>
-    <p><b>Why that matters:</b> it has the most obvious name of the three. Copy it by mistake and you
-    are running gateway 0.7.1 against mod 1.0.18, which only prints a warning while every save fails.</p>
-    <p>Look first:</p>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -d /opt/wastelandz_setup/gateway 2&gt;/dev/null &amp;&amp; <span class="p">echo</span> "LEFTOVER - see below"</pre></div></div>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">if</span> exist D:\wastelandz_setup\gateway <span class="p">echo</span> LEFTOVER - see below</pre></div></div>
-    <p class="muted">Nothing printed means you are clean. If it printed, that folder is not part of the
-    kit any more and nothing references it &mdash; you can delete it once you have checked there is
-    nothing of your own inside:</p>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -la /opt/wastelandz_setup/gateway
-<span class="c"># only after you have looked</span>
-<span class="p">sudo</span> rm -rf /opt/wastelandz_setup/gateway</pre></div></div>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wastelandz_setup\gateway
-<span class="c">REM only after you have looked</span>
-<span class="p">rmdir</span> /S /Q D:\wastelandz_setup\gateway</pre></div></div>
-    <p class="muted">Your running gateway folder is somewhere else entirely and is not affected.</p></div>
-    <p class="muted">Windows takes the <code class="inline">.zip</code>, Linux the <code class="inline">.tar.gz</code> &mdash; same commit, the format each system can already open. Both unpack straight into <code class="inline">wastelandz</code>, the name every step below uses, so all three routes end up in the same place.</p>
+    <div class="note warn"><div class="h">Installed a kit before 2026-09-20? You have an old folder to retire</div>
+    <p>The kit used to unpack to <code class="inline">/opt/wastelandz</code> (Windows: <code class="inline">D:\wastelandz</code>) &mdash; no suffix. That name reads like the live server, which is exactly why it changed. The kit now goes to <code class="inline">/opt/wastelandz_setup</code>, and the old folder is <b>left where it is</b>: nothing above touches it.</p>
+    <p><b>Why bother.</b> Inside it is a <code class="inline">gateway/</code> folder holding <b>0.7.1</b>. It has the plainest name of anything on the box. Copy it by mistake and you are running gateway 0.7.1 against mod 1.0.18 &mdash; the handshake prints a warning and carries on, while every save fails.</p>
+    <p>Look at it first. Nothing here deletes anything:</p>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -la /opt/wastelandz 2&gt;/dev/null || <span class="p">echo</span> "no old folder - nothing to do"</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wastelandz</pre></div></div>
+    <p class="muted">If it is not there, you are already clean &mdash; skip the rest of this box. If it is, check whether anything in it is yours: edited configs, a mission you wrote, an old backup. <b>Copy those out before you go further.</b> Everything else is a reference copy that also exists in <code class="inline">wastelandz_setup</code>.</p>
+    <p>Then, and only then:</p>
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># renames it - does not delete it. Undo with the same command reversed.</span>
+<span class="p">sudo</span> mv /opt/wastelandz /opt/wastelandz_OLD</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM renames it - does not delete it. Undo with the same command reversed.</span>
+<span class="p">move</span> D:\wastelandz D:\wastelandz_OLD</pre></div></div>
+    <p class="muted">Renaming is enough &mdash; nothing references that path any more, and the <code class="inline">_OLD</code> suffix means you can never copy it by accident. Delete it whenever you are satisfied. <b>Your running gateway is a different folder entirely</b> (<code class="inline">/opt/wastelandz-gateway</code>, <code class="inline">D:\wastelandz-gateway</code>) and none of this touches it.</p></div>
+    <p class="muted">Windows takes the <code class="inline">.zip</code>, Linux the <code class="inline">.tar.gz</code> &mdash; same commit, the format each system can already open. Both unpack straight into <code class="inline">wastelandz_setup</code>, the name every step below uses, so all three routes end up in the same place.</p>
 
     <div class="note"><div class="h">Or use git &mdash; optional, and only worth it if you update often</div>
     <p><b>What it is.</b> Another way to download the same files. The difference is that next time there
@@ -3491,12 +3484,12 @@ Specifically tell me:
     have git &mdash; use the ZIP above, it is the same files.</p>
     <p><b>Where it puts things.</b> <code class="inline">git clone</code> creates a new folder
     <i>inside whatever folder you are standing in</i>. So you pick the place first, then clone. Below it
-    is named <code class="inline">wastelandz</code>, and this is the <b>reference copy</b> &mdash; nothing
+    is named <code class="inline">wastelandz_setup</code>, and this is the <b>reference copy</b> &mdash; nothing
     runs from here. You copy out of it in the next step.</p>
 
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM first time only - go to D:\ then make the copy</span>
 <span class="p">cd</span> /d D:\
-<span class="p">git</span> clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz
+<span class="p">git</span> clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz_setup
 
 <span class="c">REM you now have D:\wastelandz_setup - go in and look</span>
 <span class="p">cd</span> /d D:\wastelandz_setup
@@ -3504,7 +3497,7 @@ Specifically tell me:
 
     <div class="os-panel linux"><div class="code"><pre><span class="c"># first time only - go to /opt then make the copy</span>
 <span class="p">cd</span> /opt
-<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz
+<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz_setup
 
 <span class="c"># you now have /opt/wastelandz_setup - go in and look</span>
 <span class="p">cd</span> /opt/wastelandz_setup
