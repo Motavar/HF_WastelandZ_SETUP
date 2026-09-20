@@ -280,7 +280,7 @@
   .pill.soon{color:#1a1206;background:var(--warn)}
 </style>
 </head>
-<body data-os="windows" data-view="server" data-channel="production">
+<body data-os="windows" data-view="server" data-channel="v1018">
 
 <header class="top">
   <div class="wrap">
@@ -297,9 +297,9 @@
 </div>
 
 <div class="wrap" style="padding-top:14px">
-  <div class="note warn"><div class="h">Two production releases are live &mdash; 2026-09-20</div>
-    <p><b>Mod 1.0.16</b> is what the Workshop serves today and runs on gateway <b>0.7.1</b>. <b>Mod 1.0.18</b> is the new release and needs gateway <b>0.9.6</b>, which upgrades your database.</p>
-    <p>Pick your version above. Each one shows only the files and the steps for that release, so you cannot end up running one half of a pair.</p></div>
+  <div class="note warn"><div class="h">Mod 1.0.18 is the current release &mdash; 2026-09-20</div>
+    <p>It needs gateway <b>0.9.6</b> and it <b>upgrades your database</b>. If you are coming from 1.0.16, read the backup step before you start anything.</p>
+    <p>Still on <b>1.0.16</b>? Select it above and the whole guide switches to that release &mdash; its own files, its own steps, gateway <b>0.7.1</b>. You cannot end up running one half of a pair.</p></div>
 
 <div class="wrap" style="padding-top:20px">
   <div class="prodpick">
@@ -308,16 +308,16 @@
       <span class="prodpick-sub">Pick the mod version your server is running.</span>
     </div>
     <div class="chanseg" role="tablist" aria-label="Release">
-      <button role="tab" data-channel="v1018" aria-selected="false">
+      <button role="tab" data-channel="v1018" aria-selected="true">
         <span class="cs-flag">Latest</span>
         <span class="cs-mod">Mod 1.0.18</span>
         <span class="cs-gw">Gateway 0.9.6</span>
-        <span class="cs-note">Hive &amp; database upgrade</span>
+        <span class="cs-note">Current &mdash; hive &amp; database upgrade</span>
       </button>
-      <button role="tab" data-channel="production" aria-selected="true">
+      <button role="tab" data-channel="production" aria-selected="false">
         <span class="cs-mod">Mod 1.0.16</span>
         <span class="cs-gw">Gateway 0.7.1</span>
-        <span class="cs-note">On the Workshop now</span>
+        <span class="cs-note">Previous release</span>
       </button>
     </div>
     <p class="prodpick-foot">Not sure? Your server console prints it on start as
