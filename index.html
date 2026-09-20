@@ -227,7 +227,7 @@
   .flow .fstep span{font-size:.86rem;color:var(--muted)}
   .view{display:none}
   /* A view renders only when BOTH the tab and the channel match. Production
-     and beta are separate DOM trees on purpose - see the channel switch. */
+     and 1.0.18 are separate DOM trees on purpose - see the release switch. */
   body[data-channel="production"][data-view="server"]  .view-server.production{display:block}
   body[data-channel="production"][data-view="mission"] .view-mission.production{display:block}
   body[data-channel="production"][data-view="gateway"] .view-gateway.production{display:block}
@@ -235,13 +235,13 @@
   body[data-channel="production"][data-view="trouble"] .view-trouble.production{display:block}
   body[data-channel="production"][data-view="admin"]   .view-admin.production{display:block}
   body[data-channel="production"][data-view="hive"]    .view-hive.production{display:block}
-  body[data-channel="beta"][data-view="server"]  .view-server.beta{display:block}
-  body[data-channel="beta"][data-view="mission"] .view-mission.beta{display:block}
-  body[data-channel="beta"][data-view="gateway"] .view-gateway.beta{display:block}
-  body[data-channel="beta"][data-view="upgrade"] .view-upgrade.beta{display:block}
-  body[data-channel="beta"][data-view="trouble"] .view-trouble.beta{display:block}
-  body[data-channel="beta"][data-view="admin"]   .view-admin.beta{display:block}
-  body[data-channel="beta"][data-view="hive"]    .view-hive.beta{display:block}
+  body[data-channel="v1018"][data-view="server"]  .view-server.v1018{display:block}
+  body[data-channel="v1018"][data-view="mission"] .view-mission.v1018{display:block}
+  body[data-channel="v1018"][data-view="gateway"] .view-gateway.v1018{display:block}
+  body[data-channel="v1018"][data-view="upgrade"] .view-upgrade.v1018{display:block}
+  body[data-channel="v1018"][data-view="trouble"] .view-trouble.v1018{display:block}
+  body[data-channel="v1018"][data-view="admin"]   .view-admin.v1018{display:block}
+  body[data-channel="v1018"][data-view="hive"]    .view-hive.v1018{display:block}
 
   /* ---- channel switch ---- */
   .chanbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
@@ -313,7 +313,7 @@
         <span class="cs-gw">Gateway 0.7.1</span>
         <span class="cs-note">On the Workshop now</span>
       </button>
-      <button role="tab" data-channel="beta" aria-selected="false">
+      <button role="tab" data-channel="v1018" aria-selected="false">
         <span class="cs-flag">Latest</span>
         <span class="cs-mod">Mod 1.0.18</span>
         <span class="cs-gw">Gateway 0.9.6</span>
@@ -1193,7 +1193,7 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
 </div></section>
 </main>
 
-<main class="view view-server chan beta">
+<main class="view view-server chan v1018">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Dedicated Server</div>
   <h1>Set up your server, step by step.</h1>
@@ -2138,7 +2138,7 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
 
   <div class="note warn"><div class="h">One hive means one shared wardrobe as well as one bank</div>
   <p>On this release there is no way to share money but keep gear separate &mdash; a hive shares both. So every server in a hive should run <b>the same mod set</b>. Gear is stored as item references, and an item whose mod is missing on the destination cannot be restored.</p>
-  <p class="muted">Separating the two &mdash; one bank, several gear pools &mdash; is what the next release adds. See the <b>Beta</b> channel if you want to read ahead; do not run it on a live server.</p></div>
+  <p class="muted">Separating the two &mdash; one bank, several gear pools &mdash; is what the next release adds. Select <b>Mod 1.0.18</b> above to read how it works; it needs gateway 0.9.6. it on a live server.</p></div>
 
   <div class="note warn"><div class="h">Per-map hive moves the bank too</div>
   <p>A map can point at a <b>different hive entirely</b> &mdash; its own gateway URL, port and password, which may well be a friend&rsquo;s server. Rotate to that map and you are in their economy: their bank, their gear.</p>
@@ -2158,11 +2158,11 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
 <section><div class="wrap">
   <div class="note tip"><div class="h">Splitting gear from money is coming</div>
   <p>On this release a hive shares <b>both</b> the bank and the wardrobe &mdash; there is no way to have one without the other. The next release adds <b>gear groups</b>, which split gear into separate pools inside one hive, so servers can share an economy while running different mod sets.</p>
-  <p class="muted">Switch to the <b>Beta</b> channel above to read how that works. Do not run it on a live server.</p></div>
+  <p class="muted">Select <b>Mod 1.0.18</b> above to read how that works.</p></div>
 </div></section>
 </main>
 
-<main class="view view-hive chan beta">
+<main class="view view-hive chan v1018">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Saving &amp; sharing</div>
   <h1>Hives &amp; gear groups.</h1>
@@ -2622,7 +2622,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
 </div></section>
 </main>
 
-<main class="view view-mission chan beta">
+<main class="view view-mission chan v1018">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Admin Guide</div>
   <h1>Missions &amp; the Mission Editor</h1>
@@ -3137,7 +3137,7 @@ Specifically tell me:
 </div></section>
 </main>
 
-<main class="view view-gateway chan beta">
+<main class="view view-gateway chan v1018">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Keeping current</div>
   <h1>Update the gateway.</h1>
@@ -3197,24 +3197,48 @@ Specifically tell me:
     rollback.</p>
     <p>Stop the game server and the gateway first, so nothing is mid-write.</p>
 
-    <div class="os-panel windows"><div class="code"><pre><span class="c">REM 1 - the database. Writes one file containing every player, wallet and loadout.</span>
-<span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; D:\wz-backup-before-0.9.6.sql
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM 1 - make a folder named for TODAY, and go to it. Type today's date.</span>
+<span class="p">mkdir</span> D:\wz-backups6-09-20
+<span class="p">cd</span> /d D:\wz-backups6-09-20
 
-<span class="c">REM 2 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
-<span class="p">xcopy</span> /E /I /Y D:\wastelandz-gateway D:\wastelandz-gateway-BACKUP</pre></div></div>
+<span class="c">REM 2 - print where you are. THIS is where the backup is about to land.</span>
+<span class="p">cd</span>
 
-    <div class="os-panel linux"><div class="code"><pre><span class="c"># 1 - the database. Writes one file containing every player, wallet and loadout.</span>
-<span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; ~/wz-backup-before-0.9.6.sql
+<span class="c">REM 3 - the database. One file containing every player, wallet and loadout.</span>
+<span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wz-backup-before-0.9.6.sql
 
-<span class="c"># 2 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
-<span class="p">cp</span> -r /opt/wastelandz-gateway /opt/wastelandz-gateway-BACKUP</pre></div></div>
+<span class="c">REM 4 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
+<span class="p">xcopy</span> /E /I /Y D:\wastelandz-gateway D:\wz-backups6-09-20\gateway-BACKUP</pre></div></div>
+
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># 1 - make a folder named for TODAY, and go to it. Type today's date.</span>
+<span class="p">sudo</span> mkdir -p /opt/wz-backups/2026-09-20
+<span class="p">cd</span> /opt/wz-backups/2026-09-20
+
+<span class="c"># 2 - print where you are. THIS is where the backup is about to land.</span>
+<span class="p">pwd</span>
+
+<span class="c"># 3 - the database. One file containing every player, wallet and loadout.</span>
+<span class="p">sudo</span> mysqldump -u wastelandz -p wastelandz &gt; wz-backup-before-0.9.6.sql
+
+<span class="c"># 4 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
+<span class="p">sudo</span> cp -r /opt/wastelandz-gateway /opt/wz-backups/2026-09-20/gateway-BACKUP</pre></div></div>
 
     <div class="note"><div class="h">Check it actually worked</div>
     <p>A backup you did not look at is not a backup. The file must exist and must not be empty:</p>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wz-backup-before-0.9.6.sql</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -lh ~/wz-backup-before-0.9.6.sql</pre></div></div>
-    <p class="muted">Expect a size in megabytes, not a few bytes. A tiny file means mysqldump failed and
-    printed the reason above the prompt.</p></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wz-backups6-09-20</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -lh /opt/wz-backups/2026-09-20/</pre></div></div>
+    <p class="muted">You should see <code class="inline">wz-backup-before-0.9.6.sql</code> and a
+    <code class="inline">gateway-BACKUP</code> folder. Expect the .sql to be megabytes, not a few bytes
+    &mdash; a tiny file means mysqldump failed and printed the reason above the prompt.</p>
+    <p class="muted"><b>Write down that folder path.</b> If anything goes wrong later, this is what you
+    restore from, and it is the only way back to gateway 0.7.1.</p></div>
+    <div class="note warn"><div class="h">Why the folder is named after today</div>
+    <p>A backup command with a fixed filename <b>overwrites the last one without asking</b>. That matters
+    more than it sounds: if a first attempt goes wrong and you run the backup again, the database has
+    already been upgraded &mdash; so the second dump is a copy of the <i>upgraded</i> database, written
+    straight over the only copy of the original.</p>
+    <p>A new folder per day cannot do that. If the folder already exists, add the time to the name
+    (<code class="inline">2026-09-20-1830</code>) rather than reusing it.</p></div>
   </div></div>
 
   <div class="step"><div class="n">3</div><div class="t">
@@ -3253,9 +3277,41 @@ Specifically tell me:
 <span class="p">unzip</span> -o kit.zip</pre></div></div>
     <p class="muted">Unpacks to <code class="inline">HF_WastelandZ_SETUP-main/</code>.</p></div>
 
-    <div class="note"><div class="h">Already cloned it with git?</div>
-    <div class="code"><pre><span class="p">git</span> pull</pre></div>
-    <p class="muted">Never cloned it? <code class="inline">git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git</code></p></div>
+    <div class="note"><div class="h">Or use git &mdash; optional, and only worth it if you update often</div>
+    <p><b>What it is.</b> Another way to download the same files. The difference is that next time there
+    is an update, one command fetches only what changed instead of you downloading the whole ZIP again.</p>
+    <p><b>Do you have it?</b> Type <code class="inline">git --version</code>. If that errors, you do not
+    have git &mdash; use the ZIP above, it is the same files.</p>
+    <p><b>Where it puts things.</b> <code class="inline">git clone</code> creates a new folder
+    <i>inside whatever folder you are standing in</i>. So you pick the place first, then clone. Below it
+    is named <code class="inline">wastelandz</code>, and this is the <b>reference copy</b> &mdash; nothing
+    runs from here. You copy out of it in the next step.</p>
+
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM first time only - go to D:\ then make the copy</span>
+<span class="p">cd</span> /d D:<span class="p">git</span> clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz
+
+<span class="c">REM you now have D:\wastelandz - go in and look</span>
+<span class="p">cd</span> /d D:\wastelandz
+<span class="p">dir</span></pre></div></div>
+
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># first time only - go to /opt then make the copy</span>
+<span class="p">cd</span> /opt
+<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz
+
+<span class="c"># you now have /opt/wastelandz - go in and look</span>
+<span class="p">cd</span> /opt/wastelandz
+<span class="p">ls</span></pre></div></div>
+
+    <p class="muted">You should see <code class="inline">gateway-1.0.16</code>,
+    <code class="inline">gateway-1.0.18</code>, <code class="inline">configs</code> and a few others.</p>
+
+    <p><b>Every time after that</b>, updating is two lines &mdash; go to that folder and pull:</p>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> /d D:\wastelandz
+<span class="p">git</span> pull</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz
+<span class="p">sudo</span> git pull</pre></div></div>
+    <p class="muted">If it says <code class="inline">Already up to date.</code> you already have the
+    newest files &mdash; that is a success, not an error.</p></div>
 
     <div class="note warn"><div class="h">Check you got the right one, before you copy anything</div>
     <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> GATEWAY_VERSION gateway-1.0.18\gateway.py</pre></div></div>
@@ -3471,16 +3527,14 @@ copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
 
   <div class="step"><span class="n">2</span>
     <h4>Get the new kit</h4>
-    <p>Make sure you are on the <b>beta</b> branch before you pull &mdash; that is what decides which gateway you get.</p>
+    <p>One branch now. What decides which gateway you get is the <b>folder</b> you copy from &mdash; <code class="inline">gateway-1.0.18/</code> for this release.</p>
     <div class="code"><pre><span class="c"># Linux</span>
 cd /opt/wastelandz
-git checkout beta
 git pull
 grep GATEWAY_VERSION gateway-1.0.18/gateway.py
 
 <span class="c"># Windows</span>
 cd D:\wastelandz
-git checkout beta
 git pull
 
 <span class="c"># confirm what you just pulled</span>
@@ -3527,7 +3581,7 @@ curl http://127.0.0.1:5000/api/ping</pre></div>
 [SCHEMA] setup_database.sql applied (idempotent; no-op when current).
 [MIGRATE] Schema up to date (version 90).
 [GATEWAY] Database connection: OK</pre></div>
-    <p class="muted">Wrong version? You copied from the wrong place &mdash; step 3 must point at the <code class="inline">gateway</code> folder of a <b>beta</b>-branch clone. On Linux, watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
+    <p class="muted">Wrong version? You copied from the wrong place &mdash; step 3 must point at the <code class="inline">gateway</code> folder of a clone of this repo. On Linux, watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
     <p class="muted">Database changes apply themselves on this release &mdash; the gateway runs the schema on start and records what it applied. You do not run SQL.</p>
   </div>
 
@@ -3766,12 +3820,12 @@ sudo journalctl -u wz-server -f</pre></div>
   <div class="note warn"><div class="h">A gateway and database change is coming &mdash; it is not live yet</div>
   <p>The next release moves gear into a new table and requires <b>gateway 0.9.0</b>. It is <b>not</b> on the Workshop yet, and you should not install it. When it ships, the mod and the gateway have to be updated <b>in one sitting</b> &mdash; the order does not matter, but the gap does.</p>
   <p><b>Your bank will not be at risk in that upgrade.</b> Money and bank live in the same columns, in the same table, before and after. The upgrade does not read them, move them or rewrite them. Gear is <b>copied</b> into the new table, not moved.</p>
-  <p class="muted">You can read the whole procedure now under the <b>Beta</b> channel. Do not run it against mod 1.0.16 &mdash; gear saves silently stop being read back.</p></div>
+  <p class="muted">Select <b>Mod 1.0.18</b> above for the whole procedure. Do not run gateway 0.9.6 against mod 1.0.16 &mdash; gear saves silently stop being read back.</p></div>
   <div class="note tip"><div class="h">Config files are never rewritten out from under you</div><p>New settings are added to your existing <code class="inline">.conf</code> files on first boot after an update, with defaults. Your values are kept. You do not need to delete anything, and there has never been a release that required you to.</p></div>
 </div></section>
 </main>
 
-<main class="view view-upgrade chan beta">
+<main class="view view-upgrade chan v1018">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Keeping current</div>
   <h1>Upgrade the game and the mod.</h1>
@@ -3919,7 +3973,7 @@ max_connections = 500</pre></div></div>
 
 </main>
 
-<main class="view view-trouble chan beta">
+<main class="view view-trouble chan v1018">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; When it goes wrong</div>
   <h1>Troubleshooting.</h1>
@@ -3997,7 +4051,7 @@ max_connections = 500</pre></div></div>
   <div class="note warn"><div class="h">Server actions are not in mod 1.0.16</div>
   <p>The <b>server actions</b> system &mdash; rebooting the machine, swapping maps or restarting the gateway from the in-game F8 panel, via a watchdog reading a command file &mdash; was built after 1.0.16 shipped. It arrives with the next release.</p>
   <p>Nothing in this release reads a command file, and the <code class="inline">wz_watchdog</code> scripts in the kit have nothing to talk to yet. Installing the watchdog now does no harm, but it will sit idle.</p>
-  <p class="muted">You can read the full design and setup under the <b>Beta</b> channel. Do not run the beta mod or gateway on a live server.</p></div>
+  <p class="muted">Select <b>Mod 1.0.18</b> above for the full design and setup.</p></div>
 </div></section>
 
 <section><div class="wrap">
@@ -4011,7 +4065,7 @@ max_connections = 500</pre></div></div>
 </div></section>
 </main>
 
-<main class="view view-admin chan beta">
+<main class="view view-admin chan v1018">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Running the server</div>
   <h1>Server administration.</h1>
@@ -4618,7 +4672,7 @@ python3 wz_watchdog.py /opt/reforger/profile/hf_wastelandz/configs --loop</pre><
       window.scrollTo({top:0,behavior:'auto'});
     });
   });
-  // Channel switch (Production / Beta). Separate content trees, so this
+  // Release switch (1.0.16 / 1.0.18). Separate content trees, so this
   // swaps the whole guide, not a few paragraphs.
   document.querySelectorAll('.chanseg button').forEach(function(btn){
     btn.addEventListener('click',function(){

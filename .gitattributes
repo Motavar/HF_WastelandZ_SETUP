@@ -1,1 +1,39 @@
+# =========================================================================
+# Line endings. Admins clone this on Linux and on Windows, so the rules are
+# explicit rather than left to whatever core.autocrlf each person has set.
+# =========================================================================
+
+# Everything text: stored LF in the repo, checked out LF. This is what a
+# Linux admin gets from a clone, a ZIP download or a curl of the tarball.
+* text=auto eol=lf
+
+# Windows batch and cmd files genuinely need CRLF. A .bat with LF endings
+# can fail in ways that are hard to read, so force it.
 *.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell scripts must be LF. A .sh with CRLF fails on Linux with
+# "bad interpreter: /bin/bash^M", which does not name line endings anywhere
+# in the message and costs an admin an evening.
+*.sh text eol=lf
+
+# Python, SQL and config templates run on both. LF everywhere is correct:
+# Python and MySQL both read LF fine on Windows, and Notepad has handled it
+# since 2018.
+*.py text eol=lf
+*.sql text eol=lf
+*.conf text eol=lf
+*.example text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+
+# Binary: never touched, never diffed.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.gz binary
