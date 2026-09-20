@@ -345,9 +345,9 @@
   <h3>What's in this download</h3>
   <div class="files"><dl>
     <dt>gateway/</dt><dd>The gateway program. Copy this whole folder to your server and run it.</dd>
-    <dt>gateway/setup_database.sql</dt><dd>Every database table, defined in one file. <b>You run it once, by hand</b>, when you first set up the database &mdash; step 3 below. It only ever adds, so running it again changes nothing.</dd>
-    <dt>gateway/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
-    <dt>gateway/start_gateway.bat</dt><dd>Windows one-click start.</dd>
+    <dt>gateway-1.0.16/setup_database.sql</dt><dd>Every database table, defined in one file. <b>You run it once, by hand</b>, when you first set up the database &mdash; step 3 below. It only ever adds, so running it again changes nothing.</dd>
+    <dt>gateway-1.0.16/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
+    <dt>gateway-1.0.16/start_gateway.bat</dt><dd>Windows one-click start.</dd>
     <dt>configs/</dt><dd><b>Reference copies</b> of the server settings (loot, vehicles, towns, admins&hellip;) &mdash; the server writes its own working copies on first start (see below), so these are for reading and optional pre-tuning, not required drop-ins. The README inside lists each file and which ones auto-create; every setting is documented inline.</dd>
     <dt>missions/</dt><dd>Reward templates for the mission system, plus a guide to authoring missions in-game.</dd>
     <dt>server/</dt><dd>Game-server kit — SteamCMD install script, example <code class="inline">server1.json</code>, and the start/stop batch files (auto-restart loop included).</dd>
@@ -732,7 +732,7 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="c"># the running copy gets its own folder</span>
 <span class="p">sudo</span> mkdir -p /opt/wastelandz-gateway
 <span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
-<span class="p">cp</span> -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
+<span class="p">cp</span> -r /opt/wastelandz/gateway-1.0.16/. /opt/wastelandz-gateway/
 
 <span class="c"># build the tables and check the login works in one go</span>
 <span class="p">cd</span> /opt/wastelandz-gateway
@@ -852,7 +852,7 @@ After=network.target mysql.service
 
 <span class="c">[Service]</span>
 WorkingDirectory=/opt/wastelandz-gateway
-ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway/gateway.py
+ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway-1.0.16/gateway.py
 Restart=on-failure
 User=<span class="p">youruser</span>
 
@@ -1200,11 +1200,11 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
   <h3>What's in this download</h3>
   <div class="files"><dl>
     <dt>gateway/</dt><dd>The gateway program. Copy this whole folder to your server and run it.</dd>
-    <dt>gateway/setup_database.sql</dt><dd>Every database table, defined in one file. <b>The gateway applies it on every start</b>, so you never run SQL by hand and there is no separate first-time step. It only ever adds &mdash; running it again changes nothing.</dd>
-    <dt>gateway/migrate.py</dt><dd>Applies the schema on start, then any pending data change. Records what it applied so nothing runs twice.</dd>
-    <dt>gateway/tests/</dt><dd>The tests we run against the gateway, shipped so you can run them yourself. One of them <b>wipes</b> a database and says so &mdash; read its README first.</dd>
-    <dt>gateway/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
-    <dt>gateway/start_gateway.bat</dt><dd>Windows one-click start.</dd>
+    <dt>gateway-1.0.18/setup_database.sql</dt><dd>Every database table, defined in one file. <b>The gateway applies it on every start</b>, so you never run SQL by hand and there is no separate first-time step. It only ever adds &mdash; running it again changes nothing.</dd>
+    <dt>gateway-1.0.18/migrate.py</dt><dd>Applies the schema on start, then any pending data change. Records what it applied so nothing runs twice.</dd>
+    <dt>gateway-1.0.18/tests/</dt><dd>The tests we run against the gateway, shipped so you can run them yourself. One of them <b>wipes</b> a database and says so &mdash; read its README first.</dd>
+    <dt>gateway-1.0.18/config.example.py</dt><dd>The settings template. You copy it to <code class="inline">config.py</code> and fill in your password + key.</dd>
+    <dt>gateway-1.0.18/start_gateway.bat</dt><dd>Windows one-click start.</dd>
     <dt>configs/</dt><dd><b>Reference copies</b> of the server settings (loot, vehicles, towns, admins&hellip;) &mdash; the server writes its own working copies on first start (see below), so these are for reading and optional pre-tuning, not required drop-ins. The README inside lists each file and which ones auto-create; every setting is documented inline.</dd>
     <dt>missions/</dt><dd>Reward templates for the mission system, plus a guide to authoring missions in-game.</dd>
     <dt>server/</dt><dd>Game-server kit — SteamCMD install script, example <code class="inline">server1.json</code>, and the start/stop batch files (auto-restart loop included).</dd>
@@ -1523,7 +1523,7 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <p>Everything in this kit is one GitHub repo. Two ways to get it onto the Linux box — pick one:</p>
     <p><b>Option A — git (recommended).</b> One command pulls the whole kit straight onto the server; updating later is one more command. On the server:</p>
     <div class="code"><pre><span class="p">sudo</span> apt install -y git
-<span class="p">sudo</span> git clone -b beta https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz
+<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz
 <span class="p">sudo</span> chown -R $USER /opt/wastelandz</pre></div>
     <p class="muted">Get updates later with: <code class="inline">cd /opt/wastelandz</code> then <code class="inline">git pull</code></p>
     <p><b>Option B — WinSCP (drag &amp; drop).</b> On your PC: open the repo page on GitHub &rarr; green <b>Code</b> button &rarr; <b>Download ZIP</b> &rarr; unzip it. Make the target folder on the server first:</p>
@@ -1589,7 +1589,7 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="c"># the running copy gets its own folder</span>
 <span class="p">sudo</span> mkdir -p /opt/wastelandz-gateway
 <span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
-<span class="p">cp</span> -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
+<span class="p">cp</span> -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/
 
 <span class="c"># check the login works (also builds the tables; the gateway would do</span>
 <span class="c"># this itself on first start, but a wrong password is easier to spot here)</span>
@@ -1710,7 +1710,7 @@ After=network.target mysql.service
 
 <span class="c">[Service]</span>
 WorkingDirectory=/opt/wastelandz-gateway
-ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway/gateway.py
+ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway-1.0.18/gateway.py
 Restart=on-failure
 User=<span class="p">youruser</span>
 
@@ -2621,7 +2621,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
   <p class="muted">A mission is an ordered list of steps &mdash; some are <b>events</b> (spawn a scene), the rest are <b>logic</b> (show a message, wait for a condition, hand out a reward, end the mission). A common shape: show a heads-up &rarr; spawn the event &rarr; wait until the enemies are dead &rarr; spawn a reward &rarr; complete. You arrange these steps in the Mission Editor.</p>
 
   <div class="note tip"><div class="h">Grab the example missions</div>
-  <p>You don&rsquo;t have to start from a blank page. <b>Download the example missions from the <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/beta/missions" target="_blank" rel="noopener">Wasteland-Z SETUP repo</a></b> (the <code class="inline">missions/</code> folder &mdash; copy <code class="inline">events/</code>, <code class="inline">templates/</code> and <code class="inline">rewards/</code> into your server&rsquo;s <code class="inline">&lt;profile&gt;/hf_wastelandz/missions/</code>), then open them in the editor to see how a working mission is put together &mdash; then build your own the same way. More examples get added over time, so check back.</p></div>
+  <p>You don&rsquo;t have to start from a blank page. <b>Download the example missions from the <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main/missions" target="_blank" rel="noopener">Wasteland-Z SETUP repo</a></b> (the <code class="inline">missions/</code> folder &mdash; copy <code class="inline">events/</code>, <code class="inline">templates/</code> and <code class="inline">rewards/</code> into your server&rsquo;s <code class="inline">&lt;profile&gt;/hf_wastelandz/missions/</code>), then open them in the editor to see how a working mission is put together &mdash; then build your own the same way. More examples get added over time, so check back.</p></div>
 
   <div class="note tip"><div class="h">The pool runs it on a timer</div>
   <p>You don&rsquo;t spawn missions by hand for players. Finished missions go into the <b>Mission Pool</b>, which spawns them automatically &mdash; on a per-tier timer, away from players, with cooldowns so the same spot doesn&rsquo;t reused instantly. You just build missions and turn the pool on.</p></div>
@@ -2933,7 +2933,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
     <div class="code"><pre><span class="c"># Linux</span>
 sudo systemctl stop wz-gateway
 cp -r /opt/wastelandz-gateway /opt/wastelandz-gateway.bak
-cp /opt/wastelandz-gateway/config.py ~/config.py.bak
+cp /opt/wastelandz-gateway-1.0.16/config.py ~/config.py.bak
 
 <span class="c"># Windows — close the WZ-Gateway window first</span>
 xcopy /E /I /Y C:\wastelandz-gateway C:\wastelandz-gateway.bak
@@ -2948,7 +2948,7 @@ copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
 cd /opt/wastelandz
 git checkout main
 git pull
-grep GATEWAY_VERSION gateway/gateway.py
+grep GATEWAY_VERSION gateway-1.0.16/gateway.py
 
 <span class="c"># Windows</span>
 cd D:\wastelandz
@@ -2965,10 +2965,10 @@ findstr GATEWAY_VERSION gateway\gateway.py</pre></div>
     <h4>Copy every file across</h4>
     <p>Your <code class="inline">config.py</code> is not in the repo, so nothing overwrites it.</p>
     <div class="code"><pre><span class="c"># Linux</span>
-cp -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
+cp -r /opt/wastelandz/gateway-1.0.16/. /opt/wastelandz-gateway/
 
 <span class="c"># Windows</span>
-xcopy /E /Y D:\wastelandz\gateway C:\wastelandz-gateway\</pre></div>
+xcopy /E /Y D:\wastelandz\gateway-1.0.16 C:\wastelandz-gateway\</pre></div>
   </div>
 
   <div class="step"><span class="n">4</span>
@@ -3022,27 +3022,27 @@ xcopy /E /Y C:\wastelandz-gateway.bak C:\wastelandz-gateway\</pre></div>
   <div class="tablewrap"><table class="rtab">
     <tr><th>File</th><th>What it is</th><th>What it can reach</th></tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/gateway.py">gateway.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/gateway.py">gateway.py</a></td>
       <td>The whole program. A Flask web service: it listens on the ports you configure and answers the game server&rsquo;s requests about players, money, gear and bans.</td>
       <td>Your MySQL database, and the ports in your <code class="inline">config.py</code>. <b>It makes no outbound connections</b> &mdash; nothing phones home, and there is no update check.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/setup_database.sql">setup_database.sql</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/setup_database.sql">setup_database.sql</a></td>
       <td>Every table, defined once. <b>You run it by hand</b> when you first set up the database.</td>
       <td>Your database only. It is written so that it can <b>only add</b> &mdash; there is no <code class="inline">DROP</code> or <code class="inline">DELETE</code> anywhere in it, and the gateway refuses to start if one ever appears.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/hf_crypto.py">hf_crypto.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/hf_crypto.py">hf_crypto.py</a></td>
       <td>Verifies the signed tokens the game server sends, so a stranger who finds your port cannot write to your database.</td>
       <td>Nothing external. Pure computation on the key already in your <code class="inline">config.py</code>.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/requirements.txt">requirements.txt</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/requirements.txt">requirements.txt</a></td>
       <td>The Python packages. Three, all mainstream: Flask, the MySQL connector, psutil.</td>
       <td>PyPI, at install time only.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/config.example.py">config.example.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.16/config.example.py">config.example.py</a></td>
       <td>The template you copy to <code class="inline">config.py</code>. Every setting is commented.</td>
       <td>Nothing. It is a template and holds no real credentials.</td>
     </tr>
@@ -3055,7 +3055,7 @@ xcopy /E /Y C:\wastelandz-gateway.bak C:\wastelandz-gateway\</pre></div>
   <div class="code"><pre>Review this file for anything malicious or risky before I run it
 on a server that holds a database password.
 
-https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway/gateway.py
+https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway-1.0.16/gateway.py
 
 Specifically tell me:
  - does it make any outbound network connections, and to where?
@@ -3131,7 +3131,7 @@ Specifically tell me:
     <div class="code"><pre><span class="c"># Linux</span>
 sudo systemctl stop wz-gateway
 cp -r /opt/wastelandz-gateway /opt/wastelandz-gateway.bak
-cp /opt/wastelandz-gateway/config.py ~/config.py.bak
+cp /opt/wastelandz-gateway-1.0.18/config.py ~/config.py.bak
 
 <span class="c"># Windows — close the WZ-Gateway window first</span>
 xcopy /E /I /Y C:\wastelandz-gateway C:\wastelandz-gateway.bak
@@ -3146,7 +3146,7 @@ copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
 cd /opt/wastelandz
 git checkout beta
 git pull
-grep GATEWAY_VERSION gateway/gateway.py
+grep GATEWAY_VERSION gateway-1.0.18/gateway.py
 
 <span class="c"># Windows</span>
 cd D:\wastelandz
@@ -3156,17 +3156,17 @@ git pull
 <span class="c"># confirm what you just pulled</span>
 findstr GATEWAY_VERSION gateway\gateway.py</pre></div>
     <p class="muted">That last line prints the version now sitting in the kit. Nothing has been copied to your gateway folder yet &mdash; that is step 3.</p>
-    <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/beta.zip">Download the ZIP</a> and unpack it over the same folder. Same result.</p>
+    <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip">Download the ZIP</a> and unpack it over the same folder. Same result.</p>
   </div>
 
   <div class="step"><span class="n">3</span>
     <h4>Copy every file across</h4>
     <p>Your <code class="inline">config.py</code> is not in the repo, so nothing overwrites it.</p>
     <div class="code"><pre><span class="c"># Linux</span>
-cp -r /opt/wastelandz/gateway/. /opt/wastelandz-gateway/
+cp -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/
 
 <span class="c"># Windows</span>
-xcopy /E /Y D:\wastelandz\gateway C:\wastelandz-gateway\</pre></div>
+xcopy /E /Y D:\wastelandz\gateway-1.0.18 C:\wastelandz-gateway\</pre></div>
   </div>
 
   <div class="step"><span class="n">4</span>
@@ -3220,37 +3220,37 @@ xcopy /E /Y C:\wastelandz-gateway.bak C:\wastelandz-gateway\</pre></div>
   <div class="tablewrap"><table class="rtab">
     <tr><th>File</th><th>What it is</th><th>What it can reach</th></tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/gateway.py">gateway.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/gateway.py">gateway.py</a></td>
       <td>The whole program. A Flask web service: it listens on the ports you configure and answers the game server&rsquo;s requests about players, money, gear and bans.</td>
       <td>Your MySQL database, and the ports in your <code class="inline">config.py</code>. <b>It makes no outbound connections</b> &mdash; nothing phones home, and there is no update check.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/migrate.py">migrate.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/migrate.py">migrate.py</a></td>
       <td>Brings the database up to date on start. Applies <code class="inline">setup_database.sql</code>, then any pending data migration.</td>
       <td>Your database, and <code class="inline">mysqldump</code> when it takes a backup. Refuses to remove anything unless you start it with <code class="inline">--allow-destructive</code>.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/setup_database.sql">setup_database.sql</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/setup_database.sql">setup_database.sql</a></td>
       <td>Every table, defined once. Applied on every start.</td>
       <td>Your database only. It is written so that it can <b>only add</b> &mdash; there is no <code class="inline">DROP</code> or <code class="inline">DELETE</code> anywhere in it, and the gateway refuses to start if one ever appears.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/hf_crypto.py">hf_crypto.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/hf_crypto.py">hf_crypto.py</a></td>
       <td>Verifies the signed tokens the game server sends, so a stranger who finds your port cannot write to your database.</td>
       <td>Nothing external. Pure computation on the key already in your <code class="inline">config.py</code>.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/requirements.txt">requirements.txt</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/requirements.txt">requirements.txt</a></td>
       <td>The Python packages. Four, all mainstream: Flask, the MySQL connector, psutil, waitress.</td>
       <td>PyPI, at install time only.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/config.example.py">config.example.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/config.example.py">config.example.py</a></td>
       <td>The template you copy to <code class="inline">config.py</code>. Every setting is commented.</td>
       <td>Nothing. It is a template and holds no real credentials.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/beta/gateway/tests">gateway/tests/</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main/gateway-1.0.18/tests">gateway-1.0.18/tests/</a></td>
       <td>The tests we run against it, shipped so you can run them too.</td>
       <td>A database you point them at. One of them <b>wipes</b> that database and says so loudly &mdash; read its README first.</td>
     </tr>
@@ -3263,7 +3263,7 @@ xcopy /E /Y C:\wastelandz-gateway.bak C:\wastelandz-gateway\</pre></div>
   <div class="code"><pre>Review this file for anything malicious or risky before I run it
 on a server that holds a database password.
 
-https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/beta/gateway/gateway.py
+https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway-1.0.18/gateway.py
 
 Specifically tell me:
  - does it make any outbound network connections, and to where?
@@ -3859,7 +3859,7 @@ for /f "tokens=2" %%A in ('findstr /b /c:"COMMAND" "%FILE%"') do set "CMD=%%A"</
   <h3>The full versions, if you want them</h3>
   <p class="muted">All three do the same job and ship in this download, in <code class="inline">server/</code>. They add logging, argument checking and clearer errors to the ten-line versions above &mdash; still no dependencies, still nothing fetched at runtime. Click to read before you run.</p>
   <details class="src"><summary>Bash / POSIX shell &mdash; full file (79 lines)</summary>
-  <p class="muted" style="margin:0 14px 8px">Uses only sh, grep, awk, tr and rm. Run from cron or a systemd timer, or with --loop. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/server/wz_watchdog.sh" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
+  <p class="muted" style="margin:0 14px 8px">Uses only sh, grep, awk, tr and rm. Run from cron or a systemd timer, or with --loop. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/server/wz_watchdog.sh" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
   <div class="code"><pre>#!/bin/sh
 # Wasteland-Z server action watchdog — POSIX shell.
 #
@@ -3942,7 +3942,7 @@ fi
 </pre></div>
   </details>
   <details class="src"><summary>Python 3 &mdash; full file (157 lines)</summary>
-  <p class="muted" style="margin:0 14px 8px">Standard library only - os, subprocess, sys, time. Same on Linux and Windows. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/server/wz_watchdog.py" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
+  <p class="muted" style="margin:0 14px 8px">Standard library only - os, subprocess, sys, time. Same on Linux and Windows. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/server/wz_watchdog.py" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
   <div class="code"><pre>#!/usr/bin/env python3
 &quot;&quot;&quot;Wasteland-Z server action watchdog.
 
@@ -4103,7 +4103,7 @@ if __name__ == &quot;__main__&quot;:
 </pre></div>
   </details>
   <details class="src"><summary>Windows batch &mdash; full file (89 lines)</summary>
-  <p class="muted" style="margin:0 14px 8px">Uses only findstr, del and net. Point Task Scheduler at it on a one-minute trigger. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/server/wz_watchdog.cmd" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
+  <p class="muted" style="margin:0 14px 8px">Uses only findstr, del and net. Point Task Scheduler at it on a one-minute trigger. <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/server/wz_watchdog.cmd" target="_blank" rel="noopener">View or download on GitHub &rarr;</a></p>
   <div class="code"><pre>@echo off
 setlocal EnableDelayedExpansion
 rem ==========================================================================
