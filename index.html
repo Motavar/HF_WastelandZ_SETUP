@@ -3395,22 +3395,50 @@ Specifically tell me:
     <code class="inline">gateway-1.0.18</code> folder inside.</p></div>
 
     <div class="note"><div class="h">Command line &mdash; curl</div>
-    <div class="os-panel windows"><div class="code"><pre><span class="c">REM use curl.exe, not the PowerShell alias</span>
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM make the folder once - harmless if it is already there</span>
+<span class="p">mkdir</span> D:\wastelandz
 <span class="p">cd</span> /d D:\
+
+<span class="c">REM Windows gets the .zip. Use curl.exe, not the PowerShell alias.</span>
 <span class="p">curl.exe</span> -L -o main.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
-<span class="p">tar</span> -xf main.zip
 
-<span class="c">REM rename it to wastelandz, the name every step below uses</span>
-<span class="p">move</span> HF_WastelandZ_SETUP-main wastelandz</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="c"># tar is on every Linux box - nothing to install</span>
-<span class="c"># /opt is root-owned, so these need sudo</span>
+<span class="c">REM tar here is Microsoft&#39;s own C:\Windows\System32\tar.exe, which reads zip.</span>
+<span class="c">REM --strip-components=1 unpacks straight into the folder, renaming</span>
+<span class="c">REM and deleting nothing.</span>
+<span class="p">tar</span> -xf main.zip --strip-components=1 -C D:\wastelandz</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># make the folder once - harmless if it is already there</span>
+<span class="p">sudo</span> mkdir -p /opt/wastelandz
 <span class="p">cd</span> /opt
-<span class="p">sudo</span> curl -L -o main.tar.gz https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.tar.gz
-<span class="p">sudo</span> tar -xzf main.tar.gz
 
-<span class="c"># rename it to wastelandz, the name every step below uses</span>
-<span class="p">sudo</span> rm -rf /opt/wastelandz &amp;&amp; <span class="p">sudo</span> mv HF_WastelandZ_SETUP-main wastelandz</pre></div></div>
-    <p class="muted">GitHub serves the same files as a <code class="inline">.tar.gz</code> for Linux and a <code class="inline">.zip</code> for Windows. Either way it names the folder after the branch, so it arrives as <code class="inline">HF_WastelandZ_SETUP-main</code>. The rename above makes it <code class="inline">wastelandz</code>, which is the name every step below uses &mdash; all three routes end up in the same place.</p>
+<span class="c"># Linux gets the .tar.gz - tar is on every box, nothing to install</span>
+<span class="p">sudo</span> curl -L -o main.tar.gz https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.tar.gz
+
+<span class="c"># unpack STRAIGHT INTO that folder. --strip-components=1 drops the</span>
+<span class="c"># HF_WastelandZ_SETUP-main wrapper, so nothing is renamed and nothing</span>
+<span class="c"># is deleted - your own files in there are left alone.</span>
+<span class="p">sudo</span> tar -xzf main.tar.gz --strip-components=1 -C /opt/wastelandz</pre></div></div>
+
+    <div class="note warn"><div class="h">Upgrading a kit you installed before 2026-09-20? Check for a leftover folder</div>
+    <p>Unpacking <b>updates and adds</b> files. It cannot <b>remove</b> one that was deleted from the
+    repo &mdash; so if you installed before the kit was split per release, the old
+    <code class="inline">gateway/</code> folder is still sitting there at <b>0.7.1</b>, beside the two
+    new ones.</p>
+    <p><b>Why that matters:</b> it has the most obvious name of the three. Copy it by mistake and you
+    are running gateway 0.7.1 against mod 1.0.18, which only prints a warning while every save fails.</p>
+    <p>Look first:</p>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -d /opt/wastelandz/gateway 2&gt;/dev/null &amp;&amp; <span class="p">echo</span> "LEFTOVER - see below"</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">if</span> exist D:\wastelandz\gateway <span class="p">echo</span> LEFTOVER - see below</pre></div></div>
+    <p class="muted">Nothing printed means you are clean. If it printed, that folder is not part of the
+    kit any more and nothing references it &mdash; you can delete it once you have checked there is
+    nothing of your own inside:</p>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -la /opt/wastelandz/gateway
+<span class="c"># only after you have looked</span>
+<span class="p">sudo</span> rm -rf /opt/wastelandz/gateway</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wastelandz\gateway
+<span class="c">REM only after you have looked</span>
+<span class="p">rmdir</span> /S /Q D:\wastelandz\gateway</pre></div></div>
+    <p class="muted">Your running gateway folder is somewhere else entirely and is not affected.</p></div>
+    <p class="muted">Windows takes the <code class="inline">.zip</code>, Linux the <code class="inline">.tar.gz</code> &mdash; same commit, the format each system can already open. Both unpack straight into <code class="inline">wastelandz</code>, the name every step below uses, so all three routes end up in the same place.</p>
 
     <div class="note"><div class="h">Or use git &mdash; optional, and only worth it if you update often</div>
     <p><b>What it is.</b> Another way to download the same files. The difference is that next time there
