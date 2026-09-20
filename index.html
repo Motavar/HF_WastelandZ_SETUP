@@ -246,17 +246,33 @@
   /* ---- channel switch ---- */
   .chanbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
   .chanseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-  .chanseg button{font-family:var(--font-display);font-weight:800;text-transform:uppercase;
-    letter-spacing:.09em;font-size:12px;padding:9px 18px;background:transparent;color:var(--ink-dim);
-    border:0;cursor:pointer}
-  .chanseg button[aria-selected="true"]{background:linear-gradient(180deg,var(--rust),#e85f12);color:#0c0c0c}
-  .chanseg button.betabtn[aria-selected="true"]{background:var(--warn);color:#1a1206}
-  .chanwhich{font-size:12.5px;color:var(--ink-dim)}
-  body[data-channel="beta"] .chanwhich .p-txt{display:none}
-  body[data-channel="production"] .chanwhich .b-txt{display:none}
-  .betaflag{display:none}
-  body[data-channel="beta"] .betaflag{display:block;border:2px solid var(--warn);border-radius:8px;
-    padding:9px 15px;margin:0 0 16px;font-size:13px}
+  /* ---- PRODUCTION release picker ---- */
+  .prodpick{border:2px solid var(--rust);border-radius:12px;padding:18px 20px 16px;margin:0 0 18px;
+    background:linear-gradient(180deg,rgba(255,107,26,.10),rgba(255,107,26,.02))}
+  .prodpick-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .prodpick-title{font-family:var(--font-display);font-weight:800;text-transform:uppercase;
+    letter-spacing:.14em;font-size:30px;line-height:1;color:var(--rust)}
+  .prodpick-sub{font-size:14px;color:var(--ink-dim)}
+  .prodpick-foot{margin:13px 0 0;font-size:12.5px;color:var(--ink-dim)}
+  .chanseg{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;
+    background:transparent;border:0;padding:0}
+  .chanseg button{position:relative;display:flex;flex-direction:column;gap:3px;text-align:left;
+    font-family:var(--font-display);padding:15px 92px 15px 17px;cursor:pointer;
+    border:2px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(0,0,0,.25);
+    color:var(--ink-dim)}
+  .chanseg button:hover{border-color:rgba(255,107,26,.55)}
+  .chanseg button .cs-mod{font-weight:800;text-transform:uppercase;letter-spacing:.07em;
+    font-size:19px;color:var(--ink)}
+  .chanseg button .cs-gw{font-weight:700;font-size:14px;letter-spacing:.04em}
+  .chanseg button .cs-note{font-family:var(--font-body);font-size:12.5px;opacity:.85}
+  .chanseg button .cs-flag{position:absolute;top:11px;right:12px;font-size:10px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.12em;padding:3px 9px;border-radius:20px;
+    background:var(--rust);color:#0c0c0c}
+  .chanseg button[aria-selected="true"]{border-color:var(--rust);
+    background:linear-gradient(180deg,rgba(255,107,26,.22),rgba(255,107,26,.07))}
+  .chanseg button[aria-selected="true"] .cs-mod,
+  .chanseg button[aria-selected="true"] .cs-gw{color:var(--rust)}
+  @media (max-width:560px){ .prodpick-title{font-size:23px} }
 
   /* ---- coming-soon pill ---- */
   .pill{display:inline-block;font-family:var(--font-display);font-weight:700;text-transform:uppercase;
@@ -281,25 +297,32 @@
 </div>
 
 <div class="wrap" style="padding-top:14px">
-  <div class="note warn" style="margin:0">
-    <div class="h">We are updating our documentation, database and gateway for the next release &mdash; 2026-08-26</div>
-    <p>We apologize for mistakes during this migration. <b>Everything you need to run a server today is under PRODUCTION</b> &mdash; that is mod <b>1.0.16</b>, the version on the Workshop right now, with gateway <b>0.7.1</b>. The <b>BETA</b> tab documents the next release while it is still being tested. <b>Do not run BETA on a live server.</b></p>
-  </div>
-</div>
+  <div class="note warn"><div class="h">Two production releases are live &mdash; 2026-09-20</div>
+    <p><b>Mod 1.0.16</b> is what the Workshop serves today and runs on gateway <b>0.7.1</b>. <b>Mod 1.0.18</b> is the new release and needs gateway <b>0.9.6</b>, which upgrades your database.</p>
+    <p>Pick your version above. Each one shows only the files and the steps for that release, so you cannot end up running one half of a pair.</p></div>
 
 <div class="wrap" style="padding-top:20px">
-  <div class="chanbar">
-    <div class="chanseg" role="tablist" aria-label="Release channel">
-      <button role="tab" data-channel="production" aria-selected="true">Production</button>
-      <button role="tab" data-channel="beta" class="betabtn" aria-selected="false">Beta</button>
+  <div class="prodpick">
+    <div class="prodpick-head">
+      <span class="prodpick-title">Production</span>
+      <span class="prodpick-sub">Pick the mod version your server is running.</span>
     </div>
-    <span class="chanwhich">
-      <span class="p-txt"><b>Mod 1.0.16</b> &middot; gateway <b>0.7.1</b> &mdash; the live Workshop release. Use this one.</span>
-      <span class="b-txt"><b>Next release</b> &middot; gateway <b>0.9.0</b> &mdash; in testing. Not on the Workshop yet.</span>
-    </span>
-  </div>
-  <div class="betaflag">
-    <b>You are reading the BETA guide.</b> It documents an unreleased mod build and gateway 0.9.0. Running it against mod 1.0.16 &mdash; the version the Workshop gives you today &mdash; <b>silently stops saving gear</b>. Switch to <b>Production</b> unless you are deliberately testing the next release.
+    <div class="chanseg" role="tablist" aria-label="Release">
+      <button role="tab" data-channel="production" aria-selected="true">
+        <span class="cs-mod">Mod 1.0.16</span>
+        <span class="cs-gw">Gateway 0.7.1</span>
+        <span class="cs-note">On the Workshop now</span>
+      </button>
+      <button role="tab" data-channel="beta" aria-selected="false">
+        <span class="cs-flag">Latest</span>
+        <span class="cs-mod">Mod 1.0.18</span>
+        <span class="cs-gw">Gateway 0.9.6</span>
+        <span class="cs-note">Hive &amp; database upgrade</span>
+      </button>
+    </div>
+    <p class="prodpick-foot">Not sure? Your server console prints it on start as
+      <code class="inline">[HF] WastelandZ &lt;version&gt;</code>. Running something older than 1.0.16?
+      Upgrade to 1.0.16 first, then follow the 1.0.18 steps.</p>
   </div>
 </div>
 
@@ -3120,6 +3143,313 @@ Specifically tell me:
   <h1>Update the gateway.</h1>
   <p class="lede">The <b>mod</b> updates itself from the Workshop on server start &mdash; you never touch it. The <b>gateway</b> is the one piece you host, and this is how you update it. Five steps, the same every release.</p>
 </div></div>
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Start here</span><h2>Welcome to 1.0.18.</h2></div>
+  <p class="lede">This release changes the <b>gateway</b> and the <b>database</b>. It is the biggest change
+  since the hive was built, so this page walks the whole thing, one command at a time, and tells you what
+  each one does before you run it.</p>
+
+  <div class="note warn"><div class="h">The two halves move together</div>
+  <p>Mod <b>1.0.18</b> needs gateway <b>0.9.6</b>. They are checked at startup and they are not
+  interchangeable.</p>
+  <p>If you update only one, the server still starts &mdash; it prints a warning and keeps running while
+  every save quietly fails. <b>That is the one outcome this page exists to prevent.</b> Do both, in one
+  sitting.</p></div>
+
+  <div class="cols2">
+    <div class="note tip"><div class="h">I already run a server</div>
+    <p>You are <b>upgrading</b>. Your players, money and gear already exist and must survive.</p>
+    <p><b>Go to Part A.</b></p></div>
+
+    <div class="note tip"><div class="h">I am setting one up for the first time</div>
+    <p>You are doing a <b>new install</b>. Nothing to preserve, nothing to back up.</p>
+    <p><b>Skip to Part B.</b></p></div>
+  </div>
+</div></section>
+
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Part A</span><h2>Upgrading an existing server.</h2></div>
+  <p class="muted">Seven steps. Do them in order. Nothing here is destructive until step 4, and step 2 is
+  what makes even that reversible.</p>
+
+  <div class="step"><div class="n">1</div><div class="t">
+    <h3>Update the mod</h3>
+    <p><b>You do not install the mod.</b> Arma Reforger downloads it from the Workshop every time your
+    server starts, so the update arrives on its own. All you do is restart the server once and check it
+    landed.</p>
+    <p class="muted">Why it is first: the mod is the half you cannot control the timing of. Get it on
+    1.0.18, confirm it, and the rest of this page is the half you do control.</p>
+    <p>Restart the server, then look in the console for the version banner:</p>
+    <div class="code"><pre>[HF] WastelandZ 1.0.18</pre></div>
+    <p class="muted">You will also start seeing <code class="inline">GATEWAY VERSION MISMATCH</code> every
+    60 seconds. <b>That is expected right now</b> &mdash; the mod is on 1.0.18 and your gateway is still
+    0.7.1. It stops at step 5. Until then, do not let players on.</p>
+  </div></div>
+
+  <div class="step"><div class="n">2</div><div class="t">
+    <h3>Back up the database and the gateway folder</h3>
+    <p><b>Do not skip this, and do not do it later.</b> This release upgrades your database, and once that
+    has happened an older gateway will <b>refuse to start</b> against it. That refusal is deliberate &mdash;
+    it stops a downgraded gateway writing a format it does not understand and corrupting your data.</p>
+    <p>The practical meaning: <b>this dump is the only way back to 0.7.1.</b> Without it there is no
+    rollback.</p>
+    <p>Stop the game server and the gateway first, so nothing is mid-write.</p>
+
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM 1 - the database. Writes one file containing every player, wallet and loadout.</span>
+<span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; D:\wz-backup-before-0.9.6.sql
+
+<span class="c">REM 2 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
+<span class="p">xcopy</span> /E /I /Y D:\wastelandz-gateway D:\wastelandz-gateway-BACKUP</pre></div></div>
+
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># 1 - the database. Writes one file containing every player, wallet and loadout.</span>
+<span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; ~/wz-backup-before-0.9.6.sql
+
+<span class="c"># 2 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
+<span class="p">cp</span> -r /opt/wastelandz-gateway /opt/wastelandz-gateway-BACKUP</pre></div></div>
+
+    <div class="note"><div class="h">Check it actually worked</div>
+    <p>A backup you did not look at is not a backup. The file must exist and must not be empty:</p>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wz-backup-before-0.9.6.sql</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -lh ~/wz-backup-before-0.9.6.sql</pre></div></div>
+    <p class="muted">Expect a size in megabytes, not a few bytes. A tiny file means mysqldump failed and
+    printed the reason above the prompt.</p></div>
+  </div></div>
+
+  <div class="step"><div class="n">3</div><div class="t">
+    <h3>Download the new gateway &mdash; and read it first if you want to</h3>
+    <p>You are about to run a program on the machine holding your players&rsquo; data and your database
+    password. <b>You should not have to take our word for what it does.</b> Every file is readable before
+    you download anything:</p>
+    <ul class="clean muted">
+      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/gateway.py">gateway.py</a> &mdash; the whole service. It answers the
+      game server&rsquo;s requests about players, money and gear. <b>It makes no outbound connections</b>:
+      nothing phones home and there is no update check.</li>
+      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/migrate.py">migrate.py</a> &mdash; brings the database up to date on
+      start. Refuses to remove anything unless you deliberately pass
+      <code class="inline">--allow-destructive</code>.</li>
+      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/setup_database.sql">setup_database.sql</a> &mdash; every table,
+      defined once. Written so it can <b>only add</b>.</li>
+      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main/gateway-1.0.18/migrations">migrations/</a> &mdash; the four changes this release
+      applies to your data.</li>
+      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/hf_crypto.py">hf_crypto.py</a> &mdash; checks the signed token the
+      game server sends, so a stranger who finds your port cannot write to your database.</li>
+    </ul>
+
+    <p>Then take the files. Any one of these three, they are the same files:</p>
+
+    <div class="note tip"><div class="h">Easiest &mdash; download the ZIP</div>
+    <p><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip"><b>Download the kit (ZIP)</b></a>, unzip it, and use the
+    <code class="inline">gateway-1.0.18</code> folder inside.</p></div>
+
+    <div class="note"><div class="h">Command line &mdash; curl</div>
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM use curl.exe, not the PowerShell alias</span>
+<span class="p">cd</span> D:\
+<span class="p">curl.exe</span> -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
+<span class="p">tar</span> -xf kit.zip</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt
+<span class="p">curl</span> -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
+<span class="p">unzip</span> -o kit.zip</pre></div></div>
+    <p class="muted">Unpacks to <code class="inline">HF_WastelandZ_SETUP-main/</code>.</p></div>
+
+    <div class="note"><div class="h">Already cloned it with git?</div>
+    <div class="code"><pre><span class="p">git</span> pull</pre></div>
+    <p class="muted">Never cloned it? <code class="inline">git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git</code></p></div>
+
+    <div class="note warn"><div class="h">Check you got the right one, before you copy anything</div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> GATEWAY_VERSION gateway-1.0.18\gateway.py</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> GATEWAY_VERSION gateway-1.0.18/gateway.py</pre></div></div>
+    <p>It must print <code class="inline">GATEWAY_VERSION = "0.9.6"</code>. If it says 0.7.1 you are
+    looking at <code class="inline">gateway-1.0.16/</code>, which is the previous release.</p></div>
+  </div></div>
+
+  <div class="step"><div class="n">4</div><div class="t">
+    <h3>Copy the files over your gateway</h3>
+    <p>Your running gateway lives in its own folder, separate from the kit. Copy the new files on top of
+    the old ones.</p>
+    <p><b>Your <code class="inline">config.py</code> is safe.</b> It is not in the repo &mdash; it never was
+    &mdash; so there is no copy of it to land on yours. Your password and keys survive untouched.</p>
+
+    <div class="os-panel windows"><div class="code"><pre><span class="p">xcopy</span> /E /Y D:\wastelandz\gateway-1.0.18 D:\wastelandz-gateway\</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">cp</span> -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/</pre></div></div>
+
+    <div class="note"><div class="h">Confirm the copy landed</div>
+    <p>Check the <b>running</b> folder now, not the kit:</p>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> GATEWAY_VERSION D:\wastelandz-gateway\gateway.py
+<span class="p">dir</span> D:\wastelandz-gateway\migrations</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> GATEWAY_VERSION /opt/wastelandz-gateway/gateway.py
+<span class="p">ls</span> /opt/wastelandz-gateway/migrations</pre></div></div>
+    <p><code class="inline">0.9.6</code>, and a <code class="inline">migrations</code> folder holding four
+    <code class="inline">.sql</code> files. <b>If migrations/ is missing the upgrade will not run</b> &mdash;
+    that folder is new in this release and a single-file download misses it.</p></div>
+  </div></div>
+
+  <div class="step"><div class="n">5</div><div class="t">
+    <h3>Install the requirements &mdash; this is where waitress arrives</h3>
+    <p>Run this every time you update, even when nothing looks like it changed. It does nothing when
+    nothing is new, and skipping it is how an upgrade half-lands.</p>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> D:\wastelandz-gateway
+<span class="p">pip</span> install -r requirements.txt</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz-gateway
+<span class="p">pip</span> install -r requirements.txt</pre></div></div>
+
+    <div class="note tip"><div class="h">What waitress is, and why it is new here</div>
+    <p>Until now the gateway ran on <b>werkzeug</b>, which is a <i>development</i> web server. It works
+    fine when one or two people reconnect. When a whole server reconnects at once it starts <b>dropping
+    requests</b> &mdash; measured at 39 of 320 failing at 32 simultaneous requests. A dropped request on a
+    save is a lost loadout.</p>
+    <p><b>waitress</b> is a production server: pure Python, nothing to compile, no configuration. The
+    gateway detects it automatically &mdash; installing it <i>is</i> the switch.</p>
+    <p class="muted">Running three or more game servers through one gateway? Lower
+    <code class="inline">HTTP_THREADS</code> in <code class="inline">config.py</code> by hand.</p></div>
+
+    <div class="note"><div class="h">Confirm waitress is actually installed</div>
+    <div class="code"><pre><span class="p">pip</span> show waitress</pre></div>
+    <p class="muted">A version number means yes. &ldquo;WARNING: Package(s) not found&rdquo; means the
+    install did not take &mdash; run the pip line again and read the error.</p></div>
+  </div></div>
+
+  <div class="step"><div class="n">6</div><div class="t">
+    <h3>Start the gateway on its own, and watch it upgrade the database</h3>
+    <p><b>The gateway first, by itself, with the game server still stopped.</b> It needs an uninterrupted
+    moment to change the database, and you want to read what it says while it does.</p>
+    <p class="muted">You run no SQL. The gateway applies the schema and the four pending migrations itself,
+    and records what it applied so the same change can never run twice.</p>
+
+    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> D:\wastelandz-gateway
+<span class="p">python</span> gateway.py</pre></div>
+    <p class="muted">Or double-click <code class="inline">start_gateway.bat</code>, which does the same and
+    keeps the window open.</p></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz-gateway
+<span class="p">python3</span> gateway.py</pre></div></div>
+
+    <div class="note tip"><div class="h">What good looks like</div>
+    <div class="code"><pre>  WastelandZ Gateway v0.9.6
+[SCHEMA] setup_database.sql applied (idempotent; no-op when current).
+[MIGRATE] 0090_backfill_inventory ... applied
+[MIGRATE] 0091_key_by_hive ... applied
+[MIGRATE] 0092_position_scope_by_realm_and_map ... applied
+[MIGRATE] 0093_move_weapon_to_session ... applied
+[HTTP] waitress serving on ...</pre></div>
+    <p>Four <code class="inline">[MIGRATE]</code> lines the first time. Start it again tomorrow and they
+    are gone &mdash; that is the ledger doing its job, not a failure.</p>
+    <p><b>Leave this window open.</b> Closing it stops the gateway.</p></div>
+
+    <div class="note warn"><div class="h">If it refuses to start</div>
+    <p>It will tell you why, in plain words, and it stops rather than guessing. The two common ones:</p>
+    <ul class="clean muted">
+      <li><b>It names one of your servers and an API key</b> &mdash; that key is empty or a placeholder.
+      Generate a real one with
+      <code class="inline">python -c "import secrets; print(secrets.token_hex(32))"</code>, put it in
+      <code class="inline">config.py</code>, and the <b>same</b> value in that server&rsquo;s
+      <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
+      <li><b>It says the database is newer than the gateway</b> &mdash; you are running old code against an
+      upgraded database. Redo step 4.</li>
+    </ul></div>
+  </div></div>
+
+  <div class="step"><div class="n">7</div><div class="t">
+    <h3>Start the game server and check the upgrade took</h3>
+    <p>With the gateway running, start the game server as you normally do.</p>
+    <div class="note tip"><div class="h">Four things to check, in order</div>
+    <ul class="clean">
+      <li><b>The mismatch warning is gone.</b> No more <code class="inline">GATEWAY VERSION MISMATCH</code>
+      every 60 seconds. This is the single best sign that both halves match.</li>
+      <li><b>The gateway banner says</b> <code class="inline">v0.9.6</code>.</li>
+      <li><b>Join the server yourself.</b> Your gear, money and bank are there.</li>
+      <li><b>Log out and back in.</b> Still there. That is the save path working end to end.</li>
+    </ul></div>
+    <div class="note"><div class="h">If something is wrong</div>
+    <p>Stop both, restore the dump from step 2, put the backup gateway folder back, and you are exactly
+    where you started. That is what the backup was for.</p></div>
+  </div></div>
+</div></section>
+
+
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Part B</span><h2>New server, from nothing.</h2></div>
+  <p class="muted">Never run one before? Start here. You need Python and MySQL installed first &mdash; the
+  <b>Server Setup</b> tab covers those. This part is the gateway itself.</p>
+
+  <div class="step"><div class="n">1</div><div class="t">
+    <h3>Create the database and a login for it</h3>
+    <p>Open the MySQL command line and paste these four lines. They make an empty database and a user the
+    gateway logs in as. <b>Nothing creates tables here</b> &mdash; the gateway does that itself.</p>
+    <div class="code"><pre>CREATE DATABASE wastelandz;
+CREATE USER 'wastelandz'@'localhost' IDENTIFIED BY 'your_password_here';
+GRANT ALL PRIVILEGES ON wastelandz.* TO 'wastelandz'@'localhost';
+FLUSH PRIVILEGES;</pre></div>
+    <p class="muted">Replace <code class="inline">your_password_here</code> with a password you choose and
+    write it down &mdash; you need it in step 3.</p>
+  </div></div>
+
+  <div class="step"><div class="n">2</div><div class="t">
+    <h3>Get the gateway files</h3>
+    <p>Same three options as Part A step 3, and the same reading list if you want to review the code first.</p>
+    <div class="note tip"><div class="h">Easiest</div>
+    <p><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip"><b>Download the kit (ZIP)</b></a> and unzip it. Use the
+    <code class="inline">gateway-1.0.18</code> folder.</p></div>
+    <p>Copy that folder to where you want the gateway to live &mdash;
+    <code class="inline">D:\wastelandz-gateway</code> or <code class="inline">/opt/wastelandz-gateway</code>.</p>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> GATEWAY_VERSION D:\wastelandz-gateway\gateway.py</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> GATEWAY_VERSION /opt/wastelandz-gateway/gateway.py</pre></div></div>
+    <p class="muted">Must say <code class="inline">0.9.6</code>.</p>
+  </div></div>
+
+  <div class="step"><div class="n">3</div><div class="t">
+    <h3>Make your config.py</h3>
+    <p>The kit ships <code class="inline">config.example.py</code>. Copy it to
+    <code class="inline">config.py</code> and fill in two things.</p>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> D:\wastelandz-gateway
+<span class="p">copy</span> config.example.py config.py</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz-gateway
+<span class="p">cp</span> config.example.py config.py</pre></div></div>
+    <p>Open <code class="inline">config.py</code> and set:</p>
+    <ul class="clean muted">
+      <li><code class="inline">DB_PASSWORD</code> &mdash; the password from step 1.</li>
+      <li><code class="inline">SERVERS</code> &mdash; one entry per game server, each with its own
+      <code class="inline">api_key</code>.</li>
+    </ul>
+    <div class="note warn"><div class="h">Generate a real key. Do not invent one, and do not copy one.</div>
+    <div class="code"><pre><span class="p">python</span> -c "import secrets; print(secrets.token_hex(32))"</pre></div>
+    <p>Run it once per server. The <b>same</b> value goes in that server&rsquo;s
+    <code class="inline">HFWastelandZ_secrets.conf</code> on the <code class="inline">API_KEY</code> line.</p>
+    <p class="muted">The gateway refuses to start on an empty or placeholder key &mdash; anything
+    containing CHANGE_ME, example, placeholder or your_key. Those strings are published in this kit, so
+    running on one is running on a key anybody can read.</p></div>
+  </div></div>
+
+  <div class="step"><div class="n">4</div><div class="t">
+    <h3>Install the requirements</h3>
+    <div class="code"><pre><span class="p">pip</span> install -r requirements.txt</pre></div>
+    <p class="muted">Pulls in flask, the MySQL connector, psutil and <b>waitress</b> &mdash; the production
+    web server. See the panel in Part A step 5 for what waitress does and why it matters.</p>
+  </div></div>
+
+  <div class="step"><div class="n">5</div><div class="t">
+    <h3>Start it and watch it build the database</h3>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">python</span> gateway.py</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">python3</span> gateway.py</pre></div></div>
+    <div class="note tip"><div class="h">What good looks like on a fresh install</div>
+    <div class="code"><pre>  WastelandZ Gateway v0.9.6
+[SCHEMA] setup_database.sql applied (idempotent; no-op when current).
+[HTTP] waitress serving on ...</pre></div>
+    <p>On a brand new database the schema builds every table in one pass, so you see the
+    <code class="inline">[SCHEMA]</code> line and no <code class="inline">[MIGRATE]</code> lines &mdash;
+    there is no old data to migrate. <b>Leave the window open.</b></p></div>
+  </div></div>
+
+  <div class="step"><div class="n">6</div><div class="t">
+    <h3>Start the game server</h3>
+    <p>Start it as normal. Then check the console prints <code class="inline">[HF] WastelandZ 1.0.18</code>
+    and that <b>no</b> <code class="inline">GATEWAY VERSION MISMATCH</code> appears. Join, and confirm you
+    spawn with a starting loadout and money.</p>
+    <p class="muted">First join on a fresh database shows <b>NO RECORD ON THIS HIVE</b> on the join screen.
+    That is correct &mdash; nothing is stored for you yet.</p>
+  </div></div>
+</div></section>
+
 
 <section><div class="wrap">
   <div class="part-head"><span class="part-badge">Update the gateway</span><h2>Five steps. Same every release.</h2></div>
