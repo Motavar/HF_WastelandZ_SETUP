@@ -203,11 +203,19 @@
   .credit b{color:var(--sand);font-weight:600}
 
   /* ---- top-level view tabs (Server Setup / Mission Setup) ---- */
-  .viewtabs{display:flex;justify-content:center;gap:10px;margin:16px auto 4px;flex-wrap:wrap}
+  .viewtabs{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin:16px 0 4px}
+  .tabrow{display:flex;justify-content:flex-start;gap:10px;flex-wrap:wrap;width:100%}
   .viewtabs button{font-family:var(--font-display);font-weight:700;letter-spacing:.09em;text-transform:uppercase;
     font-size:15px;color:var(--ink-dim);background:var(--bg-card);border:1px solid var(--line-2);
     border-radius:10px;padding:12px 30px;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
   .viewtabs button:hover{color:var(--ink);border-color:var(--rust)}
+  .viewtabs button.wip{border-style:dashed;opacity:.72}
+  .viewtabs button.wip:hover{opacity:1}
+  .wipflag{display:inline-block;margin-left:8px;padding:2px 7px;border-radius:999px;
+    background:rgba(255,168,74,.14);border:1px solid rgba(255,168,74,.38);color:var(--sand);
+    font-size:10px;letter-spacing:.06em;text-transform:uppercase;vertical-align:1px}
+  .viewtabs button[aria-selected="true"] .wipflag{background:rgba(26,18,6,.22);
+    border-color:rgba(26,18,6,.35);color:#2a1d08}
   .viewtabs button[aria-selected="true"]{background:linear-gradient(180deg,var(--rust),#e85f12);
     color:#1a1206;border-color:transparent}
   details.src{border:1px solid var(--line);border-radius:6px;margin:10px 0;background:rgba(0,0,0,.15)}
@@ -235,6 +243,7 @@
   body[data-channel="production"][data-view="trouble"] .view-trouble.production{display:block}
   body[data-channel="production"][data-view="admin"]   .view-admin.production{display:block}
   body[data-channel="production"][data-view="hive"]    .view-hive.production{display:block}
+  body[data-channel="production"][data-view="tutorial"] .view-tutorial.production{display:block}
   body[data-channel="v1018"][data-view="server"]  .view-server.v1018{display:block}
   body[data-channel="v1018"][data-view="mission"] .view-mission.v1018{display:block}
   body[data-channel="v1018"][data-view="gateway"] .view-gateway.v1018{display:block}
@@ -242,6 +251,7 @@
   body[data-channel="v1018"][data-view="trouble"] .view-trouble.v1018{display:block}
   body[data-channel="v1018"][data-view="admin"]   .view-admin.v1018{display:block}
   body[data-channel="v1018"][data-view="hive"]    .view-hive.v1018{display:block}
+  body[data-channel="v1018"][data-view="tutorial"] .view-tutorial.v1018{display:block}
 
   /* ---- channel switch ---- */
   .chanbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
@@ -328,13 +338,20 @@
 
 <div class="wrap">
   <div class="viewtabs" role="tablist" aria-label="Guide section">
-    <button role="tab" data-view="server" aria-selected="true">New &mdash; Server Setup</button>
-    <button role="tab" data-view="gateway" aria-selected="false">Upgrade the Mod + Gateway</button>
-    <button role="tab" data-view="upgrade" aria-selected="false">Upgrade the Game (Steam)</button>
-    <button role="tab" data-view="admin" aria-selected="false">Server Administration</button>
-    <button role="tab" data-view="hive" aria-selected="false">Hives &amp; Gear</button>
-    <button role="tab" data-view="mission" aria-selected="false">Mission Setup</button>
-    <button role="tab" data-view="trouble" aria-selected="false">Troubleshooting</button>
+    <div class="tabrow">
+      <button role="tab" data-view="server" aria-selected="true">New &mdash; Server Setup</button>
+      <button role="tab" data-view="gateway" aria-selected="false">Upgrade the Mod + Gateway</button>
+      <button role="tab" data-view="upgrade" aria-selected="false">Upgrade the Game (Steam)</button>
+    </div>
+    <div class="tabrow">
+      <button role="tab" data-view="admin" aria-selected="false">Server Administration</button>
+      <button role="tab" data-view="hive" aria-selected="false">Hives &amp; Gear</button>
+      <button role="tab" data-view="trouble" aria-selected="false">Troubleshooting</button>
+    </div>
+    <div class="tabrow">
+      <button role="tab" data-view="mission" class="wip" aria-selected="false">Mission Setup <span class="wipflag">work in progress</span></button>
+      <button role="tab" data-view="tutorial" class="wip" aria-selected="false">Tutorials <span class="wipflag">work in progress</span></button>
+    </div>
   </div>
 </div>
 
@@ -4743,6 +4760,50 @@ python3 wz_watchdog.py /opt/reforger/profile/hf_wastelandz/configs --loop</pre><
 </div></section>
 </main>
 
+
+<main class="view view-tutorial chan production">
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">Wasteland-Z &middot; Tutorials</div>
+  <h1>Tutorials.</h1>
+  <p class="lede">Short walkthroughs of the things this guide only writes out: what a hive actually looks like with two servers running, what an admin does in the F8 panel, and what a first boot should sound like when it is working.</p>
+</div></div>
+
+<section><div class="wrap">
+  <div class="note warn"><div class="h">Not written yet</div>
+  <p>This section is <b>in progress</b> and deliberately empty rather than half-filled. Everything you need to <b>install, upgrade and run</b> a server is complete and lives in the other tabs &mdash; nothing is waiting on this one.</p>
+  <p>What is planned here:</p>
+  <ul>
+    <li><b>First boot, narrated</b> &mdash; what the log should say, in order, and which lines mean it worked.</li>
+    <li><b>Reading a failure</b> &mdash; the four or five things that actually go wrong, and the one line in the log that identifies each.</li>
+    <li><b>Two servers, one hive</b> &mdash; a worked example: what is shared, what is per-server, and what an admin sees when a player moves between them.</li>
+    <li><b>The F8 admin panel</b> &mdash; a tour of what each action does and what it costs.</li>
+    <li><b>Backup and restore, end to end</b> &mdash; taking a backup, moving it, putting it back, and proving it landed.</li>
+  </ul>
+  <p class="muted">Until then: <b>Troubleshooting</b> carries the failures worth knowing, and <b>Hives &amp; Gear</b> explains the hive model in full.</p></div>
+</div></section>
+</main>
+
+<main class="view view-tutorial chan v1018">
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">Wasteland-Z &middot; Tutorials</div>
+  <h1>Tutorials.</h1>
+  <p class="lede">Short walkthroughs of the things this guide only writes out: what a hive actually looks like with two servers running, what an admin does in the F8 panel, and what a first boot should sound like when it is working.</p>
+</div></div>
+
+<section><div class="wrap">
+  <div class="note warn"><div class="h">Not written yet</div>
+  <p>This section is <b>in progress</b> and deliberately empty rather than half-filled. Everything you need to <b>install, upgrade and run</b> a server is complete and lives in the other tabs &mdash; nothing is waiting on this one.</p>
+  <p>What is planned here:</p>
+  <ul>
+    <li><b>First boot, narrated</b> &mdash; what the log should say, in order, and which lines mean it worked.</li>
+    <li><b>Reading a failure</b> &mdash; the four or five things that actually go wrong, and the one line in the log that identifies each.</li>
+    <li><b>Two servers, one hive</b> &mdash; a worked example: what is shared, what is per-server, and what an admin sees when a player moves between them.</li>
+    <li><b>The F8 admin panel</b> &mdash; a tour of what each action does and what it costs.</li>
+    <li><b>Backup and restore, end to end</b> &mdash; taking a backup, moving it, putting it back, and proving it landed.</li>
+  </ul>
+  <p class="muted">Until then: <b>Troubleshooting</b> carries the failures worth knowing, and <b>Hives &amp; Gear</b> explains the hive model in full.</p></div>
+</div></section>
+</main>
 
 
 <footer><div class="wrap">
