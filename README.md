@@ -39,8 +39,35 @@ Not sure which you have? Your server console prints it on start as
 gateway for the first time — once the database is upgraded, an older gateway
 refuses to start against it, so the dump is the only way back:
 
+**On Linux**, `sudo` gets mysqldump in through the local socket, so MySQL never
+asks for its own password:
+
 ```
-mysqldump -u <user> -p wastelandz > wz-backup-before-0.9.6.sql
+sudo mysqldump wastelandz > ~/wz-backup-before-0.9.6.sql
+chmod 600 ~/wz-backup-before-0.9.6.sql
+```
+
+**On Windows** there is no socket equivalent, so this one asks for the
+`wastelandz` password from `config.py`. Use `--result-file`, not `>` — a
+Command Prompt redirect can translate line endings inside the dump and
+produce a file that will not restore:
+
+```
+mkdir D:\wz-backups
+cd /d D:\wz-backups
+mysqldump -u wastelandz -p --result-file=wz-backup-before-0.9.6.sql wastelandz
+```
+
+**Then look at it**, because a backup you did not check is not a backup:
+
+```
+ls -lh ~/wz-backup-before-0.9.6.sql        # Linux - expect megabytes
+tail -1 ~/wz-backup-before-0.9.6.sql       # must say "Dump completed"
+```
+
+```
+dir D:\wz-backups\wz-backup-before-0.9.6.sql
+findstr /c:"Dump completed" D:\wz-backups\wz-backup-before-0.9.6.sql
 ```
 
 The gateway applies its own migrations on start. **You never run SQL by hand.**
