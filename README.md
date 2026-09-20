@@ -105,6 +105,8 @@ no ZIP needed.)
 |---|---|
 | `index.html` | The step-by-step setup guide (open it in a browser). |
 | `gateway/` | The gateway program — copy this folder to your server and run it. On this branch it is **0.9.6**, which requires mod **1.0.18**. |
+| `gateway-0.7.1/` | The previous gateway, for anyone still on mod **1.0.16**. We keep the current release plus the two before it — see [`RELEASES.md`](RELEASES.md). |
+| `RELEASES.md` | Which gateway each mod version needs, with a download link per release. |
 | `gateway/setup_database.sql` | Every database table, defined in one file. **The gateway applies it on every start**, so you never run SQL by hand and there is no separate first-time step. It only ever adds — running it again changes nothing, which is what makes a fresh install and an upgraded one end up identical. |
 | `gateway/migrate.py` | Applies the schema on start, then any pending data change. Records what it applied so nothing runs twice, and refuses to remove anything unless you deliberately pass `--allow-destructive`. |
 | `gateway/tests/` | The tests we run against the gateway, shipped so you can run them yourself. ⚠ One of them **wipes** the database it is pointed at — read [`gateway/tests/README.md`](gateway/tests/README.md) first. |
