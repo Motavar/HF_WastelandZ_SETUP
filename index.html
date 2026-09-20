@@ -876,7 +876,7 @@ After=network.target mysql.service
 
 <span class="c">[Service]</span>
 WorkingDirectory=/opt/wastelandz-gateway
-ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway-1.0.16/gateway.py
+ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway/gateway.py
 Restart=on-failure
 User=<span class="p">youruser</span>
 
@@ -1613,7 +1613,9 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="c"># the running copy gets its own folder</span>
 <span class="p">sudo</span> mkdir -p /opt/wastelandz-gateway
 <span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
-<span class="p">cp</span> -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/
+<span class="p">sudo</span> cp -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/
+<span class="c"># give the folder back to your user, or the venv cannot write</span>
+<span class="p">sudo</span> chown -R $USER:$USER /opt/wastelandz-gateway
 
 <span class="c"># check the login works (also builds the tables; the gateway would do</span>
 <span class="c"># this itself on first start, but a wrong password is easier to spot here)</span>
@@ -1734,7 +1736,7 @@ After=network.target mysql.service
 
 <span class="c">[Service]</span>
 WorkingDirectory=/opt/wastelandz-gateway
-ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway-1.0.18/gateway.py
+ExecStart=/opt/wastelandz-gateway/venv/bin/python /opt/wastelandz-gateway/gateway.py
 Restart=on-failure
 User=<span class="p">youruser</span>
 
@@ -2957,7 +2959,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
     <div class="code"><pre><span class="c"># Linux</span>
 sudo systemctl stop wz-gateway
 cp -r /opt/wastelandz-gateway /opt/wastelandz-gateway.bak
-cp /opt/wastelandz-gateway-1.0.16/config.py ~/config.py.bak
+cp /opt/wastelandz-gateway/config.py ~/config.py.bak
 
 <span class="c"># Windows — close the WZ-Gateway window first</span>
 xcopy /E /I /Y C:\wastelandz-gateway C:\wastelandz-gateway.bak
@@ -3010,14 +3012,19 @@ pip install -r requirements.txt</pre></div>
 
   <div class="step"><span class="n">5</span>
     <h4>Start it and check</h4>
-    <div class="code"><pre><span class="c"># Linux</span>
-sudo systemctl start wz-gateway
-sudo systemctl status wz-gateway --no-pager
+<div class="os-panel linux"><div class="code"><pre><span class="c"># start it, then confirm it is up</span>
+<span class="p">sudo</span> systemctl start wz-gateway
+<span class="p">sudo</span> systemctl status wz-gateway --no-pager
 
-<span class="c"># Windows — double-click start_gateway.bat</span>
+<span class="c"># ask the gateway itself</span>
+<span class="p">curl</span> http://127.0.0.1:5000/api/ping</pre></div></div>
+<div class="os-panel windows"><div class="code"><pre><span class="c">REM double-click start_gateway.bat, or run it here.</span>
+<span class="c">REM Leave the window OPEN - closing it stops the gateway.</span>
+<span class="p">cd</span> /d D:\wastelandz-gateway
+<span class="p">start_gateway.bat</span>
 
-<span class="c"># then, either platform</span>
-curl http://127.0.0.1:5000/api/ping</pre></div>
+<span class="c">REM in a SECOND window, ask the gateway if it is up</span>
+<span class="p">curl.exe</span> http://127.0.0.1:5000/api/ping</pre></div></div>
     <p>You want <code class="inline">status: ok</code> from the ping, and the banner naming <b>v0.7.1</b>:</p>
     <div class="code"><pre>  WastelandZ Gateway v0.7.1
   Hive ID:   default
@@ -3518,7 +3525,7 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="c"># Linux</span>
 sudo systemctl stop wz-gateway
 cp -r /opt/wastelandz-gateway /opt/wastelandz-gateway.bak
-cp /opt/wastelandz-gateway-1.0.18/config.py ~/config.py.bak
+cp /opt/wastelandz-gateway/config.py ~/config.py.bak
 
 <span class="c"># Windows — close the WZ-Gateway window first</span>
 xcopy /E /I /Y C:\wastelandz-gateway C:\wastelandz-gateway.bak
@@ -3569,15 +3576,20 @@ pip install -r requirements.txt</pre></div>
 
   <div class="step"><span class="n">5</span>
     <h4>Start it and check</h4>
-    <div class="code"><pre><span class="c"># Linux</span>
-sudo systemctl start wz-gateway
-sudo systemctl status wz-gateway --no-pager
+<div class="os-panel linux"><div class="code"><pre><span class="c"># start it, then confirm it is up</span>
+<span class="p">sudo</span> systemctl start wz-gateway
+<span class="p">sudo</span> systemctl status wz-gateway --no-pager
 
-<span class="c"># Windows — double-click start_gateway.bat</span>
+<span class="c"># ask the gateway itself</span>
+<span class="p">curl</span> http://127.0.0.1:5000/api/ping</pre></div></div>
+<div class="os-panel windows"><div class="code"><pre><span class="c">REM double-click start_gateway.bat, or run it here.</span>
+<span class="c">REM Leave the window OPEN - closing it stops the gateway.</span>
+<span class="p">cd</span> /d D:\wastelandz-gateway
+<span class="p">start_gateway.bat</span>
 
-<span class="c"># then, either platform</span>
-curl http://127.0.0.1:5000/api/ping</pre></div>
-    <p>You want <code class="inline">status: ok</code> from the ping, and the banner naming <b>v0.9.0</b>:</p>
+<span class="c">REM in a SECOND window, ask the gateway if it is up</span>
+<span class="p">curl.exe</span> http://127.0.0.1:5000/api/ping</pre></div></div>
+    <p>You want <code class="inline">status: ok</code> from the ping, and the banner naming <b>v0.9.6</b>:</p>
     <div class="code"><pre>  WastelandZ Gateway v0.9.0
 [SCHEMA] setup_database.sql applied (idempotent; no-op when current).
 [MIGRATE] Schema up to date (version 90).
@@ -3772,10 +3784,10 @@ Specifically tell me:
   <div class="step"><span class="n">1</span>
     <h4>Stop the server</h4>
     <p>Updating files under a running server is how you get a half-patched install.</p>
-    <div class="code"><pre><span class="c"># Linux — systemd service</span>
-sudo systemctl stop wz-server
-
-<span class="c"># Windows — close the server window, or stop the service</span></pre></div>
+      <div class="os-panel linux"><div class="code"><pre><span class="c"># stop the game server</span>
+sudo systemctl stop wz-server</pre></div></div>
+      <div class="os-panel windows"><div class="code"><pre><span class="c">REM close the server window, or stop the service</span>
+net stop wz-server1</pre></div></div>
   </div>
 
   <div class="step"><span class="n">2</span>
@@ -3791,18 +3803,25 @@ steamcmd +force_install_dir C:\reforger +login anonymous +app_update 1874900 val
   <div class="step"><span class="n">3</span>
     <h4>Confirm the version</h4>
     <p>The version prints in the first few lines of the server log on startup.</p>
-    <div class="code"><pre><span class="c"># Linux</span>
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># read it out of the server log</span>
 grep -m1 "version" /opt/reforger/profile/logs/*/console.log
 
-<span class="c"># or just watch it boot</span>
-sudo journalctl -u wz-server -f</pre></div>
+<span class="c"># or watch it boot live</span>
+sudo journalctl -u wz-server -f</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM read it out of the newest server log</span>
+findstr /m "version" D:\reforger\profiles\server1\logs\*\console.log
+
+<span class="c">REM or just watch the server window as it starts</span></pre></div></div>
     <p class="muted">You are looking for a line naming the build, e.g. <code class="inline">version 1.8.0.10</code>. If it is older than the version the current mod requires, the mod will not compile &mdash; see Troubleshooting.</p>
   </div>
 
   <div class="step"><span class="n">4</span>
     <h4>Start the server &mdash; the mod updates itself here</h4>
     <p>On start, Reforger pulls the current Wasteland-Z build from the Workshop before loading it. Watch for the mod appearing in the log with its version.</p>
-    <div class="code"><pre>sudo systemctl start wz-server</pre></div>
+    <div class="os-panel linux"><div class="code"><pre>sudo systemctl start wz-server</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM run your start script, or the service if you made one</span>
+cd /d D:\reforger
+start_server1.bat</pre></div></div>
   </div>
 </div></section>
 
@@ -3862,10 +3881,10 @@ sudo journalctl -u wz-server -f</pre></div>
   <div class="step"><span class="n">1</span>
     <h4>Stop the server</h4>
     <p>Updating files under a running server is how you get a half-patched install.</p>
-    <div class="code"><pre><span class="c"># Linux — systemd service</span>
-sudo systemctl stop wz-server
-
-<span class="c"># Windows — close the server window, or stop the service</span></pre></div>
+      <div class="os-panel linux"><div class="code"><pre><span class="c"># stop the game server</span>
+sudo systemctl stop wz-server</pre></div></div>
+      <div class="os-panel windows"><div class="code"><pre><span class="c">REM close the server window, or stop the service</span>
+net stop wz-server1</pre></div></div>
   </div>
 
   <div class="step"><span class="n">2</span>
@@ -3881,18 +3900,25 @@ steamcmd +force_install_dir C:\reforger +login anonymous +app_update 1874900 val
   <div class="step"><span class="n">3</span>
     <h4>Confirm the version</h4>
     <p>The version prints in the first few lines of the server log on startup.</p>
-    <div class="code"><pre><span class="c"># Linux</span>
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># read it out of the server log</span>
 grep -m1 "version" /opt/reforger/profile/logs/*/console.log
 
-<span class="c"># or just watch it boot</span>
-sudo journalctl -u wz-server -f</pre></div>
+<span class="c"># or watch it boot live</span>
+sudo journalctl -u wz-server -f</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM read it out of the newest server log</span>
+findstr /m "version" D:\reforger\profiles\server1\logs\*\console.log
+
+<span class="c">REM or just watch the server window as it starts</span></pre></div></div>
     <p class="muted">You are looking for a line naming the build, e.g. <code class="inline">version 1.8.0.10</code>. If it is older than the version the current mod requires, the mod will not compile &mdash; see Troubleshooting.</p>
   </div>
 
   <div class="step"><span class="n">4</span>
     <h4>Start the server &mdash; the mod updates itself here</h4>
     <p>On start, Reforger pulls the current Wasteland-Z build from the Workshop before loading it. Watch for the mod appearing in the log with its version.</p>
-    <div class="code"><pre>sudo systemctl start wz-server</pre></div>
+    <div class="os-panel linux"><div class="code"><pre>sudo systemctl start wz-server</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM run your start script, or the service if you made one</span>
+cd /d D:\reforger
+start_server1.bat</pre></div></div>
   </div>
 </div></section>
 
