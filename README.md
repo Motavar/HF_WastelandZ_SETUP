@@ -18,16 +18,29 @@ starts. **The gateway is the part you host**, and it has to match the mod.
 
 | Your mod | Needs gateway | Folder in this repo | |
 |---|---|---|---|
-| **1.0.18** | **0.9.6** | [`gateway-1.0.18/`](gateway-1.0.18) | **Current release** |
+| **1.0.19** | **0.9.6** | [`gateway-1.0.18/`](gateway-1.0.18) | **Current release** |
+| 1.0.18 | 0.9.6 | [`gateway-1.0.18/`](gateway-1.0.18) | Same gateway as 1.0.19 — update the mod only |
 | 1.0.16 | 0.7.1 | [`gateway-1.0.16/`](gateway-1.0.16) | Legacy — kept for servers not yet upgraded |
+
+The folder is still called `gateway-1.0.18/` because the gateway itself did not
+change. **1.0.18 and 1.0.19 both run gateway 0.9.6**, from that same folder.
 
 Not sure which you have? Your server console prints it on start as
 `[HF] WastelandZ <version>`.
 
-> **Mod 1.0.18 is the current release.** It needs gateway **0.9.6** and it
-> **upgrades your database** — read the backup step before you start.
-> Still on 1.0.16? The 0.7.1 kit is still here and still works; upgrade when
-> you are ready.
+> **Mod 1.0.19 is the current release.**
+>
+> **On 1.0.18? Do nothing.** The Workshop updates the mod for you. Same gateway,
+> same database, no backup needed — 1.0.19 changes the mod and nothing else.
+>
+> **Why it exists:** 1.0.18 stopped normal players from opening the build menu.
+> Base building worked for admins, so a server could run for days without anyone
+> realising players could not build. 1.0.19 fixes it, and a player who is refused
+> is now told why on screen instead of being left with a tool that does nothing.
+>
+> **On 1.0.16?** You need gateway **0.9.6** and it **upgrades your database** —
+> read the backup step below before you start. The 0.7.1 kit is still here and
+> still works; upgrade when you are ready.
 
 > ⚠ **The two halves are not interchangeable.** The mod checks the gateway
 > version at startup. On a mismatch it prints `GATEWAY VERSION MISMATCH` every
@@ -35,7 +48,7 @@ Not sure which you have? Your server console prints it on start as
 > not a stop — so the console is the only place it shows. Update both in the
 > same sitting.
 
-**Moving to 1.0.18 changes the database.** Back up before you start the new
+**Moving up from 1.0.16 changes the database.** Back up before you start the new
 gateway for the first time — once the database is upgraded, an older gateway
 refuses to start against it, so the dump is the only way back:
 

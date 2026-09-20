@@ -235,7 +235,9 @@
   .flow .fstep span{font-size:.86rem;color:var(--muted)}
   .view{display:none}
   /* A view renders only when BOTH the tab and the channel match. Production
-     and 1.0.18 are separate DOM trees on purpose - see the release switch. */
+     and the current release are separate DOM trees on purpose - see the release
+     switch. The "latest" tree covers 1.0.18 AND 1.0.19: they share gateway 0.9.6
+     and the same setup, so 1.0.19 relabels that tree rather than adding a third. */
   body[data-channel="production"][data-view="server"]  .view-server.production{display:block}
   body[data-channel="production"][data-view="mission"] .view-mission.production{display:block}
   body[data-channel="production"][data-view="gateway"] .view-gateway.production{display:block}
@@ -307,8 +309,10 @@
 </div>
 
 <div class="wrap" style="padding-top:14px">
-  <div class="note warn"><div class="h">Mod 1.0.18 is the current release &mdash; 2026-09-20</div>
-    <p>It needs gateway <b>0.9.6</b> and it <b>upgrades your database</b>. If you are coming from 1.0.16, read the backup step before you start anything.</p>
+  <div class="note warn"><div class="h">Mod 1.0.19 is the current release &mdash; 2026-09-20</div>
+    <p><b>Already on 1.0.18? Restart your server and you are done.</b> Same gateway <b>0.9.6</b>, same database, no backup needed &mdash; 1.0.19 changes the mod and nothing else.</p>
+    <p><b>Why it exists:</b> 1.0.18 stopped normal players from opening the build menu. Building still worked for admins, so a server could run for days before anyone noticed. If you are on 1.0.18 right now, <b>your players cannot build.</b></p>
+    <p>Coming from <b>1.0.16</b>? You need gateway <b>0.9.6</b> and it <b>upgrades your database</b> &mdash; read the backup step before you start anything.</p>
     <p>Still on <b>1.0.16</b>? Select it above and the whole guide switches to that release &mdash; its own files, its own steps, gateway <b>0.7.1</b>. You cannot end up running one half of a pair.</p></div>
 </div>
 
@@ -321,9 +325,9 @@
     <div class="chanseg" role="tablist" aria-label="Release">
       <button role="tab" data-channel="v1018" aria-selected="true">
         <span class="cs-flag">Latest</span>
-        <span class="cs-mod">Mod 1.0.18</span>
+        <span class="cs-mod">Mod 1.0.19</span>
         <span class="cs-gw">Gateway 0.9.6</span>
-        <span class="cs-note">On the Workshop now &middot; hive &amp; database upgrade</span>
+        <span class="cs-note">On the Workshop now &middot; covers 1.0.18 and 1.0.19</span>
       </button>
       <button role="tab" data-channel="production" aria-selected="false">
         <span class="cs-mod">Mod 1.0.16</span>
@@ -333,7 +337,7 @@
     </div>
     <p class="prodpick-foot">Not sure? Your server console prints it on start as
         <code class="inline">[HF] WastelandZ &lt;version&gt;</code>. On anything older? The Workshop
-        always gives you the current release, so updating the mod lands you on 1.0.18.</p>
+        always gives you the current release, so updating the mod lands you on 1.0.19.</p>
   </div>
 </div>
 
@@ -2360,7 +2364,7 @@ rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
 
   <div class="note warn"><div class="h">One hive means one shared wardrobe as well as one bank</div>
   <p>On this release there is no way to share money but keep gear separate &mdash; a hive shares both. So every server in a hive should run <b>the same mod set</b>. Gear is stored as item references, and an item whose mod is missing on the destination cannot be restored.</p>
-  <p class="muted">Separating the two &mdash; one bank, several gear pools &mdash; is what the next release adds. Select <b>Mod 1.0.18</b> above to read how it works; it needs gateway 0.9.6. it on a live server.</p></div>
+  <p class="muted">Separating the two &mdash; one bank, several gear pools &mdash; is what the next release adds. Select <b>Mod 1.0.19</b> above to read how it works; it needs gateway 0.9.6.</p></div>
 
   <div class="note warn"><div class="h">Per-map hive moves the bank too</div>
   <p>A map can point at a <b>different hive entirely</b> &mdash; its own gateway URL, port and password, which may well be a friend&rsquo;s server. Rotate to that map and you are in their economy: their bank, their gear.</p>
@@ -2380,7 +2384,7 @@ rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
 <section><div class="wrap">
   <div class="note tip"><div class="h">Splitting gear from money is coming</div>
   <p>On this release a hive shares <b>both</b> the bank and the wardrobe &mdash; there is no way to have one without the other. The next release adds <b>gear groups</b>, which split gear into separate pools inside one hive, so servers can share an economy while running different mod sets.</p>
-  <p class="muted">Select <b>Mod 1.0.18</b> above to read how that works.</p></div>
+  <p class="muted">Select <b>Mod 1.0.19</b> above to read how that works.</p></div>
 </div></section>
 </main>
 
@@ -3360,7 +3364,7 @@ Specifically tell me:
 
   <div class="note warn"><div class="h">Servers in one hive should run the same mods</div>
   <p>Gear is stored as item references. If a player carries an item from a server that has a mod to one that does not, that item cannot be restored there. Since gear is shared hive-wide on this release, keeping one mod set across the hive is what prevents it.</p>
-  <p class="muted">Splitting gear into separate groups while keeping one bank &mdash; and the addon list that lets you compare servers before you do &mdash; arrives with the next release. Select <b>Mod 1.0.18</b> above.</p></div>
+  <p class="muted">Splitting gear into separate groups while keeping one bank &mdash; and the addon list that lets you compare servers before you do &mdash; arrives with the next release. Select <b>Mod 1.0.19</b> above.</p></div>
 </div></section>
 </main>
 
@@ -3372,14 +3376,15 @@ Specifically tell me:
 </div></div>
 
 <section><div class="wrap">
-  <div class="part-head"><span class="part-badge">Start here</span><h2>Welcome to 1.0.18.</h2></div>
-  <p class="lede">This release changes the <b>gateway</b> and the <b>database</b>. It is the biggest change
-  since the hive was built, so this page walks the whole thing, one command at a time, and tells you what
-  each one does before you run it.</p>
+  <div class="part-head"><span class="part-badge">Start here</span><h2>Welcome to 1.0.19.</h2></div>
+  <p class="lede"><b>Coming from 1.0.18?</b> Restart your server. That is the whole upgrade &mdash; same
+  gateway, same database. The rest of this page is for servers coming from <b>1.0.16</b>, where the
+  <b>gateway</b> and the <b>database</b> both change. That is the biggest change since the hive was built,
+  so this page walks it one command at a time and tells you what each one does before you run it.</p>
 
   <div class="note warn"><div class="h">The two halves move together</div>
-  <p>Mod <b>1.0.18</b> needs gateway <b>0.9.6</b>. They are checked at startup and they are not
-  interchangeable.</p>
+  <p>Mod <b>1.0.19</b> needs gateway <b>0.9.6</b> &mdash; the same gateway 1.0.18 used. They are
+  checked at startup and they are not interchangeable.</p>
   <p>If you update only one, the server still starts &mdash; it prints a warning and keeps running while
   every save quietly fails. <b>That is the one outcome this page exists to prevent.</b> Do both, in one
   sitting.</p></div>
@@ -3407,11 +3412,11 @@ Specifically tell me:
     server starts, so the update arrives on its own. All you do is restart the server once and check it
     landed.</p>
     <p class="muted">Why it is first: the mod is the half you cannot control the timing of. Get it on
-    1.0.18, confirm it, and the rest of this page is the half you do control.</p>
+    1.0.19, confirm it, and the rest of this page is the half you do control.</p>
     <p>Restart the server, then look in the console for the version banner:</p>
-    <div class="code"><pre>[HF] WastelandZ 1.0.18</pre></div>
+    <div class="code"><pre>[HF] WastelandZ 1.0.19</pre></div>
     <p class="muted">You will also start seeing <code class="inline">GATEWAY VERSION MISMATCH</code> every
-    60 seconds. <b>That is expected right now</b> &mdash; the mod is on 1.0.18 and your gateway is still
+    60 seconds. <b>That is expected right now</b> &mdash; the mod is on 1.0.19 and your gateway is still
     0.7.1. It stops at step 5. Until then, do not let players on.</p>
   </div></div>
 
@@ -3519,7 +3524,7 @@ Specifically tell me:
 
     <div class="note warn"><div class="h">Installed a kit before 2026-09-20? You have an old folder to retire</div>
     <p>The kit used to unpack to <code class="inline">/opt/wastelandz</code> (Windows: <code class="inline">D:\wastelandz</code>) &mdash; no suffix. That name reads like the live server, which is exactly why it changed. The kit now goes to <code class="inline">/opt/wastelandz_setup</code>, and the old folder is <b>left where it is</b>: nothing above touches it.</p>
-    <p><b>Why bother.</b> Inside it is a <code class="inline">gateway/</code> folder holding <b>0.7.1</b>. It has the plainest name of anything on the box. Copy it by mistake and you are running gateway 0.7.1 against mod 1.0.18 &mdash; the handshake prints a warning and carries on, while every save fails.</p>
+    <p><b>Why bother.</b> Inside it is a <code class="inline">gateway/</code> folder holding <b>0.7.1</b>. It has the plainest name of anything on the box. Copy it by mistake and you are running gateway 0.7.1 against mod 1.0.19 &mdash; the handshake prints a warning and carries on, while every save fails.</p>
     <p>Look at it first. Nothing here deletes anything:</p>
     <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -la /opt/wastelandz 2&gt;/dev/null || <span class="p">echo</span> "no old folder - nothing to do"</pre></div></div>
     <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wastelandz</pre></div></div>
@@ -3711,7 +3716,7 @@ Specifically tell me:
 
 <span class="p">net</span> start wz-gateway
 <span class="p">net</span> start wz-server1</pre></div></div>
-    <p class="muted"><b>Put the mod back to 1.0.16 as well.</b> Gateway 0.7.1 under mod 1.0.18 is the
+    <p class="muted"><b>Put the mod back to 1.0.16 as well.</b> Gateway 0.7.1 under mod 1.0.19 is the
     same mismatch in the other direction &mdash; it starts, warns once, and fails every save.</p></div>
   </div></div>
 </div></section>
@@ -4119,11 +4124,11 @@ start_server1.bat</pre></div></div>
 
   <div class="note warn"><div class="h">Symptom: requests fail in bursts &mdash; typically right after a restart</div>
   <p><b>Cause:</b> this release serves HTTP on the development server Flask provides, which starts dropping requests when a lot arrive at once &mdash; such as a full server reconnecting after a restart. A dropped save is a lost save.</p>
-  <p><b>Fix:</b> there is no fix on this release; stagger restarts if you can. A production HTTP server ships with mod 1.0.18 / gateway 0.9.6 and removes this ceiling.</p></div>
+  <p><b>Fix:</b> there is no fix on this release; stagger restarts if you can. A production HTTP server ships with mod 1.0.19 / gateway 0.9.6 and removes this ceiling.</p></div>
 
   <div class="note warn"><div class="h">Symptom: HTTP 503 <code class="inline">database unavailable</code> under load</div>
   <p><b>Cause:</b> the connection pool is exhausted. The gateway lends one database connection per in-flight request.</p>
-  <p><b>Fix on 1.0.16:</b> stagger your restarts. Gateway 0.7.1 has no pool or thread settings to tune &mdash; <code class="inline">HTTP_THREADS</code> and <code class="inline">DB_POOL_SIZE_v2</code> arrive with gateway 0.9.6. Moving to mod 1.0.18 is the real fix.</p></div>
+  <p><b>Fix on 1.0.16:</b> stagger your restarts. Gateway 0.7.1 has no pool or thread settings to tune &mdash; <code class="inline">HTTP_THREADS</code> and <code class="inline">DB_POOL_SIZE_v2</code> arrive with gateway 0.9.6. Moving to mod 1.0.19 is the real fix.</p></div>
 
   <div class="note"><div class="h">Symptom: the gateway cannot connect to MySQL at all once you run several</div>
   <p><b>Cause:</b> MySQL&rsquo;s default <code class="inline">max_connections</code> is 151, which allows roughly four gateway processes at a pool size of 32.</p>
@@ -4223,7 +4228,7 @@ max_connections = 500</pre></div></div>
   <div class="note warn"><div class="h">Server actions are not in mod 1.0.16</div>
   <p>The <b>server actions</b> system &mdash; rebooting the machine, swapping maps or restarting the gateway from the in-game F8 panel, via a watchdog reading a command file &mdash; was built after 1.0.16 shipped. It arrives with the next release.</p>
   <p>Nothing in this release reads a command file, and the <code class="inline">wz_watchdog</code> scripts in the kit have nothing to talk to yet. Installing the watchdog now does no harm, but it will sit idle.</p>
-  <p class="muted">Select <b>Mod 1.0.18</b> above for the full design and setup.</p></div>
+  <p class="muted">Select <b>Mod 1.0.19</b> above for the full design and setup.</p></div>
 </div></section>
 
 <section><div class="wrap">
@@ -4888,7 +4893,7 @@ python3 wz_watchdog.py /opt/reforger/profile/hf_wastelandz/configs --loop</pre><
       window.scrollTo({top:0,behavior:'auto'});
     });
   });
-  // Release switch (1.0.16 / 1.0.18). Separate content trees, so this
+  // Release switch (1.0.16 / current). Separate content trees, so this
   // swaps the whole guide, not a few paragraphs.
   document.querySelectorAll('.chanseg button').forEach(function(btn){
     btn.addEventListener('click',function(){

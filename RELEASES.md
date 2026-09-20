@@ -13,7 +13,7 @@ behind. That is what this file is for.
 
 | | Version | Where |
 |---|---|---|
-| **Mod** | **1.0.18** | Workshop — automatic, nothing to do |
+| **Mod** | **1.0.19** | Workshop — automatic, nothing to do |
 | **Gateway** | **0.9.6** | `gateway-1.0.18/` in this repo |
 | **Game server** | **Arma Reforger 1.8.0.10** or newer | SteamCMD |
 
@@ -23,13 +23,16 @@ Check your gateway by looking at the first line it prints on start:
   WastelandZ Gateway v0.9.6
 ```
 
-> **1.0.18 upgrades the database.** Back up before you start 0.9.6 for the
-> first time — once the database is upgraded an older gateway refuses to start
-> against it, so the dump is the only way back.
+> **The folder is still `gateway-1.0.18/` and that is correct.** The gateway did
+> not change for 1.0.19 — 1.0.18 and 1.0.19 both run **0.9.6** from that folder.
+>
+> **Coming from 1.0.16? The database is upgraded.** Back up before you start
+> 0.9.6 for the first time — once the database is upgraded an older gateway
+> refuses to start against it, so the dump is the only way back.
 
 > **Still on mod 1.0.16?** Gateway `0.7.1` is still in `gateway-1.0.16/` and
-> still works. Do not run 0.9.6 against 1.0.16, or 0.7.1 against 1.0.18 —
-> either pairing stops gear saving.
+> still works. Do not run 0.9.6 against 1.0.16, or 0.7.1 against 1.0.18 or
+> 1.0.19 — either pairing stops gear saving.
 
 
 ## Version history
@@ -38,6 +41,7 @@ Newest first. "Gateway" is the minimum that release needs.
 
 | Date | Mod | Gateway | What it needed from you |
 |---|---|---|---|
+| 2026-09-20 | **1.0.19** | 0.9.6 | **Nothing — update the mod.** Same gateway, same database. Fixes base building for normal players; see below. |
 | 2026-09-20 | **1.0.18** | **0.9.6** | **Database upgrade.** Back up first - an upgraded database will not accept 0.7.1. The gateway migrates itself; you run no SQL. |
 | 2026-08-26 | 1.0.16 | **0.7.1** | **Security update — re-download the gateway.** See below. |
 | 2026-08-21 | **1.0.16** | 0.7.1 | Nothing. Towing keybinds returned (B sling, R heli start), loose props re-seat. |
@@ -48,6 +52,41 @@ Newest first. "Gateway" is the minimum that release needs.
 | 2026-07-16 | — | 0.7.0 | Nothing. Weight/speed dial, realtime stamina tuning. |
 | 2026-07-04 | **1.0.0** | 0.7.0 | First public release. |
 | 2026-06-30 | — | **0.7.0** | Hive-shared schema. |
+
+---
+
+## 2026-09-20 — Mod 1.0.19
+
+**What you do: nothing.** The Workshop updates the mod. Gateway stays on **0.9.6**,
+the database is untouched, no backup needed.
+
+### Normal players could not build
+
+1.0.18 shipped with base building working for **admins only**. A player who used an
+entrenching tool got Arma's own refusal — *"you have no rights to open the
+interface"* — and nothing happened.
+
+**It was easy to miss, and that is the point worth reading.** Anyone with admin
+rights could build normally, so the server looked fine from the only seat most
+owners sit in. Nothing was lost or damaged; players simply could not build, and
+nothing in the server log said so.
+
+If you are on 1.0.18 right now, **your players cannot build.** Restart the server
+and the Workshop gives you 1.0.19.
+
+### What changed
+
+- **All players can build again**, whenever base building is switched on.
+- **A refusal now says so.** If a player cannot build, they get a message on screen
+  explaining why, instead of a tool that silently does nothing. It is also written
+  to the server log, so you can see it without a debug build.
+- **Turning base building off now closes the build menu**, rather than letting a
+  player in and refusing the placement at the last moment. It takes effect
+  immediately — no restart.
+- **Game Master, Arma Vision, photo mode and Bohemia's server-admin tools stay
+  staff-only.** Base building runs on Arma's editor, and 1.0.18 had shut the whole
+  editor to keep players out of Game Master. 1.0.19 separates the two: players get
+  the build menu and nothing else.
 
 ---
 
@@ -173,6 +212,7 @@ you copy, not by a branch:
 
 | Your mod | Needs gateway | Folder |
 |---|---|---|
+| 1.0.19 | 0.9.6 | `gateway-1.0.18/` |
 | 1.0.18 | 0.9.6 | `gateway-1.0.18/` |
 | 1.0.16 | 0.7.1 | `gateway-1.0.16/` |
 
