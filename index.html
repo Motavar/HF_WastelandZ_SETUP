@@ -3387,20 +3387,10 @@ Specifically tell me:
     <p>You are about to run a program on the machine holding your players&rsquo; data and your database
     password. <b>You should not have to take our word for what it does.</b> Every file is readable before
     you download anything:</p>
-    <ul class="clean muted">
-      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/gateway.py">gateway.py</a> &mdash; the whole service. It answers the
-      game server&rsquo;s requests about players, money and gear. <b>It makes no outbound connections</b>:
-      nothing phones home and there is no update check.</li>
-      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/migrate.py">migrate.py</a> &mdash; brings the database up to date on
-      start. Refuses to remove anything unless you deliberately pass
-      <code class="inline">--allow-destructive</code>.</li>
-      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/setup_database.sql">setup_database.sql</a> &mdash; every table,
-      defined once. Written so it can <b>only add</b>.</li>
-      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main/gateway-1.0.18/migrations">migrations/</a> &mdash; the four changes this release
-      applies to your data.</li>
-      <li><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway-1.0.18/hf_crypto.py">hf_crypto.py</a> &mdash; checks the signed token the
-      game server sends, so a stranger who finds your port cannot write to your database.</li>
-    </ul>
+      <p class="muted">Every file is readable before you download anything &mdash;
+      <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main/gateway-1.0.18">browse the whole kit on GitHub</a>.
+      <b>Read the source first</b>, further down this page, goes through each file, what it does, and what
+      it can reach.</p>
 
     <p>Then take the files. Any one of these three, they are the same files:</p>
 
@@ -3566,100 +3556,6 @@ Specifically tell me:
 
 
 
-<section><div class="wrap">
-  <div class="part-head"><span class="part-badge">Update the gateway</span><h2>Five steps. Same every release.</h2></div>
-  <p class="muted">Any file can change in a release, so these steps replace the whole folder every time. The <b>kit</b> is your clone (<code class="inline">/opt/wastelandz</code>, <code class="inline">D:\wastelandz</code>); the <b>gateway folder</b> is what runs (<code class="inline">/opt/wastelandz-gateway</code>, <code class="inline">C:\wastelandz-gateway</code>).</p>
-
-  <div class="step"><span class="n">1</span>
-    <h4>Stop the gateway and back up the whole folder</h4>
-    <p>The whole folder &mdash; a one-file backup restores a mix of old and new.</p>
-    <div class="code"><pre><span class="c"># Linux</span>
-sudo systemctl stop wz-gateway
-cp -r /opt/wastelandz-gateway /opt/wastelandz-gateway.bak
-cp /opt/wastelandz-gateway/config.py ~/config.py.bak
-
-<span class="c"># Windows — close the WZ-Gateway window first</span>
-xcopy /E /I /Y C:\wastelandz-gateway C:\wastelandz-gateway.bak
-copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
-    <p class="muted"><code class="inline">config.py</code> holds your password and key; its copy goes <b>outside</b> the folder you are about to overwrite.</p>
-  </div>
-
-  <div class="step"><span class="n">2</span>
-    <h4>Get the new kit</h4>
-    <p>One branch now. What decides which gateway you get is the <b>folder</b> you copy from &mdash; <code class="inline">gateway-1.0.18/</code> for this release.</p>
-    <div class="code"><pre><span class="c"># Linux</span>
-cd /opt/wastelandz
-git pull
-grep -m1 ^GATEWAY_VERSION gateway-1.0.18/gateway.py
-
-<span class="c"># Windows</span>
-cd D:\wastelandz
-git pull
-
-<span class="c"># confirm what you just pulled</span>
-findstr /b GATEWAY_VERSION gateway-1.0.18\gateway.py</pre></div>
-    <p class="muted">That last line prints the version now sitting in the kit. Nothing has been copied to your gateway folder yet &mdash; that is step 3.</p>
-    <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip">Download the ZIP</a> and unpack it over the same folder. Same result.</p>
-  </div>
-
-  <div class="step"><span class="n">3</span>
-    <h4>Copy every file across</h4>
-    <p>Your <code class="inline">config.py</code> is not in the repo, so nothing overwrites it.</p>
-    <div class="code"><pre><span class="c"># Linux</span>
-cp -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/
-
-<span class="c"># Windows</span>
-xcopy /E /Y D:\wastelandz\gateway-1.0.18 C:\wastelandz-gateway\</pre></div>
-  </div>
-
-  <div class="step"><span class="n">4</span>
-    <h4>Install the requirements</h4>
-    <p>Every time &mdash; it does nothing when nothing changed.</p>
-    <div class="code"><pre><span class="c"># Linux</span>
-cd /opt/wastelandz-gateway
-source venv/bin/activate
-pip install -r requirements.txt
-
-<span class="c"># Windows</span>
-cd C:\wastelandz-gateway
-pip install -r requirements.txt</pre></div>
-  </div>
-
-  <div class="step"><span class="n">5</span>
-    <h4>Start it and check</h4>
-<div class="os-panel linux"><div class="code"><pre><span class="c"># start it, then confirm it is up</span>
-<span class="p">sudo</span> systemctl start wz-gateway
-<span class="p">sudo</span> systemctl status wz-gateway --no-pager
-
-<span class="c"># ask the gateway itself</span>
-<span class="p">curl</span> http://127.0.0.1:5000/api/ping</pre></div></div>
-<div class="os-panel windows"><div class="code"><pre><span class="c">REM double-click start_gateway.bat, or run it here.</span>
-<span class="c">REM Leave the window OPEN - closing it stops the gateway.</span>
-<span class="p">cd</span> /d D:\wastelandz-gateway
-<span class="p">start_gateway.bat</span>
-
-<span class="c">REM in a SECOND window, ask the gateway if it is up</span>
-<span class="p">curl.exe</span> http://127.0.0.1:5000/api/ping</pre></div></div>
-    <p>You want <code class="inline">status: ok</code> from the ping, and the banner naming <b>v0.9.6</b>:</p>
-    <div class="code"><pre>  WastelandZ Gateway v0.9.0
-[SCHEMA] setup_database.sql applied (idempotent; no-op when current).
-[MIGRATE] Schema up to date (version 90).
-[GATEWAY] Database connection: OK</pre></div>
-    <p class="muted">Wrong version? You copied from the wrong place &mdash; step 3 must point at the <code class="inline">gateway</code> folder of a clone of this repo. On Linux, watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
-    <p class="muted">Database changes apply themselves on this release &mdash; the gateway runs the schema on start and records what it applied. You do not run SQL.</p>
-  </div>
-
-  <div class="note tip"><div class="h">Roll back &mdash; restores every file, not just one</div>
-    <div class="code" style="margin-top:8px"><pre><span class="c"># Linux</span>
-sudo systemctl stop wz-gateway
-cp -r /opt/wastelandz-gateway.bak/. /opt/wastelandz-gateway/
-sudo systemctl start wz-gateway
-
-<span class="c"># Windows — close the window, then</span>
-xcopy /E /Y C:\wastelandz-gateway.bak C:\wastelandz-gateway\</pre></div>
-    <p class="muted">Lost <code class="inline">config.py</code> too? Restore <code class="inline">~/config.py.bak</code> from step 1.</p>
-  </div>
-</div></section>
 
 <section><div class="wrap">
   <div class="part-head"><span class="part-badge">Before you run it</span><h2>Read the source first. All of it is public.</h2></div>
