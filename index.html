@@ -3397,18 +3397,21 @@ Specifically tell me:
     <div class="note"><div class="h">Command line &mdash; curl</div>
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM use curl.exe, not the PowerShell alias</span>
 <span class="p">cd</span> /d D:\
-<span class="p">curl.exe</span> -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
-<span class="p">tar</span> -xf kit.zip
+<span class="p">curl.exe</span> -L -o main.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
+<span class="p">tar</span> -xf main.zip
 
-<span class="c">REM rename it to wastelandz, which is what every step below expects</span>
+<span class="c">REM rename it to wastelandz, the name every step below uses</span>
 <span class="p">move</span> HF_WastelandZ_SETUP-main wastelandz</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="c"># /opt is root-owned, so these need sudo</span>
-<span class="p">cd</span> /opt
-<span class="p">sudo</span> curl -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
-<span class="p">sudo</span> unzip -o kit.zip
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># unzip is not on every server; this is a no-op if you have it</span>
+<span class="p">sudo</span> apt install -y unzip
 
-<span class="c"># rename it to wastelandz, which is what every step below expects</span>
-<span class="p">sudo</span> rm -rf /opt/wastelandz && <span class="p">sudo</span> mv HF_WastelandZ_SETUP-main wastelandz</pre></div></div>
+<span class="c"># /opt is root-owned, so the download and unpack need sudo too</span>
+<span class="p">cd</span> /opt
+<span class="p">sudo</span> curl -L -o main.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
+<span class="p">sudo</span> unzip -o main.zip
+
+<span class="c"># rename it to wastelandz, the name every step below uses</span>
+<span class="p">sudo</span> rm -rf /opt/wastelandz &amp;&amp; <span class="p">sudo</span> mv HF_WastelandZ_SETUP-main wastelandz</pre></div></div>
     <p class="muted">GitHub names the folder after the branch, so it arrives as <code class="inline">HF_WastelandZ_SETUP-main</code>. The rename above makes it <code class="inline">wastelandz</code>, which is the name every step below uses &mdash; all three routes end up in the same place.</p>
 
     <div class="note"><div class="h">Or use git &mdash; optional, and only worth it if you update often</div>
