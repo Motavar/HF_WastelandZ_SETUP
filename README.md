@@ -3,26 +3,52 @@
 > ### 📖 [Read the setup guide](https://motavar.github.io/HF_WastelandZ_SETUP/)
 > The full step-by-step as a web page — Windows and Linux, pick your tab.
 >
-> ### ⬇ [Download the kit (ZIP)](https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip)
-> Everything in this repo in one file. No git or GitHub account needed.
+> ### ⬇ [Download the BETA kit (ZIP)](https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/beta.zip)
+> Everything on this branch in one file. No git or GitHub account needed.
+> This is the **beta** kit — for the live release, use the `main` branch.
 
 **(EXPERIMENTAL DOCUMENTATION - UNTESTED)** — written with AI assistance; the
 information may not be correct. As a server admin you use this kit at your own
 risk. The full disclaimer is shown when you open the guide.
 
-> ## 🚨 CRITICAL PATCH — Gateway 0.7.1 (2026-07-16)
+> ## ⚠ THIS IS THE BETA BRANCH — Gateway 0.9.6
 >
-> If your gateway is running **0.7.0 or older, update it now**: replace
-> `gateway.py` on your gateway machine with the copy in this repo's
-> `gateway/` folder and restart the gateway. That's the whole update — no
-> database migration, no config change, no game-server restart.
+> **Do not run this on a live server.** The `main` branch is the live release
+> (gateway `0.7.1`). This branch is the next release while it is being tested.
 >
-> **Why:** 0.7.0 refuses to save admin-spawned money drops (`/money`) to the
-> database, so those drops are silently deleted on server restart. Wallets,
-> banking, death drops and player drops are unaffected.
+> ### Both halves, or neither
 >
-> **Not updating won't break the game** — but the server console will print a
-> `GATEWAY VERSION MISMATCH` warning every 60 seconds until you update.
+> Gateway `0.9.6` pairs with mod **1.0.18**. It does **not** work with mod
+> `1.0.16`, which is what the Reforger Workshop hands you today — that pairing
+> stops gear saving, because 1.0.18 calls endpoints 0.7.1 never served and the
+> two versions are checked for exact equality at startup.
+>
+> ### ⚠ Back up your database before you start it the first time
+>
+> ```
+> mysqldump -u <user> -p wastelandz > wastelandz-backup-before-0.9.6.sql
+> ```
+>
+> Gateway `0.8.0` changed the database, and `0.9.6` inherits that change. The
+> gateway applies its own migrations on first start — **you never run SQL by
+> hand** — but once the database has been upgraded, **an older gateway will
+> refuse to start against it.** That is deliberate, so a downgraded gateway can
+> never write a format it does not understand. Rolling back to `0.7.1` after
+> starting `0.9.6` means restoring that backup. Without one, you cannot go back.
+>
+> ### What changed in the database
+>
+> Player storage moved from a single `players.inventory` value to `player_data`
+> — one row per player, hive, realm and namespace — which is what allows one
+> account to hold different gear on different groups of servers. `hive_servers`
+> and `hive_share_groups` let each server publish its map, realms and real addon
+> list, so a mod mismatch is visible before it costs anyone their gear.
+>
+> ### Upgrade order
+>
+> Stop the server and the gateway → back up → update the gateway → update the
+> mod → start the gateway **on its own** and let it finish migrating → start the
+> game server.
 
 ## What is this?
 
@@ -78,7 +104,7 @@ no ZIP needed.)
 | Folder / file | What it is |
 |---|---|
 | `index.html` | The step-by-step setup guide (open it in a browser). |
-| `gateway/` | The gateway program — copy this folder to your server and run it. |
+| `gateway/` | The gateway program — copy this folder to your server and run it. On this branch it is **0.9.6**, which requires mod **1.0.18**. |
 | `gateway/setup_database.sql` | Every database table, defined in one file. **The gateway applies it on every start**, so you never run SQL by hand and there is no separate first-time step. It only ever adds — running it again changes nothing, which is what makes a fresh install and an upgraded one end up identical. |
 | `gateway/migrate.py` | Applies the schema on start, then any pending data change. Records what it applied so nothing runs twice, and refuses to remove anything unless you deliberately pass `--allow-destructive`. |
 | `gateway/tests/` | The tests we run against the gateway, shipped so you can run them yourself. ⚠ One of them **wipes** the database it is pointed at — read [`gateway/tests/README.md`](gateway/tests/README.md) first. |
