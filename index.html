@@ -2928,6 +2928,45 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
 </div></div>
 
 <section><div class="wrap">
+  <span class="section-tag">Get the kit</span>
+  <h2>Three ways to get the files. Pick one.</h2>
+  <p class="muted">All three give you the same <b>main</b> branch, carrying gateway <b>0.7.1</b>. Nothing here touches your <code class="inline">config.py</code> &mdash; it is not in the repo.</p>
+
+  <div class="note tip"><div class="h">1 &mdash; Download it (no git needed)</div>
+  <p><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip"><b>Download the main kit (ZIP)</b></a> &nbsp;&middot;&nbsp; <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/main">browse every file on GitHub first</a></p>
+  <p class="muted">Unpack it anywhere. On Windows that is usually <code class="inline">D:\wastelandz</code>, on Linux <code class="inline">/opt/wastelandz</code>.</p></div>
+
+  <div class="note"><div class="h">2 &mdash; Command line, no git</div>
+  <div class="code"><pre><span class="c"># Windows &mdash; use curl.exe, not the PowerShell alias</span>
+<span class="p">curl.exe</span> -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
+<span class="p">tar</span> -xf kit.zip
+
+<span class="c"># Linux</span>
+<span class="p">curl</span> -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
+<span class="p">unzip</span> kit.zip</pre></div>
+  <p class="muted">Unpacks to <code class="inline">HF_WastelandZ_SETUP-main/</code>. Rename it to whatever your gateway folder is called.</p></div>
+
+  <div class="note"><div class="h">3 &mdash; git clone (first time)</div>
+  <div class="code"><pre><span class="c"># Windows</span>
+<span class="p">git clone -b main https://github.com/Motavar/HF_WastelandZ_SETUP.git</span> D:\wastelandz
+
+<span class="c"># Linux</span>
+<span class="p">sudo</span> git clone -b main https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz</pre></div>
+  <p class="muted">Already cloned it? Then you do not clone again &mdash; use the update steps below.</p></div>
+
+  <div class="note warn"><div class="h">Check what you actually got, before you run it</div>
+  <div class="code"><pre><span class="c"># Windows</span>
+<span class="p">findstr</span> GATEWAY_VERSION gateway\gateway.py
+
+<span class="c"># Linux</span>
+<span class="p">grep</span> GATEWAY_VERSION gateway/gateway.py</pre></div>
+  <p>It must print <code class="inline">GATEWAY_VERSION = "0.7.1"</code>. Anything else means you are on the wrong branch &mdash; go back and pick the main one.</p></div>
+
+  <p class="muted">Patching a single file by hand? You can pull <a href="https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/main/gateway/gateway.py">gateway.py</a> raw &mdash; but <b>only</b> if the release notes say nothing about the database. <code class="inline">gateway/migrations/</code> is a folder, and a single-file download silently misses it.</p>
+</div></section>
+
+
+<section><div class="wrap">
   <span class="section-tag">What updates itself, what you update</span>
   <h2>Only the gateway needs a manual update</h2>
   <ul class="clean muted">
@@ -3197,6 +3236,45 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
 </div></div>
 
 <section><div class="wrap">
+  <span class="section-tag">Get the kit</span>
+  <h2>Three ways to get the files. Pick one.</h2>
+  <p class="muted">All three give you the same <b>beta</b> branch, carrying gateway <b>0.9.6</b>. Nothing here touches your <code class="inline">config.py</code> &mdash; it is not in the repo.</p>
+
+  <div class="note tip"><div class="h">1 &mdash; Download it (no git needed)</div>
+  <p><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/beta.zip"><b>Download the beta kit (ZIP)</b></a> &nbsp;&middot;&nbsp; <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/tree/beta">browse every file on GitHub first</a></p>
+  <p class="muted">Unpack it anywhere. On Windows that is usually <code class="inline">D:\wastelandz</code>, on Linux <code class="inline">/opt/wastelandz</code>.</p></div>
+
+  <div class="note"><div class="h">2 &mdash; Command line, no git</div>
+  <div class="code"><pre><span class="c"># Windows &mdash; use curl.exe, not the PowerShell alias</span>
+<span class="p">curl.exe</span> -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/beta.zip
+<span class="p">tar</span> -xf kit.zip
+
+<span class="c"># Linux</span>
+<span class="p">curl</span> -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/beta.zip
+<span class="p">unzip</span> kit.zip</pre></div>
+  <p class="muted">Unpacks to <code class="inline">HF_WastelandZ_SETUP-beta/</code>. Rename it to whatever your gateway folder is called.</p></div>
+
+  <div class="note"><div class="h">3 &mdash; git clone (first time)</div>
+  <div class="code"><pre><span class="c"># Windows</span>
+<span class="p">git clone -b beta https://github.com/Motavar/HF_WastelandZ_SETUP.git</span> D:\wastelandz
+
+<span class="c"># Linux</span>
+<span class="p">sudo</span> git clone -b beta https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz</pre></div>
+  <p class="muted">Already cloned it? Then you do not clone again &mdash; use the update steps below.</p></div>
+
+  <div class="note warn"><div class="h">Check what you actually got, before you run it</div>
+  <div class="code"><pre><span class="c"># Windows</span>
+<span class="p">findstr</span> GATEWAY_VERSION gateway\gateway.py
+
+<span class="c"># Linux</span>
+<span class="p">grep</span> GATEWAY_VERSION gateway/gateway.py</pre></div>
+  <p>It must print <code class="inline">GATEWAY_VERSION = "0.9.6"</code>. Anything else means you are on the wrong branch &mdash; go back and pick the beta one.</p></div>
+
+  <p class="muted">Patching a single file by hand? You can pull <a href="https://raw.githubusercontent.com/Motavar/HF_WastelandZ_SETUP/beta/gateway/gateway.py">gateway.py</a> raw &mdash; but <b>only</b> if the release notes say nothing about the database. <code class="inline">gateway/migrations/</code> is a folder, and a single-file download silently misses it.</p>
+</div></section>
+
+
+<section><div class="wrap">
   <span class="section-tag">What updates itself, what you update</span>
   <h2>Only the gateway needs a manual update</h2>
   <ul class="clean muted">
@@ -3217,32 +3295,32 @@ copy %USERPROFILE%\config.py.bak C:\wastelandz-gateway\config.py</pre></div>
   <div class="tablewrap"><table class="rtab">
     <tr><th>File</th><th>What it is</th><th>What it can reach</th></tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/gateway.py">gateway.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/gateway.py">gateway.py</a></td>
       <td>The whole program. A Flask web service: it listens on the ports you configure and answers the game server&rsquo;s requests about players, money, gear and bans.</td>
       <td>Your MySQL database, and the ports in your <code class="inline">config.py</code>. <b>It makes no outbound connections</b> &mdash; nothing phones home, and there is no update check.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/migrate.py">migrate.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/migrate.py">migrate.py</a></td>
       <td>Brings the database up to date on start. Applies <code class="inline">setup_database.sql</code>, then any pending data migration.</td>
       <td>Your database, and <code class="inline">mysqldump</code> when it takes a backup. Refuses to remove anything unless you start it with <code class="inline">--allow-destructive</code>.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/setup_database.sql">setup_database.sql</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/setup_database.sql">setup_database.sql</a></td>
       <td>Every table, defined once. Applied on every start.</td>
       <td>Your database only. It is written so that it can <b>only add</b> &mdash; there is no <code class="inline">DROP</code> or <code class="inline">DELETE</code> anywhere in it, and the gateway refuses to start if one ever appears.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/hf_crypto.py">hf_crypto.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/hf_crypto.py">hf_crypto.py</a></td>
       <td>Verifies the signed tokens the game server sends, so a stranger who finds your port cannot write to your database.</td>
       <td>Nothing external. Pure computation on the key already in your <code class="inline">config.py</code>.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/requirements.txt">requirements.txt</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/requirements.txt">requirements.txt</a></td>
       <td>The Python packages. Four, all mainstream: Flask, the MySQL connector, psutil, waitress.</td>
       <td>PyPI, at install time only.</td>
     </tr>
     <tr>
-      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/main/gateway/config.example.py">config.example.py</a></td>
+      <td><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/blob/beta/gateway/config.example.py">config.example.py</a></td>
       <td>The template you copy to <code class="inline">config.py</code>. Every setting is commented.</td>
       <td>Nothing. It is a template and holds no real credentials.</td>
     </tr>
@@ -3312,7 +3390,7 @@ git pull
 <span class="c"># Windows</span>
 cd D:\wastelandz
 git pull</pre></div>
-    <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip">Download the kit as a ZIP</a> and unpack it over the same folder. Same result.</p>
+    <p class="muted">No git? <a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/beta.zip">Download the BETA kit as a ZIP</a> and unpack it over the same folder. Same result.</p>
   </div>
 
   <div class="step"><span class="n">3</span>
