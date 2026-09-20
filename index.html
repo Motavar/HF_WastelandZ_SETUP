@@ -458,6 +458,16 @@
       <li><code class="inline">name</code> — your server&rsquo;s name in the browser list.</li>
       <li><code class="inline">passwordAdmin</code> — a password only you know.</li>
     </ul>
+    <div class="note warn"><div class="h">Leave <code class="inline">missionHeader</code> alone &mdash; saving must stay OFF</div>
+    <p>The example config ships this block, and it matters:</p>
+    <div class="code"><pre>"missionHeader": {
+  "m_sName": "WASTELAND Z",
+  "m_eSaveTypes": 0,
+  "m_bIsSavingEnabled": false
+}</pre></div>
+    <p><b>With saving on, the game saves the world and restores it on the next start &mdash; then Wasteland-Z builds the world again on top of what was restored.</b> The symptom admins report is <b>duplicate town names</b>; stores, markers and map circles can double the same way.</p>
+    <p>Wasteland-Z keeps everything that matters in its own database through the gateway &mdash; money, bank, gear, position, vehicles. It never uses the game&rsquo;s own save, so switching it off costs you nothing.</p>
+    <p class="muted">Already seeing duplicates? Add the block, then delete the saved session the game wrote &mdash; it lives under your profile folder. Starting fresh with saving off does not repeat it.</p></div>
     <p class="muted">Everything else already works: the <b>Wasteland-Z mod is pre-listed</b> in <code class="inline">mods</code> (it auto-downloads on first start), and the map is Everon (<code class="inline">21_GM_Eden</code>). For Arland instead, set <code class="inline">scenarioId</code> to <code class="inline">{2BBBE828037C6F4B}Missions/22_GM_Arland.conf</code>.</p>
     <div class="note warn"><div class="h">Router / firewall</div><p>Players connect over UDP ports <b>2001</b> (game) and <b>17777</b> (server browser). On a home connection, forward both UDP ports to this PC in your router. On a rented server, allow them in the provider&rsquo;s firewall panel.</p></div>
     <p>Don&rsquo;t start it yet — first set up the database and gateway below, so the server has something to save into.</p>
@@ -1184,6 +1194,74 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
   <p><b>Setup:</b> in the game&rsquo;s <code class="inline">config.json</code>, set <code class="inline">game.maxPlayers</code> to your playable count <b>plus</b> the buffer, and set <code class="inline">RESERVED_TOTAL_SLOTS</code> to that same number. Example: 128 players &rarr; <code class="inline">maxPlayers 130</code>, <code class="inline">RESERVED_BUFFER 2</code>. ADMIN/OWNER always get in; MOD only bumps regular players.</p>
   <div class="note tip"><div class="h">How to see it working</div><p>It runs on the server, so watch the <b>server console / log</b> — set <code class="inline">HF_DEBUG_ADMIN 1</code> in <code class="inline">server.conf</code> and you&rsquo;ll see lines like <code class="inline">ReservedSlots: ON total=130 buffer=2&hellip;</code> and <code class="inline">BUMP&hellip;</code> when it acts. Players in a bumpable slot also see a &ldquo;high-risk&rdquo; banner in their HUD.</p></div>
 </div></section>
+  <section><div class="wrap">
+  <span class="section-tag">Required setting</span>
+  <h2>The mission header &mdash; turn the game&rsquo;s own saving OFF</h2>
+  <p class="lede">One block in <code class="inline">server1.json</code>. Get it wrong and your towns
+  appear twice.</p>
+
+  <div class="note warn"><div class="h">This block must be in your config</div>
+  <div class="code"><pre>"game": {
+  ...
+  "scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf",
+
+  "missionHeader": {
+    "m_sName": "WASTELAND Z",
+    "m_eSaveTypes": 0,
+    "m_bIsSavingEnabled": false
+  },
+  ...
+}</pre></div>
+  <p>It goes <b>inside</b> <code class="inline">"game"</code>, right after
+  <code class="inline">"scenarioId"</code>. The example configs in this kit already ship it.</p></div>
+
+  <h3 style="margin-top:22px">What each line does</h3>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setting</th><th>Value</th><th>What it does</th></tr>
+    <tr><td><code class="inline">m_sName</code></td><td>WASTELAND Z</td>
+        <td>The mission name the game shows. Cosmetic &mdash; set it to whatever you like.</td></tr>
+    <tr><td><code class="inline">m_eSaveTypes</code></td><td><b>0</b></td>
+        <td>Turns off the engine&rsquo;s automatic saving. <b>Not optional.</b></td></tr>
+    <tr><td><code class="inline">m_bIsSavingEnabled</code></td><td><b>false</b></td>
+        <td>Turns off session saving. <b>Not optional.</b></td></tr>
+  </table></div>
+
+  <h3 style="margin-top:22px">Why it matters</h3>
+  <p>Arma Reforger can save the whole world &mdash; every object placed in it &mdash; and restore that
+  save the next time the server starts. That is useful for the game modes it was built for. It is wrong
+  for Wasteland-Z.</p>
+  <p>When the server starts, Wasteland-Z builds the world: towns, stores, markers, map circles, vehicle
+  spawns. <b>If the engine has already restored a saved copy of all that, Wasteland-Z builds it again on
+  top.</b> Now there are two of everything.</p>
+  <p>The first thing anyone notices is the <b>town list showing every town twice</b>, because that list
+  is on screen and easy to read. Stores, markers and map circles double in exactly the same way &mdash;
+  they are just less obvious.</p>
+
+  <div class="note tip"><div class="h">You lose nothing by turning it off</div>
+  <p>Wasteland-Z does not use the game&rsquo;s save. Everything that has to survive a restart &mdash;
+  money, bank, gear, your last position, your vehicles, bans, stats &mdash; lives in <b>your MySQL
+  database</b>, written through the gateway. That is what the gateway is for.</p>
+  <p>The engine save is a second, competing copy of a much smaller slice of the same idea. Two systems
+  writing the same world is the problem, not the solution.</p></div>
+
+  <div class="note"><div class="h">Already seeing duplicates? Two steps</div>
+  <p><b>1.</b> Add the <code class="inline">missionHeader</code> block above and save the file.</p>
+  <p><b>2.</b> Delete the save the game already wrote, or it gets restored one more time on the next
+  start:</p>
+  <div class="os-panel linux"><div class="code"><pre><span class="c"># stop the server first</span>
+sudo systemctl stop wz-server1
+
+<span class="c"># the engine writes its saves under the profile you launch with</span>
+ls /opt/reforger/profiles/server1/
+rm -rf /opt/reforger/profiles/server1/saves</pre></div></div>
+  <div class="os-panel windows"><div class="code"><pre><span class="c">REM stop the server first</span>
+
+<span class="c">REM the engine writes its saves under the profile you launch with</span>
+dir C:\reforger\profiles\server1\
+rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
+  <p class="muted">Start the server again and the towns come up once. With saving off it does not
+  come back.</p></div>
+</div></section>
 </main>
 
 <main class="view view-server chan v1018">
@@ -1307,6 +1385,16 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
       <li><code class="inline">name</code> — your server&rsquo;s name in the browser list.</li>
       <li><code class="inline">passwordAdmin</code> — a password only you know.</li>
     </ul>
+    <div class="note warn"><div class="h">Leave <code class="inline">missionHeader</code> alone &mdash; saving must stay OFF</div>
+    <p>The example config ships this block, and it matters:</p>
+    <div class="code"><pre>"missionHeader": {
+  "m_sName": "WASTELAND Z",
+  "m_eSaveTypes": 0,
+  "m_bIsSavingEnabled": false
+}</pre></div>
+    <p><b>With saving on, the game saves the world and restores it on the next start &mdash; then Wasteland-Z builds the world again on top of what was restored.</b> The symptom admins report is <b>duplicate town names</b>; stores, markers and map circles can double the same way.</p>
+    <p>Wasteland-Z keeps everything that matters in its own database through the gateway &mdash; money, bank, gear, position, vehicles. It never uses the game&rsquo;s own save, so switching it off costs you nothing.</p>
+    <p class="muted">Already seeing duplicates? Add the block, then delete the saved session the game wrote &mdash; it lives under your profile folder. Starting fresh with saving off does not repeat it.</p></div>
     <p class="muted">Everything else already works: the <b>Wasteland-Z mod is pre-listed</b> in <code class="inline">mods</code> (it auto-downloads on first start), and the map is Everon (<code class="inline">21_GM_Eden</code>). For Arland instead, set <code class="inline">scenarioId</code> to <code class="inline">{2BBBE828037C6F4B}Missions/22_GM_Arland.conf</code>.</p>
     <div class="note warn"><div class="h">Router / firewall</div><p>Players connect over UDP ports <b>2001</b> (game) and <b>17777</b> (server browser). On a home connection, forward both UDP ports to this PC in your router. On a rented server, allow them in the provider&rsquo;s firewall panel.</p></div>
     <p>Don&rsquo;t start it yet — first set up the database and gateway below, so the server has something to save into.</p>
@@ -2035,6 +2123,74 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
   </table></div>
   <p><b>Setup:</b> in the game&rsquo;s <code class="inline">config.json</code>, set <code class="inline">game.maxPlayers</code> to your playable count <b>plus</b> the buffer, and set <code class="inline">RESERVED_TOTAL_SLOTS</code> to that same number. Example: 128 players &rarr; <code class="inline">maxPlayers 130</code>, <code class="inline">RESERVED_BUFFER 2</code>. ADMIN/OWNER always get in; MOD only bumps regular players.</p>
   <div class="note tip"><div class="h">How to see it working</div><p>It runs on the server, so watch the <b>server console / log</b> — set <code class="inline">HF_DEBUG_ADMIN 1</code> in <code class="inline">server.conf</code> and you&rsquo;ll see lines like <code class="inline">ReservedSlots: ON total=130 buffer=2&hellip;</code> and <code class="inline">BUMP&hellip;</code> when it acts. Players in a bumpable slot also see a &ldquo;high-risk&rdquo; banner in their HUD.</p></div>
+</div></section>
+  <section><div class="wrap">
+  <span class="section-tag">Required setting</span>
+  <h2>The mission header &mdash; turn the game&rsquo;s own saving OFF</h2>
+  <p class="lede">One block in <code class="inline">server1.json</code>. Get it wrong and your towns
+  appear twice.</p>
+
+  <div class="note warn"><div class="h">This block must be in your config</div>
+  <div class="code"><pre>"game": {
+  ...
+  "scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf",
+
+  "missionHeader": {
+    "m_sName": "WASTELAND Z",
+    "m_eSaveTypes": 0,
+    "m_bIsSavingEnabled": false
+  },
+  ...
+}</pre></div>
+  <p>It goes <b>inside</b> <code class="inline">"game"</code>, right after
+  <code class="inline">"scenarioId"</code>. The example configs in this kit already ship it.</p></div>
+
+  <h3 style="margin-top:22px">What each line does</h3>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setting</th><th>Value</th><th>What it does</th></tr>
+    <tr><td><code class="inline">m_sName</code></td><td>WASTELAND Z</td>
+        <td>The mission name the game shows. Cosmetic &mdash; set it to whatever you like.</td></tr>
+    <tr><td><code class="inline">m_eSaveTypes</code></td><td><b>0</b></td>
+        <td>Turns off the engine&rsquo;s automatic saving. <b>Not optional.</b></td></tr>
+    <tr><td><code class="inline">m_bIsSavingEnabled</code></td><td><b>false</b></td>
+        <td>Turns off session saving. <b>Not optional.</b></td></tr>
+  </table></div>
+
+  <h3 style="margin-top:22px">Why it matters</h3>
+  <p>Arma Reforger can save the whole world &mdash; every object placed in it &mdash; and restore that
+  save the next time the server starts. That is useful for the game modes it was built for. It is wrong
+  for Wasteland-Z.</p>
+  <p>When the server starts, Wasteland-Z builds the world: towns, stores, markers, map circles, vehicle
+  spawns. <b>If the engine has already restored a saved copy of all that, Wasteland-Z builds it again on
+  top.</b> Now there are two of everything.</p>
+  <p>The first thing anyone notices is the <b>town list showing every town twice</b>, because that list
+  is on screen and easy to read. Stores, markers and map circles double in exactly the same way &mdash;
+  they are just less obvious.</p>
+
+  <div class="note tip"><div class="h">You lose nothing by turning it off</div>
+  <p>Wasteland-Z does not use the game&rsquo;s save. Everything that has to survive a restart &mdash;
+  money, bank, gear, your last position, your vehicles, bans, stats &mdash; lives in <b>your MySQL
+  database</b>, written through the gateway. That is what the gateway is for.</p>
+  <p>The engine save is a second, competing copy of a much smaller slice of the same idea. Two systems
+  writing the same world is the problem, not the solution.</p></div>
+
+  <div class="note"><div class="h">Already seeing duplicates? Two steps</div>
+  <p><b>1.</b> Add the <code class="inline">missionHeader</code> block above and save the file.</p>
+  <p><b>2.</b> Delete the save the game already wrote, or it gets restored one more time on the next
+  start:</p>
+  <div class="os-panel linux"><div class="code"><pre><span class="c"># stop the server first</span>
+sudo systemctl stop wz-server1
+
+<span class="c"># the engine writes its saves under the profile you launch with</span>
+ls /opt/reforger/profiles/server1/
+rm -rf /opt/reforger/profiles/server1/saves</pre></div></div>
+  <div class="os-panel windows"><div class="code"><pre><span class="c">REM stop the server first</span>
+
+<span class="c">REM the engine writes its saves under the profile you launch with</span>
+dir C:\reforger\profiles\server1\
+rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
+  <p class="muted">Start the server again and the towns come up once. With saving off it does not
+  come back.</p></div>
 </div></section>
 </main>
 
@@ -3152,17 +3308,17 @@ Specifically tell me:
   <div class="cols2">
     <div class="note tip"><div class="h">I already run a server</div>
     <p>You are <b>upgrading</b>. Your players, money and gear already exist and must survive.</p>
-    <p><b>Go to Part A.</b></p></div>
+    <p><b>Follow the steps below.</b></p></div>
 
     <div class="note tip"><div class="h">I am setting one up for the first time</div>
-    <p>You are doing a <b>new install</b>. Nothing to preserve, nothing to back up.</p>
-    <p><b>Skip to Part B.</b></p></div>
+    <p>You are doing a <b>new install</b>. Nothing to preserve, nothing to back up &mdash; and nothing on this page applies.</p>
+    <p><b>Use the <i>New &mdash; Server Setup</i> tab instead.</b> It installs the game server, MySQL, Python and the gateway in one pass.</p></div>
   </div>
 </div></section>
 
 
 <section><div class="wrap">
-  <div class="part-head"><span class="part-badge">Part A</span><h2>Upgrading an existing server.</h2></div>
+  <div class="part-head"><span class="part-badge">Step by step</span><h2>Upgrading an existing server.</h2></div>
   <p class="muted">Seven steps. Do them in order. Nothing here is destructive until step 4, and step 2 is
   what makes even that reversible.</p>
 
@@ -3408,88 +3564,6 @@ Specifically tell me:
 </div></section>
 
 
-<section><div class="wrap">
-  <div class="part-head"><span class="part-badge">Part B</span><h2>New server, from nothing.</h2></div>
-  <p class="muted">Never run one before? Start here. You need Python and MySQL installed first &mdash; the
-  <b>Server Setup</b> tab covers those. This part is the gateway itself.</p>
-
-  <div class="step"><div class="n">1</div><div class="t">
-    <h3>Create the database and a login for it</h3>
-    <p>Open the MySQL command line and paste these four lines. They make an empty database and a user the
-    gateway logs in as. <b>Nothing creates tables here</b> &mdash; the gateway does that itself.</p>
-    <div class="code"><pre>CREATE DATABASE wastelandz;
-CREATE USER 'wastelandz'@'localhost' IDENTIFIED BY 'your_password_here';
-GRANT ALL PRIVILEGES ON wastelandz.* TO 'wastelandz'@'localhost';
-FLUSH PRIVILEGES;</pre></div>
-    <p class="muted">Replace <code class="inline">your_password_here</code> with a password you choose and
-    write it down &mdash; you need it in step 3.</p>
-  </div></div>
-
-  <div class="step"><div class="n">2</div><div class="t">
-    <h3>Get the gateway files</h3>
-    <p>Same three options as Part A step 3, and the same reading list if you want to review the code first.</p>
-    <div class="note tip"><div class="h">Easiest</div>
-    <p><a href="https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip"><b>Download the kit (ZIP)</b></a> and unzip it. Use the
-    <code class="inline">gateway-1.0.18</code> folder.</p></div>
-    <p>Copy that folder to where you want the gateway to live &mdash;
-    <code class="inline">D:\wastelandz-gateway</code> or <code class="inline">/opt/wastelandz-gateway</code>.</p>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> /b GATEWAY_VERSION D:\wastelandz-gateway\gateway.py</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> -m1 ^GATEWAY_VERSION /opt/wastelandz-gateway/gateway.py</pre></div></div>
-    <p class="muted">Must say <code class="inline">0.9.6</code>.</p>
-  </div></div>
-
-  <div class="step"><div class="n">3</div><div class="t">
-    <h3>Make your config.py</h3>
-    <p>The kit ships <code class="inline">config.example.py</code>. Copy it to
-    <code class="inline">config.py</code> and fill in two things.</p>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> D:\wastelandz-gateway
-<span class="p">copy</span> config.example.py config.py</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz-gateway
-<span class="p">cp</span> config.example.py config.py</pre></div></div>
-    <p>Open <code class="inline">config.py</code> and set:</p>
-    <ul class="clean muted">
-      <li><code class="inline">DB_PASSWORD</code> &mdash; the password from step 1.</li>
-      <li><code class="inline">SERVERS</code> &mdash; one entry per game server, each with its own
-      <code class="inline">api_key</code>.</li>
-    </ul>
-    <div class="note warn"><div class="h">Generate a real key. Do not invent one, and do not copy one.</div>
-    <div class="code"><pre><span class="p">python</span> -c "import secrets; print(secrets.token_hex(32))"</pre></div>
-    <p>Run it once per server. The <b>same</b> value goes in that server&rsquo;s
-    <code class="inline">HFWastelandZ_secrets.conf</code> on the <code class="inline">API_KEY</code> line.</p>
-    <p class="muted">The gateway refuses to start on an empty or placeholder key &mdash; anything
-    containing CHANGE_ME, example, placeholder or your_key. Those strings are published in this kit, so
-    running on one is running on a key anybody can read.</p></div>
-  </div></div>
-
-  <div class="step"><div class="n">4</div><div class="t">
-    <h3>Install the requirements</h3>
-    <div class="code"><pre><span class="p">pip</span> install -r requirements.txt</pre></div>
-    <p class="muted">Pulls in flask, the MySQL connector, psutil and <b>waitress</b> &mdash; the production
-    web server. See the panel in Part A step 5 for what waitress does and why it matters.</p>
-  </div></div>
-
-  <div class="step"><div class="n">5</div><div class="t">
-    <h3>Start it and watch it build the database</h3>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">python</span> gateway.py</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">python3</span> gateway.py</pre></div></div>
-    <div class="note tip"><div class="h">What good looks like on a fresh install</div>
-    <div class="code"><pre>  WastelandZ Gateway v0.9.6
-[SCHEMA] setup_database.sql applied (idempotent; no-op when current).
-[HTTP] waitress serving on ...</pre></div>
-    <p>On a brand new database the schema builds every table in one pass, so you see the
-    <code class="inline">[SCHEMA]</code> line and no <code class="inline">[MIGRATE]</code> lines &mdash;
-    there is no old data to migrate. <b>Leave the window open.</b></p></div>
-  </div></div>
-
-  <div class="step"><div class="n">6</div><div class="t">
-    <h3>Start the game server</h3>
-    <p>Start it as normal. Then check the console prints <code class="inline">[HF] WastelandZ 1.0.18</code>
-    and that <b>no</b> <code class="inline">GATEWAY VERSION MISMATCH</code> appears. Join, and confirm you
-    spawn with a starting loadout and money.</p>
-    <p class="muted">First join on a fresh database shows <b>NO RECORD ON THIS HIVE</b> on the join screen.
-    That is correct &mdash; nothing is stored for you yet.</p>
-  </div></div>
-</div></section>
 
 
 <section><div class="wrap">
@@ -3938,6 +4012,17 @@ start_server1.bat</pre></div></div>
 <section><div class="wrap">
   <span class="section-tag">Upgrade failures</span>
   <h2>The server stops starting after an update</h2>
+    <div class="note warn"><div class="h">Symptom: every town is listed twice</div>
+  <p><b>Cause:</b> the game&rsquo;s own world saving is on. The engine restores a saved copy of the world
+  on start, then Wasteland-Z builds the world again on top of it &mdash; so there are two of everything.
+  Towns are simply the copy you notice, because the list is on screen.</p>
+  <p><b>Fix:</b> add the <code class="inline">missionHeader</code> block to
+  <code class="inline">server1.json</code> with <code class="inline">m_eSaveTypes: 0</code> and
+  <code class="inline">m_bIsSavingEnabled: false</code>, then delete the save the engine already wrote
+  from your profile folder. Full detail is on the <b>New &mdash; Server Setup</b> tab under
+  <b>The mission header</b>.</p>
+  <p class="muted">Stores, map markers and town circles double in the same way &mdash; if the towns are
+  duplicated, those are too.</p></div>
 
   <div class="note warn"><div class="h">Symptom: <code class="inline">Can&rsquo;t compile "Game" script module!</code> and the server exits</div>
   <p><b>Cause:</b> the game server is older than the mod requires. From the 2026-08-16 release the mod targets <b>Arma Reforger 1.8.0.10</b>. That version removed 137 script API members <b>with no deprecation cycle</b> &mdash; Bohemia&rsquo;s deprecation list was byte-identical to the previous version&rsquo;s, so nothing warned in advance. Three of those removals sat in mod code paths.</p>
@@ -4006,6 +4091,17 @@ max_connections = 500</pre></div></div>
 <section><div class="wrap">
   <span class="section-tag">Upgrade failures</span>
   <h2>The server stops starting after an update</h2>
+    <div class="note warn"><div class="h">Symptom: every town is listed twice</div>
+  <p><b>Cause:</b> the game&rsquo;s own world saving is on. The engine restores a saved copy of the world
+  on start, then Wasteland-Z builds the world again on top of it &mdash; so there are two of everything.
+  Towns are simply the copy you notice, because the list is on screen.</p>
+  <p><b>Fix:</b> add the <code class="inline">missionHeader</code> block to
+  <code class="inline">server1.json</code> with <code class="inline">m_eSaveTypes: 0</code> and
+  <code class="inline">m_bIsSavingEnabled: false</code>, then delete the save the engine already wrote
+  from your profile folder. Full detail is on the <b>New &mdash; Server Setup</b> tab under
+  <b>The mission header</b>.</p>
+  <p class="muted">Stores, map markers and town circles double in the same way &mdash; if the towns are
+  duplicated, those are too.</p></div>
 
   <div class="note warn"><div class="h">Symptom: <code class="inline">Can&rsquo;t compile "Game" script module!</code> and the server exits</div>
   <p><b>Cause:</b> the game server is older than the mod requires. From the 2026-08-16 release the mod targets <b>Arma Reforger 1.8.0.10</b>. That version removed 137 script API members <b>with no deprecation cycle</b> &mdash; Bohemia&rsquo;s deprecation list was byte-identical to the previous version&rsquo;s, so nothing warned in advance. Three of those removals sat in mod code paths.</p>
