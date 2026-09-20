@@ -3360,13 +3360,16 @@ Specifically tell me:
 
     <div class="os-panel linux"><div class="code"><pre><span class="c"># 1 - make a folder named for TODAY, and go to it. Type today's date.</span>
 <span class="p">sudo</span> mkdir -p /opt/wz-backups/2026-09-20
+<span class="c"># hand the folder to you, or the &gt; redirect below cannot write into it</span>
+<span class="p">sudo</span> chown -R $USER:$USER /opt/wz-backups
 <span class="p">cd</span> /opt/wz-backups/2026-09-20
 
 <span class="c"># 2 - print where you are. THIS is where the backup is about to land.</span>
 <span class="p">pwd</span>
 
 <span class="c"># 3 - the database. One file containing every player, wallet and loadout.</span>
-<span class="p">sudo</span> mysqldump -u wastelandz -p wastelandz &gt; wz-backup-before-0.9.6.sql
+<span class="c"># no sudo - mysqldump logs in to MySQL with -u/-p, not to Linux</span>
+<span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wz-backup-before-0.9.6.sql
 
 <span class="c"># 4 - the gateway folder, which holds YOUR config.py (password + API keys).</span>
 <span class="p">sudo</span> cp -r /opt/wastelandz-gateway /opt/wz-backups/2026-09-20/gateway-BACKUP</pre></div></div>
