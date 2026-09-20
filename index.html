@@ -3396,13 +3396,20 @@ Specifically tell me:
 
     <div class="note"><div class="h">Command line &mdash; curl</div>
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM use curl.exe, not the PowerShell alias</span>
-<span class="p">cd</span> D:\
+<span class="p">cd</span> /d D:\
 <span class="p">curl.exe</span> -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
-<span class="p">tar</span> -xf kit.zip</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt
-<span class="p">curl</span> -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
-<span class="p">unzip</span> -o kit.zip</pre></div></div>
-    <p class="muted">Unpacks to <code class="inline">HF_WastelandZ_SETUP-main/</code>.</p></div>
+<span class="p">tar</span> -xf kit.zip
+
+<span class="c">REM rename it to wastelandz, which is what every step below expects</span>
+<span class="p">move</span> HF_WastelandZ_SETUP-main wastelandz</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># /opt is root-owned, so these need sudo</span>
+<span class="p">cd</span> /opt
+<span class="p">sudo</span> curl -L -o kit.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
+<span class="p">sudo</span> unzip -o kit.zip
+
+<span class="c"># rename it to wastelandz, which is what every step below expects</span>
+<span class="p">sudo</span> rm -rf /opt/wastelandz && <span class="p">sudo</span> mv HF_WastelandZ_SETUP-main wastelandz</pre></div></div>
+    <p class="muted">GitHub names the folder after the branch, so it arrives as <code class="inline">HF_WastelandZ_SETUP-main</code>. The rename above makes it <code class="inline">wastelandz</code>, which is the name every step below uses &mdash; all three routes end up in the same place.</p>
 
     <div class="note"><div class="h">Or use git &mdash; optional, and only worth it if you update often</div>
     <p><b>What it is.</b> Another way to download the same files. The difference is that next time there
@@ -3415,7 +3422,8 @@ Specifically tell me:
     runs from here. You copy out of it in the next step.</p>
 
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM first time only - go to D:\ then make the copy</span>
-<span class="p">cd</span> /d D:<span class="p">git</span> clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz
+<span class="p">cd</span> /d D:\
+<span class="p">git</span> clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz
 
 <span class="c">REM you now have D:\wastelandz - go in and look</span>
 <span class="p">cd</span> /d D:\wastelandz
@@ -3441,8 +3449,8 @@ Specifically tell me:
     newest files &mdash; that is a success, not an error.</p></div>
 
     <div class="note warn"><div class="h">Check you got the right one, before you copy anything</div>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> /b GATEWAY_VERSION gateway-1.0.18\gateway.py</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> -m1 ^GATEWAY_VERSION gateway-1.0.18/gateway.py</pre></div></div>
+<span class="p">findstr</span> /b GATEWAY_VERSION D:\wastelandz\gateway-1.0.18\gateway.py
+<span class="p">grep</span> -m1 ^GATEWAY_VERSION /opt/wastelandz/gateway-1.0.18/gateway.py
     <p>It must print <code class="inline">GATEWAY_VERSION = "0.9.6"</code>. If it says 0.7.1 you are
     looking at <code class="inline">gateway-1.0.16/</code>, which is the previous release.</p></div>
   </div></div>
@@ -3455,7 +3463,9 @@ Specifically tell me:
     &mdash; so there is no copy of it to land on yours. Your password and keys survive untouched.</p>
 
     <div class="os-panel windows"><div class="code"><pre><span class="p">xcopy</span> /E /Y D:\wastelandz\gateway-1.0.18 D:\wastelandz-gateway\</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">cp</span> -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">sudo</span> cp -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/
+<span class="c"># hand it back to you, or the venv below cannot write</span>
+<span class="p">sudo</span> chown -R $USER:$USER /opt/wastelandz-gateway</pre></div></div>
 
     <div class="note"><div class="h">Confirm the copy landed</div>
     <p>Check the <b>running</b> folder now, not the kit:</p>
@@ -3475,7 +3485,9 @@ Specifically tell me:
     <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> D:\wastelandz-gateway
 <span class="p">pip</span> install -r requirements.txt</pre></div></div>
     <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz-gateway
-<span class="p">pip</span> install -r requirements.txt</pre></div></div>
+<span class="c"># the venv from setup - Ubuntu 24.04 blocks system-wide pip</span>
+<span class="p">source</span> venv/bin/activate
+<span class="p">pip3</span> install -r requirements.txt</pre></div></div>
 
     <div class="note tip"><div class="h">What waitress is, and why it is new here</div>
     <p>Until now the gateway ran on <b>werkzeug</b>, which is a <i>development</i> web server. It works
@@ -3505,7 +3517,7 @@ Specifically tell me:
     <p class="muted">Or double-click <code class="inline">start_gateway.bat</code>, which does the same and
     keeps the window open.</p></div>
     <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz-gateway
-<span class="p">python3</span> gateway.py</pre></div></div>
+<span class="p">venv/bin/python</span> gateway.py</pre></div></div>
 
     <div class="note tip"><div class="h">What good looks like</div>
     <div class="code"><pre>  WastelandZ Gateway v0.9.6
