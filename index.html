@@ -3402,17 +3402,15 @@ Specifically tell me:
 
 <span class="c">REM rename it to wastelandz, the name every step below uses</span>
 <span class="p">move</span> HF_WastelandZ_SETUP-main wastelandz</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="c"># unzip is not on every server; this is a no-op if you have it</span>
-<span class="p">sudo</span> apt install -y unzip
-
-<span class="c"># /opt is root-owned, so the download and unpack need sudo too</span>
+    <div class="os-panel linux"><div class="code"><pre><span class="c"># tar is on every Linux box - nothing to install</span>
+<span class="c"># /opt is root-owned, so these need sudo</span>
 <span class="p">cd</span> /opt
-<span class="p">sudo</span> curl -L -o main.zip https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.zip
-<span class="p">sudo</span> unzip -o main.zip
+<span class="p">sudo</span> curl -L -o main.tar.gz https://github.com/Motavar/HF_WastelandZ_SETUP/archive/refs/heads/main.tar.gz
+<span class="p">sudo</span> tar -xzf main.tar.gz
 
 <span class="c"># rename it to wastelandz, the name every step below uses</span>
 <span class="p">sudo</span> rm -rf /opt/wastelandz &amp;&amp; <span class="p">sudo</span> mv HF_WastelandZ_SETUP-main wastelandz</pre></div></div>
-    <p class="muted">GitHub names the folder after the branch, so it arrives as <code class="inline">HF_WastelandZ_SETUP-main</code>. The rename above makes it <code class="inline">wastelandz</code>, which is the name every step below uses &mdash; all three routes end up in the same place.</p>
+    <p class="muted">GitHub serves the same files as a <code class="inline">.tar.gz</code> for Linux and a <code class="inline">.zip</code> for Windows. Either way it names the folder after the branch, so it arrives as <code class="inline">HF_WastelandZ_SETUP-main</code>. The rename above makes it <code class="inline">wastelandz</code>, which is the name every step below uses &mdash; all three routes end up in the same place.</p>
 
     <div class="note"><div class="h">Or use git &mdash; optional, and only worth it if you update often</div>
     <p><b>What it is.</b> Another way to download the same files. The difference is that next time there
