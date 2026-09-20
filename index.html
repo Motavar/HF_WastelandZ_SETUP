@@ -502,7 +502,7 @@ FLUSH PRIVILEGES;</pre></div>
   <div class="step"><span class="n">3</span>
     <h4>Check the login works</h4>
     <p>Prove the database and password you just made actually work, before anything depends on them. Open a normal <b>Command Prompt</b>, go to the folder where you unzipped this download, and run:</p>
-    <div class="code"><pre><span class="p">mysql</span> -u wastelandz -p wastelandz &lt; gateway\setup_database.sql</pre></div>
+    <div class="code"><pre><span class="p">mysql</span> -u wastelandz -p wastelandz &lt; gateway-1.0.16\setup_database.sql</pre></div>
     <p class="muted">It asks for the <code class="inline">wastelandz</code> password (from Step 2). <b>No error message means it worked</b> &mdash; and it built the tables while it was there.</p>
     <div class="note"><div class="h">You are not required to run this</div>
     <p>On this release the gateway does <b>not</b> create tables, so this step is required &mdash; it is what builds them. Running it twice is harmless: the file only ever adds.</p>
@@ -511,14 +511,14 @@ FLUSH PRIVILEGES;</pre></div>
 
   <div class="step"><span class="n">4</span>
     <h4>Put the gateway in place</h4>
-    <p>Copy the whole <code class="inline">gateway</code> folder somewhere permanent — for example <code class="inline">C:\wastelandz-gateway</code>. Open Command Prompt <b>in that folder</b> and install the parts it needs:</p>
+    <p>Copy the whole <code class="inline">gateway-1.0.18</code> folder somewhere permanent — for example <code class="inline">C:\wastelandz-gateway</code>. Open Command Prompt <b>in that folder</b> and install the parts it needs:</p>
     <div class="code"><pre><span class="p">pip</span> install -r requirements.txt</pre></div>
   </div>
 
   <div class="step"><span class="n">5</span>
     <h4>Enter your settings</h4>
     <p>First generate the <b>gateway key</b> — a unique API key (use a <b>different one for every server</b>). Copy the 64-character line it prints:</p>
-    <div class="code"><pre><span class="p">python</span> -c "import secrets; print(secrets.token_hex(32))"</pre></div>
+    <div class="code"><pre><span class="p">python3</span> -c "import secrets; print(secrets.token_hex(32))"</pre></div>
     <p>In the gateway folder, make a copy of <code class="inline">config.example.py</code> and name the copy <code class="inline">config.py</code>. Open <code class="inline">config.py</code> in Notepad and set two things:</p>
     <ul class="clean">
       <li><code class="inline">DB_PASSWORD</code> = the password you made in Step 2.</li>
@@ -667,7 +667,7 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <div class="h">New to Linux? The 60-second picture</div>
     <p>Your Windows PC is the <b>remote control</b>; the Linux box is the machine that runs everything. You type commands into it over <b>SSH</b> — open PowerShell on your PC and run <code class="inline">ssh youruser@your-server-ip</code> (SSH is built into Windows, nothing to install). Every command below is typed into that window.</p>
     <p>Linux has no <code class="inline">C:\</code>. Your personal folder is <code class="inline">/home/youruser</code> — written <code class="inline">~</code> for short, so <code class="inline">~/reforger</code> would mean <code class="inline">/home/youruser/reforger</code>. Software you install yourself goes in <code class="inline">/opt/</code> by convention — that&rsquo;s this guide&rsquo;s equivalent of making <code class="inline">C:\reforger\</code>, and everything lives there:</p>
-    <div class="code"><pre>/opt/wastelandz            <span class="c">&larr; this setup kit, straight from GitHub (Step 1)</span>
+    <div class="code"><pre>/opt/wastelandz_setup            <span class="c">&larr; this setup kit, straight from GitHub (Step 1)</span>
 /opt/reforger              <span class="c">&larr; the game server (Step 2)</span>
 /opt/wastelandz-gateway    <span class="c">&larr; the running gateway (Step 5)</span></pre></div>
   </div>
@@ -692,13 +692,13 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <p>Everything in this kit is one GitHub repo. Two ways to get it onto the Linux box — pick one:</p>
     <p><b>Option A — git (recommended).</b> One command pulls the whole kit straight onto the server; updating later is one more command. On the server:</p>
     <div class="code"><pre><span class="p">sudo</span> apt install -y git
-<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz
-<span class="p">sudo</span> chown -R $USER /opt/wastelandz</pre></div>
-    <p class="muted">Get updates later with: <code class="inline">cd /opt/wastelandz</code> then <code class="inline">git pull</code></p>
+<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz_setup
+<span class="p">sudo</span> chown -R $USER /opt/wastelandz_setup</pre></div>
+    <p class="muted">Get updates later with: <code class="inline">cd /opt/wastelandz_setup</code> then <code class="inline">git pull</code></p>
     <p><b>Option B — WinSCP (drag &amp; drop).</b> On your PC: open the repo page on GitHub &rarr; green <b>Code</b> button &rarr; <b>Download ZIP</b> &rarr; unzip it. Make the target folder on the server first:</p>
-    <div class="code"><pre><span class="p">sudo</span> mkdir -p /opt/wastelandz
-<span class="p">sudo</span> chown $USER /opt/wastelandz</pre></div>
-    <p class="muted">Then connect <b>WinSCP</b> (a free tool) to the server and drag the unzipped folder&rsquo;s <i>contents</i> into <code class="inline">/opt/wastelandz</code> — it works like copying between two Explorer windows.</p>
+    <div class="code"><pre><span class="p">sudo</span> mkdir -p /opt/wastelandz_setup
+<span class="p">sudo</span> chown $USER /opt/wastelandz_setup</pre></div>
+    <p class="muted">Then connect <b>WinSCP</b> (a free tool) to the server and drag the unzipped folder&rsquo;s <i>contents</i> into <code class="inline">/opt/wastelandz_setup</code> — it works like copying between two Explorer windows.</p>
   </div>
 
   <div class="step"><span class="n">2</span>
@@ -717,7 +717,7 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
 <span class="p">steamcmd</span> +force_install_dir /opt/reforger/server +login anonymous +app_update 1874900 validate +quit</pre></div>
     <div class="note tip"><div class="h">Game updated?</div><p><strong>Updated for 1.8 &mdash; 2026-08-17:</strong> you no longer have to do this by hand. The service file from Part 2 runs SteamCMD before every start, so the server brings itself up to date each time it restarts. That matters because <strong>a server on an older build than its players is unjoinable</strong> &mdash; clients auto-update through Steam whether you do or not. Keep the command above for the first install, and for repairs (the <code class="inline">validate</code> flag re-checks every file &mdash; useful when something is corrupt, too slow to run on every restart).</p></div>
     <p>Drop in the ready-made config from the kit (Wasteland-Z is pre-listed in <code class="inline">mods</code> — it works as-is; open it in <code class="inline">nano</code> later to rename your server — save/exit with <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>):</p>
-    <div class="code"><pre><span class="p">cp</span> /opt/wastelandz/server/server1.json.example /opt/reforger/configs/server1.json</pre></div>
+    <div class="code"><pre><span class="p">cp</span> /opt/wastelandz_setup/server/server1.json.example /opt/reforger/configs/server1.json</pre></div>
     <p class="muted">Don&rsquo;t start it yet — it needs the database and gateway first (Steps 3&ndash;8). Step 9 does the first start.</p>
   </div>
 
@@ -758,7 +758,7 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="c"># the running copy gets its own folder</span>
 <span class="p">sudo</span> mkdir -p /opt/wastelandz-gateway
 <span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
-<span class="p">cp</span> -r /opt/wastelandz/gateway-1.0.16/. /opt/wastelandz-gateway/
+<span class="p">cp</span> -r /opt/wastelandz_setup/gateway-1.0.16/. /opt/wastelandz-gateway/
 
 <span class="c"># build the tables and check the login works in one go</span>
 <span class="p">cd</span> /opt/wastelandz-gateway
@@ -771,7 +771,7 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">pip</span> install -r requirements.txt
 
 <span class="c"># give the whole folder (incl. the venv) to the account the service will run as</span>
-<span class="p">sudo</span> chown -R youruser:youruser /opt/wastelandz-gateway</pre></div>
+<span class="p">sudo</span> chown -R $USER:$USER /opt/wastelandz-gateway</pre></div>
     <p class="muted">The <code class="inline">mysql</code> line asks for the <code class="inline">wastelandz</code> password you set in Step 4, then builds the tables &mdash; no output means it worked. The script itself holds <b>no usernames or passwords</b>; you never edit it.</p>
     <div class="note warn"><div class="h">This <code class="inline">mysql</code> line is required &mdash; don&rsquo;t skip it</div>
     <p>On this release the gateway does <b>not</b> create tables. If you skip this step there is no database for it to talk to, and it will start and then fail every request.</p>
@@ -838,15 +838,15 @@ FLUSH PRIVILEGES;</pre></div>
     <h5 class="substep"><span class="lt">b</span> Give it the gateway key</h5>
     <p>Open the secrets file:</p>
     <div class="code"><pre><span class="p">nano</span> /opt/reforger/profiles/server1/profile/hf_wastelandz/configs/HFWastelandZ_secrets.conf</pre></div>
-    <p class="muted">Add a line — <code class="inline">API_KEY</code> then a space then the <b>same gateway key from Step 6</b> (the one in <code class="inline">config.py</code> for this server). Save and exit the same way. A ready-made template ships at <code class="inline">/opt/wastelandz/configs/HFWastelandZ_secrets.conf.example</code>.</p>
+    <p class="muted">Add a line — <code class="inline">API_KEY</code> then a space then the <b>same gateway key from Step 6</b> (the one in <code class="inline">config.py</code> for this server). Save and exit the same way. A ready-made template ships at <code class="inline">/opt/wastelandz_setup/configs/HFWastelandZ_secrets.conf.example</code>.</p>
     <h5 class="substep"><span class="lt">c</span> Add the mission reward templates</h5>
-    <div class="code"><pre><span class="p">cp</span> -r /opt/wastelandz/missions/rewards /opt/reforger/profiles/server1/profile/hf_wastelandz/missions/</pre></div>
+    <div class="code"><pre><span class="p">cp</span> -r /opt/wastelandz_setup/missions/rewards /opt/reforger/profiles/server1/profile/hf_wastelandz/missions/</pre></div>
     <p class="muted">These are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</p>
     <p class="muted">Now start it again (same command). Player data saves to the database — <b>you&rsquo;re live.</b></p>
 
     <h5 class="substep"><span class="lt">+</span> Two optional asides (not required to go live)</h5>
     <div class="note tip"><div class="h">Server name &amp; admin password</div><p>Those aren&rsquo;t HF settings — they live in the Reforger config <code class="inline">server1.json</code> (the <code class="inline">name</code> and <code class="inline">passwordAdmin</code> fields). Change them any time:</p><div class="code"><pre><span class="p">nano</span> /opt/reforger/configs/server1.json</pre></div></div>
-    <div class="note tip"><div class="h">Optional — tune loot / economy later</div><p>To customize loot/economy/etc., rename the kit&rsquo;s <code class="inline">/opt/wastelandz/configs/*.example</code> files (drop <code class="inline">.example</code>) and copy them into the profile&rsquo;s <code class="inline">hf_wastelandz/configs/</code> folder. <code class="inline">configs/README.md</code> documents each one — none of it is needed to go live.</p></div>
+    <div class="note tip"><div class="h">Optional — tune loot / economy later</div><p>To customize loot/economy/etc., rename the kit&rsquo;s <code class="inline">/opt/wastelandz_setup/configs/*.example</code> files (drop <code class="inline">.example</code>) and copy them into the profile&rsquo;s <code class="inline">hf_wastelandz/configs/</code> folder. <code class="inline">configs/README.md</code> documents each one — none of it is needed to go live.</p></div>
     <h5 class="substep"><span class="lt">d</span> Make yourself the admin</h5>
     <p>Do this once it&rsquo;s running. Wasteland-Z admins are keyed by <b>Bohemia Identity GUID</b> &mdash; a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code tied to your Bohemia account. <b>It is NOT your Steam number.</b> There are two ways to find yours:</p>
     <p><b>1) In the game (easiest):</b> launch Arma Reforger, click your <b>profile</b> in the upper-right corner &mdash; your Identity GUID is listed there. Copy it.</p>
@@ -887,15 +887,15 @@ WantedBy=multi-user.target</pre></div>
     <p class="muted">That <code class="inline">ExecStart</code> path <b>is</b> the venv — pointing systemd straight at <code class="inline">venv/bin/python</code> runs the gateway inside the venv automatically; you do <b>not</b> <code class="inline">activate</code> it for a service. (A no-venv install uses <code class="inline">/usr/bin/python3</code> instead.) Set <code class="inline">User=</code> to your Linux username, and make sure that user owns <code class="inline">/opt/wastelandz-gateway</code> (the <code class="inline">chown -R</code> from Step 5). Then turn it on — this starts it now <i>and</i> on every reboot:</p>
     <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
 <span class="p">sudo</span> systemctl enable --now wz-gateway</pre></div>
-    <p class="muted">Don&rsquo;t want to type it? The kit ships this file ready-made: copy <code class="inline">/opt/wastelandz/server/wz-gateway.service.example</code> to <code class="inline">/etc/systemd/system/wz-gateway.service</code> and just change <code class="inline">youruser</code>.</p>
+    <p class="muted">Don&rsquo;t want to type it? The kit ships this file ready-made: copy <code class="inline">/opt/wastelandz_setup/server/wz-gateway.service.example</code> to <code class="inline">/etc/systemd/system/wz-gateway.service</code> and just change <code class="inline">youruser</code>.</p>
   </div>
 
   <div class="step"><span class="n">B</span>
     <h4>Make the game server a service</h4>
     <p>Same idea as Step A, but for the game server. (You did its one-time first boot back in Part 1, Step 9 — that generated its config files; this step makes it run permanently in the background.) First make sure your user owns what the server writes to (its <code class="inline">profiles/</code> and <code class="inline">logs/</code>) — needed if you ran any of the install as root:</p>
-    <div class="code"><pre><span class="p">sudo</span> chown -R youruser:youruser /opt/reforger</pre></div>
+    <div class="code"><pre><span class="p">sudo</span> chown -R $USER:$USER /opt/reforger</pre></div>
     <p class="muted">Then drop in the ready-made service file and set your username:</p>
-    <div class="code"><pre><span class="p">sudo</span> cp /opt/wastelandz/server/wz-server1.service.example /etc/systemd/system/wz-server1.service
+    <div class="code"><pre><span class="p">sudo</span> cp /opt/wastelandz_setup/server/wz-server1.service.example /etc/systemd/system/wz-server1.service
 <span class="p">sudo</span> nano /etc/systemd/system/wz-server1.service   <span class="c"># change User=youruser to YOUR username (save: Ctrl+O, Enter, Ctrl+X)</span></pre></div>
 
     <p class="muted"><strong>Now check it before you start it.</strong> These two commands catch the
@@ -960,7 +960,7 @@ and everything right of the players is local to the box — nothing exposed.</sp
   <p><b>You install the game once.</b> <code class="inline">/opt/reforger/server/</code> and the shared <code class="inline">workshop/</code> mods folder serve every server. Each extra server is just a <b>config file + profile folder + systemd unit</b> with different numbers. To add server 2:</p>
   <div class="code"><pre><span class="c"># its own config — new ports, its own map, its own name.
 # The kit ships one pre-made (ports 2002/17778 + Arland already set):</span>
-<span class="p">cp</span> /opt/wastelandz/server/server2.json.example /opt/reforger/configs/server2.json
+<span class="p">cp</span> /opt/wastelandz_setup/server/server2.json.example /opt/reforger/configs/server2.json
 <span class="p">nano</span> /opt/reforger/configs/server2.json</pre></div>
   <p class="muted">In <code class="inline">server2.json</code>: set your server <code class="inline">name</code> + admin password (ports <b>2002</b>/<b>17778</b> and the Arland map are pre-set). Save and exit nano: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>. The map is the <code class="inline">scenarioId</code> line — Wasteland-Z runs on top of any Game Master scenario, so a two-server hive can offer two different worlds:</p>
   <div class="code"><pre><span class="c"># server1.json — Everon (the big island):</span>
@@ -979,7 +979,7 @@ and everything right of the players is local to the box — nothing exposed.</sp
   <ul class="clean">
     <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 6 command), then <code class="inline">sudo systemctl restart wz-gateway</code> — it now listens on 5000 <i>and</i> 5001.</li>
     <li><b>Wire it:</b> in <code class="inline">/opt/reforger/profiles/server2/profile/hf_wastelandz/configs/</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
-    <li><b>Service:</b> copy the kit&rsquo;s <code class="inline">/opt/wastelandz/server/wz-server2.service.example</code> to <code class="inline">/etc/systemd/system/wz-server2.service</code>, change <code class="inline">youruser</code>, then <code class="inline">sudo systemctl daemon-reload</code> and <code class="inline">sudo systemctl enable --now wz-server2</code>. If <code class="inline">ufw</code> is on, open UDP <b>2002</b> + <b>17778</b>.</li>
+    <li><b>Service:</b> copy the kit&rsquo;s <code class="inline">/opt/wastelandz_setup/server/wz-server2.service.example</code> to <code class="inline">/etc/systemd/system/wz-server2.service</code>, change <code class="inline">youruser</code>, then <code class="inline">sudo systemctl daemon-reload</code> and <code class="inline">sudo systemctl enable --now wz-server2</code>. If <code class="inline">ufw</code> is on, open UDP <b>2002</b> + <b>17778</b>.</li>
   </ul>
 
   <div class="note warn"><div class="h">Each server has its OWN Wasteland-Z config &mdash; edit the right copy</div>
@@ -1429,7 +1429,7 @@ FLUSH PRIVILEGES;</pre></div>
   <div class="step"><span class="n">3</span>
     <h4>Check the login works</h4>
     <p>Prove the database and password you just made actually work, before anything depends on them. Open a normal <b>Command Prompt</b>, go to the folder where you unzipped this download, and run:</p>
-    <div class="code"><pre><span class="p">mysql</span> -u wastelandz -p wastelandz &lt; gateway\setup_database.sql</pre></div>
+    <div class="code"><pre><span class="p">mysql</span> -u wastelandz -p wastelandz &lt; gateway-1.0.16\setup_database.sql</pre></div>
     <p class="muted">It asks for the <code class="inline">wastelandz</code> password (from Step 2). <b>No error message means it worked</b> &mdash; and it built the tables while it was there.</p>
     <div class="note"><div class="h">You are not required to run this</div>
     <p>The gateway applies <code class="inline">setup_database.sql</code> itself on <b>every</b> start, so the tables would appear on their own the first time you launch it. This step is here because a wrong password is much easier to understand <b>now</b>, on its own, than three steps later mixed in with everything else the gateway does at startup.</p>
@@ -1438,14 +1438,14 @@ FLUSH PRIVILEGES;</pre></div>
 
   <div class="step"><span class="n">4</span>
     <h4>Put the gateway in place</h4>
-    <p>Copy the whole <code class="inline">gateway</code> folder somewhere permanent — for example <code class="inline">C:\wastelandz-gateway</code>. Open Command Prompt <b>in that folder</b> and install the parts it needs:</p>
+    <p>Copy the whole <code class="inline">gateway-1.0.18</code> folder somewhere permanent — for example <code class="inline">C:\wastelandz-gateway</code>. Open Command Prompt <b>in that folder</b> and install the parts it needs:</p>
     <div class="code"><pre><span class="p">pip</span> install -r requirements.txt</pre></div>
   </div>
 
   <div class="step"><span class="n">5</span>
     <h4>Enter your settings</h4>
     <p>First generate the <b>gateway key</b> — a unique API key (use a <b>different one for every server</b>). Copy the 64-character line it prints:</p>
-    <div class="code"><pre><span class="p">python</span> -c "import secrets; print(secrets.token_hex(32))"</pre></div>
+    <div class="code"><pre><span class="p">python3</span> -c "import secrets; print(secrets.token_hex(32))"</pre></div>
     <p>In the gateway folder, make a copy of <code class="inline">config.example.py</code> and name the copy <code class="inline">config.py</code>. Open <code class="inline">config.py</code> in Notepad and set two things:</p>
     <ul class="clean">
       <li><code class="inline">DB_PASSWORD</code> = the password you made in Step 2.</li>
@@ -1594,7 +1594,7 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <div class="h">New to Linux? The 60-second picture</div>
     <p>Your Windows PC is the <b>remote control</b>; the Linux box is the machine that runs everything. You type commands into it over <b>SSH</b> — open PowerShell on your PC and run <code class="inline">ssh youruser@your-server-ip</code> (SSH is built into Windows, nothing to install). Every command below is typed into that window.</p>
     <p>Linux has no <code class="inline">C:\</code>. Your personal folder is <code class="inline">/home/youruser</code> — written <code class="inline">~</code> for short, so <code class="inline">~/reforger</code> would mean <code class="inline">/home/youruser/reforger</code>. Software you install yourself goes in <code class="inline">/opt/</code> by convention — that&rsquo;s this guide&rsquo;s equivalent of making <code class="inline">C:\reforger\</code>, and everything lives there:</p>
-    <div class="code"><pre>/opt/wastelandz            <span class="c">&larr; this setup kit, straight from GitHub (Step 1)</span>
+    <div class="code"><pre>/opt/wastelandz_setup            <span class="c">&larr; this setup kit, straight from GitHub (Step 1)</span>
 /opt/reforger              <span class="c">&larr; the game server (Step 2)</span>
 /opt/wastelandz-gateway    <span class="c">&larr; the running gateway (Step 5)</span></pre></div>
   </div>
@@ -1619,13 +1619,13 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <p>Everything in this kit is one GitHub repo. Two ways to get it onto the Linux box — pick one:</p>
     <p><b>Option A — git (recommended).</b> One command pulls the whole kit straight onto the server; updating later is one more command. On the server:</p>
     <div class="code"><pre><span class="p">sudo</span> apt install -y git
-<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz
-<span class="p">sudo</span> chown -R $USER /opt/wastelandz</pre></div>
-    <p class="muted">Get updates later with: <code class="inline">cd /opt/wastelandz</code> then <code class="inline">git pull</code></p>
+<span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz_setup
+<span class="p">sudo</span> chown -R $USER /opt/wastelandz_setup</pre></div>
+    <p class="muted">Get updates later with: <code class="inline">cd /opt/wastelandz_setup</code> then <code class="inline">git pull</code></p>
     <p><b>Option B — WinSCP (drag &amp; drop).</b> On your PC: open the repo page on GitHub &rarr; green <b>Code</b> button &rarr; <b>Download ZIP</b> &rarr; unzip it. Make the target folder on the server first:</p>
-    <div class="code"><pre><span class="p">sudo</span> mkdir -p /opt/wastelandz
-<span class="p">sudo</span> chown $USER /opt/wastelandz</pre></div>
-    <p class="muted">Then connect <b>WinSCP</b> (a free tool) to the server and drag the unzipped folder&rsquo;s <i>contents</i> into <code class="inline">/opt/wastelandz</code> — it works like copying between two Explorer windows.</p>
+    <div class="code"><pre><span class="p">sudo</span> mkdir -p /opt/wastelandz_setup
+<span class="p">sudo</span> chown $USER /opt/wastelandz_setup</pre></div>
+    <p class="muted">Then connect <b>WinSCP</b> (a free tool) to the server and drag the unzipped folder&rsquo;s <i>contents</i> into <code class="inline">/opt/wastelandz_setup</code> — it works like copying between two Explorer windows.</p>
   </div>
 
   <div class="step"><span class="n">2</span>
@@ -1644,7 +1644,7 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
 <span class="p">steamcmd</span> +force_install_dir /opt/reforger/server +login anonymous +app_update 1874900 validate +quit</pre></div>
     <div class="note tip"><div class="h">Game updated?</div><p><strong>Updated for 1.8 &mdash; 2026-08-17:</strong> you no longer have to do this by hand. The service file from Part 2 runs SteamCMD before every start, so the server brings itself up to date each time it restarts. That matters because <strong>a server on an older build than its players is unjoinable</strong> &mdash; clients auto-update through Steam whether you do or not. Keep the command above for the first install, and for repairs (the <code class="inline">validate</code> flag re-checks every file &mdash; useful when something is corrupt, too slow to run on every restart).</p></div>
     <p>Drop in the ready-made config from the kit (Wasteland-Z is pre-listed in <code class="inline">mods</code> — it works as-is; open it in <code class="inline">nano</code> later to rename your server — save/exit with <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>):</p>
-    <div class="code"><pre><span class="p">cp</span> /opt/wastelandz/server/server1.json.example /opt/reforger/configs/server1.json</pre></div>
+    <div class="code"><pre><span class="p">cp</span> /opt/wastelandz_setup/server/server1.json.example /opt/reforger/configs/server1.json</pre></div>
     <p class="muted">Don&rsquo;t start it yet — it needs the database and gateway first (Steps 3&ndash;8). Step 9 does the first start.</p>
   </div>
 
@@ -1685,7 +1685,7 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="c"># the running copy gets its own folder</span>
 <span class="p">sudo</span> mkdir -p /opt/wastelandz-gateway
 <span class="p">sudo</span> chown $USER /opt/wastelandz-gateway
-<span class="p">sudo</span> cp -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/
+<span class="p">sudo</span> cp -r /opt/wastelandz_setup/gateway-1.0.18/. /opt/wastelandz-gateway/
 <span class="c"># give the folder back to your user, or the venv cannot write</span>
 <span class="p">sudo</span> chown -R $USER:$USER /opt/wastelandz-gateway
 
@@ -1701,7 +1701,7 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">pip</span> install -r requirements.txt
 
 <span class="c"># give the whole folder (incl. the venv) to the account the service will run as</span>
-<span class="p">sudo</span> chown -R youruser:youruser /opt/wastelandz-gateway</pre></div>
+<span class="p">sudo</span> chown -R $USER:$USER /opt/wastelandz-gateway</pre></div>
     <p class="muted">The <code class="inline">mysql</code> line asks for the <code class="inline">wastelandz</code> password you set in Step 4, then builds the tables &mdash; no output means it worked. The script itself holds <b>no usernames or passwords</b>; you never edit it.</p>
     <div class="note"><div class="h">That <code class="inline">mysql</code> line is a check, not a requirement</div>
     <p>The gateway applies <code class="inline">setup_database.sql</code> itself on <b>every</b> start, so the tables would appear on their own the first time you launch it. It is here because a wrong password is far easier to understand on its own line than buried in the gateway&rsquo;s startup output.</p>
@@ -1768,15 +1768,15 @@ FLUSH PRIVILEGES;</pre></div>
     <h5 class="substep"><span class="lt">b</span> Give it the gateway key</h5>
     <p>Open the secrets file:</p>
     <div class="code"><pre><span class="p">nano</span> /opt/reforger/profiles/server1/profile/hf_wastelandz/configs/HFWastelandZ_secrets.conf</pre></div>
-    <p class="muted">Add a line — <code class="inline">API_KEY</code> then a space then the <b>same gateway key from Step 6</b> (the one in <code class="inline">config.py</code> for this server). Save and exit the same way. A ready-made template ships at <code class="inline">/opt/wastelandz/configs/HFWastelandZ_secrets.conf.example</code>.</p>
+    <p class="muted">Add a line — <code class="inline">API_KEY</code> then a space then the <b>same gateway key from Step 6</b> (the one in <code class="inline">config.py</code> for this server). Save and exit the same way. A ready-made template ships at <code class="inline">/opt/wastelandz_setup/configs/HFWastelandZ_secrets.conf.example</code>.</p>
     <h5 class="substep"><span class="lt">c</span> Add the mission reward templates</h5>
-    <div class="code"><pre><span class="p">cp</span> -r /opt/wastelandz/missions/rewards /opt/reforger/profiles/server1/profile/hf_wastelandz/missions/</pre></div>
+    <div class="code"><pre><span class="p">cp</span> -r /opt/wastelandz_setup/missions/rewards /opt/reforger/profiles/server1/profile/hf_wastelandz/missions/</pre></div>
     <p class="muted">These are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</p>
     <p class="muted">Now start it again (same command). Player data saves to the database — <b>you&rsquo;re live.</b></p>
 
     <h5 class="substep"><span class="lt">+</span> Two optional asides (not required to go live)</h5>
     <div class="note tip"><div class="h">Server name &amp; admin password</div><p>Those aren&rsquo;t HF settings — they live in the Reforger config <code class="inline">server1.json</code> (the <code class="inline">name</code> and <code class="inline">passwordAdmin</code> fields). Change them any time:</p><div class="code"><pre><span class="p">nano</span> /opt/reforger/configs/server1.json</pre></div></div>
-    <div class="note tip"><div class="h">Optional — tune loot / economy later</div><p>To customize loot/economy/etc., rename the kit&rsquo;s <code class="inline">/opt/wastelandz/configs/*.example</code> files (drop <code class="inline">.example</code>) and copy them into the profile&rsquo;s <code class="inline">hf_wastelandz/configs/</code> folder. <code class="inline">configs/README.md</code> documents each one — none of it is needed to go live.</p></div>
+    <div class="note tip"><div class="h">Optional — tune loot / economy later</div><p>To customize loot/economy/etc., rename the kit&rsquo;s <code class="inline">/opt/wastelandz_setup/configs/*.example</code> files (drop <code class="inline">.example</code>) and copy them into the profile&rsquo;s <code class="inline">hf_wastelandz/configs/</code> folder. <code class="inline">configs/README.md</code> documents each one — none of it is needed to go live.</p></div>
     <h5 class="substep"><span class="lt">d</span> Make yourself the admin</h5>
     <p>Do this once it&rsquo;s running. Wasteland-Z admins are keyed by <b>Bohemia Identity GUID</b> &mdash; a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code tied to your Bohemia account. <b>It is NOT your Steam number.</b> There are two ways to find yours:</p>
     <p><b>1) In the game (easiest):</b> launch Arma Reforger, click your <b>profile</b> in the upper-right corner &mdash; your Identity GUID is listed there. Copy it.</p>
@@ -1817,15 +1817,15 @@ WantedBy=multi-user.target</pre></div>
     <p class="muted">That <code class="inline">ExecStart</code> path <b>is</b> the venv — pointing systemd straight at <code class="inline">venv/bin/python</code> runs the gateway inside the venv automatically; you do <b>not</b> <code class="inline">activate</code> it for a service. (A no-venv install uses <code class="inline">/usr/bin/python3</code> instead.) Set <code class="inline">User=</code> to your Linux username, and make sure that user owns <code class="inline">/opt/wastelandz-gateway</code> (the <code class="inline">chown -R</code> from Step 5). Then turn it on — this starts it now <i>and</i> on every reboot:</p>
     <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
 <span class="p">sudo</span> systemctl enable --now wz-gateway</pre></div>
-    <p class="muted">Don&rsquo;t want to type it? The kit ships this file ready-made: copy <code class="inline">/opt/wastelandz/server/wz-gateway.service.example</code> to <code class="inline">/etc/systemd/system/wz-gateway.service</code> and just change <code class="inline">youruser</code>.</p>
+    <p class="muted">Don&rsquo;t want to type it? The kit ships this file ready-made: copy <code class="inline">/opt/wastelandz_setup/server/wz-gateway.service.example</code> to <code class="inline">/etc/systemd/system/wz-gateway.service</code> and just change <code class="inline">youruser</code>.</p>
   </div>
 
   <div class="step"><span class="n">B</span>
     <h4>Make the game server a service</h4>
     <p>Same idea as Step A, but for the game server. (You did its one-time first boot back in Part 1, Step 9 — that generated its config files; this step makes it run permanently in the background.) First make sure your user owns what the server writes to (its <code class="inline">profiles/</code> and <code class="inline">logs/</code>) — needed if you ran any of the install as root:</p>
-    <div class="code"><pre><span class="p">sudo</span> chown -R youruser:youruser /opt/reforger</pre></div>
+    <div class="code"><pre><span class="p">sudo</span> chown -R $USER:$USER /opt/reforger</pre></div>
     <p class="muted">Then drop in the ready-made service file and set your username:</p>
-    <div class="code"><pre><span class="p">sudo</span> cp /opt/wastelandz/server/wz-server1.service.example /etc/systemd/system/wz-server1.service
+    <div class="code"><pre><span class="p">sudo</span> cp /opt/wastelandz_setup/server/wz-server1.service.example /etc/systemd/system/wz-server1.service
 <span class="p">sudo</span> nano /etc/systemd/system/wz-server1.service   <span class="c"># change User=youruser to YOUR username (save: Ctrl+O, Enter, Ctrl+X)</span></pre></div>
 
     <p class="muted"><strong>Now check it before you start it.</strong> These two commands catch the
@@ -1890,7 +1890,7 @@ and everything right of the players is local to the box — nothing exposed.</sp
   <p><b>You install the game once.</b> <code class="inline">/opt/reforger/server/</code> and the shared <code class="inline">workshop/</code> mods folder serve every server. Each extra server is just a <b>config file + profile folder + systemd unit</b> with different numbers. To add server 2:</p>
   <div class="code"><pre><span class="c"># its own config — new ports, its own map, its own name.
 # The kit ships one pre-made (ports 2002/17778 + Arland already set):</span>
-<span class="p">cp</span> /opt/wastelandz/server/server2.json.example /opt/reforger/configs/server2.json
+<span class="p">cp</span> /opt/wastelandz_setup/server/server2.json.example /opt/reforger/configs/server2.json
 <span class="p">nano</span> /opt/reforger/configs/server2.json</pre></div>
   <p class="muted">In <code class="inline">server2.json</code>: set your server <code class="inline">name</code> + admin password (ports <b>2002</b>/<b>17778</b> and the Arland map are pre-set). Save and exit nano: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>. The map is the <code class="inline">scenarioId</code> line — Wasteland-Z runs on top of any Game Master scenario, so a two-server hive can offer two different worlds:</p>
   <div class="code"><pre><span class="c"># server1.json — Everon (the big island):</span>
@@ -1909,7 +1909,7 @@ and everything right of the players is local to the box — nothing exposed.</sp
   <ul class="clean">
     <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 6 command), then <code class="inline">sudo systemctl restart wz-gateway</code> — it now listens on 5000 <i>and</i> 5001.</li>
     <li><b>Wire it:</b> in <code class="inline">/opt/reforger/profiles/server2/profile/hf_wastelandz/configs/</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
-    <li><b>Service:</b> copy the kit&rsquo;s <code class="inline">/opt/wastelandz/server/wz-server2.service.example</code> to <code class="inline">/etc/systemd/system/wz-server2.service</code>, change <code class="inline">youruser</code>, then <code class="inline">sudo systemctl daemon-reload</code> and <code class="inline">sudo systemctl enable --now wz-server2</code>. If <code class="inline">ufw</code> is on, open UDP <b>2002</b> + <b>17778</b>.</li>
+    <li><b>Service:</b> copy the kit&rsquo;s <code class="inline">/opt/wastelandz_setup/server/wz-server2.service.example</code> to <code class="inline">/etc/systemd/system/wz-server2.service</code>, change <code class="inline">youruser</code>, then <code class="inline">sudo systemctl daemon-reload</code> and <code class="inline">sudo systemctl enable --now wz-server2</code>. If <code class="inline">ufw</code> is on, open UDP <b>2002</b> + <b>17778</b>.</li>
   </ul>
 
   <div class="note warn"><div class="h">Each server has its OWN Wasteland-Z config &mdash; edit the right copy</div>
@@ -3091,7 +3091,7 @@ TO:    &lt;profile&gt;/hf_wastelandz/missions/rewards/</pre></div>
 
 <section><div class="wrap">
   <div class="part-head"><span class="part-badge">Update the gateway</span><h2>Five steps. Same every release.</h2></div>
-  <p class="muted">Any file can change in a release, so these steps replace the whole folder every time. The <b>kit</b> is your clone (<code class="inline">/opt/wastelandz</code>, <code class="inline">D:\wastelandz</code>); the <b>gateway folder</b> is what runs (<code class="inline">/opt/wastelandz-gateway</code>, <code class="inline">C:\wastelandz-gateway</code>).</p>
+  <p class="muted">Any file can change in a release, so these steps replace the whole folder every time. The <b>kit</b> is your clone (<code class="inline">/opt/wastelandz_setup</code>, <code class="inline">D:\wastelandz_setup</code>); the <b>gateway folder</b> is what runs (<code class="inline">/opt/wastelandz-gateway</code>, <code class="inline">C:\wastelandz-gateway</code>).</p>
 
   <div class="step"><span class="n">1</span>
     <h4>Stop the gateway and back up the whole folder</h4>
@@ -3111,13 +3111,13 @@ copy C:\wastelandz-gateway\config.py %USERPROFILE%\config.py.bak</pre></div>
     <h4>Get the new kit</h4>
     <p>Make sure you are on the <b>main</b> branch before you pull &mdash; that is what decides which gateway you get.</p>
     <div class="code"><pre><span class="c"># Linux</span>
-cd /opt/wastelandz
+cd /opt/wastelandz_setup
 git checkout main
 git pull
 grep -m1 ^GATEWAY_VERSION gateway-1.0.16/gateway.py
 
 <span class="c"># Windows</span>
-cd D:\wastelandz
+cd D:\wastelandz_setup
 git checkout main
 git pull
 
@@ -3131,10 +3131,10 @@ findstr /b GATEWAY_VERSION gateway-1.0.16\gateway.py</pre></div>
     <h4>Copy every file across</h4>
     <p>Your <code class="inline">config.py</code> is not in the repo, so nothing overwrites it.</p>
     <div class="code"><pre><span class="c"># Linux</span>
-cp -r /opt/wastelandz/gateway-1.0.16/. /opt/wastelandz-gateway/
+cp -r /opt/wastelandz_setup/gateway-1.0.16/. /opt/wastelandz-gateway/
 
 <span class="c"># Windows</span>
-xcopy /E /Y D:\wastelandz\gateway-1.0.16 C:\wastelandz-gateway\</pre></div>
+xcopy /E /Y D:\wastelandz_setup\gateway-1.0.16 C:\wastelandz-gateway\</pre></div>
   </div>
 
   <div class="step"><span class="n">4</span>
@@ -3170,7 +3170,7 @@ pip install -r requirements.txt</pre></div>
   Hive ID:   default
   Database:  localhost:3306/wastelandz
 [GATEWAY] Database connection: OK</pre></div>
-    <p class="muted">Wrong version? You copied from the wrong place &mdash; step 3 must point at the <code class="inline">gateway</code> folder of a <b>main</b>-branch clone. On Linux, watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
+    <p class="muted">Wrong version? You copied from the wrong place &mdash; step 3 must point at the <code class="inline">gateway-1.0.16</code> folder of a <b>main</b>-branch clone. On Linux, watch the live log with <code class="inline">sudo journalctl -u wz-gateway -f</code>.</p>
     <p class="muted">If a release changes the database, the release note says so and gives you the <code class="inline">mysql</code> line. Nothing here runs SQL for you.</p>
   </div>
 
@@ -3281,7 +3281,7 @@ Specifically tell me:
 
   <div class="note warn"><div class="h">Servers in one hive should run the same mods</div>
   <p>Gear is stored as item references. If a player carries an item from a server that has a mod to one that does not, that item cannot be restored there. Since gear is shared hive-wide on this release, keeping one mod set across the hive is what prevents it.</p>
-  <p class="muted">Splitting gear into separate groups while keeping one bank &mdash; and the addon list that lets you compare servers before you do &mdash; arrives with the next release. See the <b>Beta</b> channel.</p></div>
+  <p class="muted">Splitting gear into separate groups while keeping one bank &mdash; and the addon list that lets you compare servers before you do &mdash; arrives with the next release. Select <b>Mod 1.0.18</b> above.</p></div>
 </div></section>
 </main>
 
@@ -3344,6 +3344,11 @@ Specifically tell me:
     <p>The practical meaning: <b>this dump is the only way back to 0.7.1.</b> Without it there is no
     rollback.</p>
     <p>Stop the game server and the gateway first, so nothing is mid-write.</p>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">sudo</span> systemctl stop wz-server1 wz-gateway</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="c">REM close the server window and the gateway window,</span>
+<span class="c">REM or stop the services if you made them</span>
+<span class="p">net</span> stop wz-server1
+<span class="p">net</span> stop wz-gateway</pre></div></div>
 
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM The database. This asks for the DATABASE password - the one in</span>
 <span class="c">REM config.py. Paste it at the prompt; do not type it after -p.</span>
@@ -3396,7 +3401,7 @@ Specifically tell me:
 
     <div class="note"><div class="h">Command line &mdash; curl</div>
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM make the folder once - harmless if it is already there</span>
-<span class="p">mkdir</span> D:\wastelandz
+<span class="p">mkdir</span> D:\wastelandz_setup
 <span class="p">cd</span> /d D:\
 
 <span class="c">REM Windows gets the .zip. Use curl.exe, not the PowerShell alias.</span>
@@ -3405,9 +3410,9 @@ Specifically tell me:
 <span class="c">REM tar here is Microsoft&#39;s own C:\Windows\System32\tar.exe, which reads zip.</span>
 <span class="c">REM --strip-components=1 unpacks straight into the folder, renaming</span>
 <span class="c">REM and deleting nothing.</span>
-<span class="p">tar</span> -xf main.zip --strip-components=1 -C D:\wastelandz</pre></div></div>
+<span class="p">tar</span> -xf main.zip --strip-components=1 -C D:\wastelandz_setup</pre></div></div>
     <div class="os-panel linux"><div class="code"><pre><span class="c"># make the folder once - harmless if it is already there</span>
-<span class="p">sudo</span> mkdir -p /opt/wastelandz
+<span class="p">sudo</span> mkdir -p /opt/wastelandz_setup
 <span class="p">cd</span> /opt
 
 <span class="c"># Linux gets the .tar.gz - tar is on every box, nothing to install</span>
@@ -3416,7 +3421,9 @@ Specifically tell me:
 <span class="c"># unpack STRAIGHT INTO that folder. --strip-components=1 drops the</span>
 <span class="c"># HF_WastelandZ_SETUP-main wrapper, so nothing is renamed and nothing</span>
 <span class="c"># is deleted - your own files in there are left alone.</span>
-<span class="p">sudo</span> tar -xzf main.tar.gz --strip-components=1 -C /opt/wastelandz</pre></div></div>
+<span class="p">sudo</span> tar -xzf main.tar.gz --strip-components=1 -C /opt/wastelandz_setup
+<span class="c"># give the kit back to you so git and your editor can use it</span>
+<span class="p">sudo</span> chown -R $USER:$USER /opt/wastelandz_setup</pre></div></div>
 
     <div class="note warn"><div class="h">Upgrading a kit you installed before 2026-09-20? Check for a leftover folder</div>
     <p>Unpacking <b>updates and adds</b> files. It cannot <b>remove</b> one that was deleted from the
@@ -3426,17 +3433,17 @@ Specifically tell me:
     <p><b>Why that matters:</b> it has the most obvious name of the three. Copy it by mistake and you
     are running gateway 0.7.1 against mod 1.0.18, which only prints a warning while every save fails.</p>
     <p>Look first:</p>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -d /opt/wastelandz/gateway 2&gt;/dev/null &amp;&amp; <span class="p">echo</span> "LEFTOVER - see below"</pre></div></div>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">if</span> exist D:\wastelandz\gateway <span class="p">echo</span> LEFTOVER - see below</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -d /opt/wastelandz_setup/gateway 2&gt;/dev/null &amp;&amp; <span class="p">echo</span> "LEFTOVER - see below"</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">if</span> exist D:\wastelandz_setup\gateway <span class="p">echo</span> LEFTOVER - see below</pre></div></div>
     <p class="muted">Nothing printed means you are clean. If it printed, that folder is not part of the
     kit any more and nothing references it &mdash; you can delete it once you have checked there is
     nothing of your own inside:</p>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -la /opt/wastelandz/gateway
+    <div class="os-panel linux"><div class="code"><pre><span class="p">ls</span> -la /opt/wastelandz_setup/gateway
 <span class="c"># only after you have looked</span>
-<span class="p">sudo</span> rm -rf /opt/wastelandz/gateway</pre></div></div>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wastelandz\gateway
+<span class="p">sudo</span> rm -rf /opt/wastelandz_setup/gateway</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">dir</span> D:\wastelandz_setup\gateway
 <span class="c">REM only after you have looked</span>
-<span class="p">rmdir</span> /S /Q D:\wastelandz\gateway</pre></div></div>
+<span class="p">rmdir</span> /S /Q D:\wastelandz_setup\gateway</pre></div></div>
     <p class="muted">Your running gateway folder is somewhere else entirely and is not affected.</p></div>
     <p class="muted">Windows takes the <code class="inline">.zip</code>, Linux the <code class="inline">.tar.gz</code> &mdash; same commit, the format each system can already open. Both unpack straight into <code class="inline">wastelandz</code>, the name every step below uses, so all three routes end up in the same place.</p>
 
@@ -3454,32 +3461,32 @@ Specifically tell me:
 <span class="p">cd</span> /d D:\
 <span class="p">git</span> clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz
 
-<span class="c">REM you now have D:\wastelandz - go in and look</span>
-<span class="p">cd</span> /d D:\wastelandz
+<span class="c">REM you now have D:\wastelandz_setup - go in and look</span>
+<span class="p">cd</span> /d D:\wastelandz_setup
 <span class="p">dir</span></pre></div></div>
 
     <div class="os-panel linux"><div class="code"><pre><span class="c"># first time only - go to /opt then make the copy</span>
 <span class="p">cd</span> /opt
 <span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git wastelandz
 
-<span class="c"># you now have /opt/wastelandz - go in and look</span>
-<span class="p">cd</span> /opt/wastelandz
+<span class="c"># you now have /opt/wastelandz_setup - go in and look</span>
+<span class="p">cd</span> /opt/wastelandz_setup
 <span class="p">ls</span></pre></div></div>
 
     <p class="muted">You should see <code class="inline">gateway-1.0.16</code>,
     <code class="inline">gateway-1.0.18</code>, <code class="inline">configs</code> and a few others.</p>
 
     <p><b>Every time after that</b>, updating is two lines &mdash; go to that folder and pull:</p>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> /d D:\wastelandz
+    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> /d D:\wastelandz_setup
 <span class="p">git</span> pull</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz
-<span class="p">sudo</span> git pull</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz_setup
+<span class="p">git</span> pull</pre></div></div>
     <p class="muted">If it says <code class="inline">Already up to date.</code> you already have the
     newest files &mdash; that is a success, not an error.</p></div>
 
     <div class="note warn"><div class="h">Check you got the right one, before you copy anything</div>
-<span class="p">findstr</span> /b GATEWAY_VERSION D:\wastelandz\gateway-1.0.18\gateway.py
-<span class="p">grep</span> -m1 ^GATEWAY_VERSION /opt/wastelandz/gateway-1.0.18/gateway.py
+    <div class="os-panel windows"><div class="code"><pre><span class="p">findstr</span> /b GATEWAY_VERSION D:\wastelandz_setup\gateway-1.0.18\gateway.py</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">grep</span> -m1 ^GATEWAY_VERSION /opt/wastelandz_setup/gateway-1.0.18/gateway.py</pre></div></div>
     <p>It must print <code class="inline">GATEWAY_VERSION = "0.9.6"</code>. If it says 0.7.1 you are
     looking at <code class="inline">gateway-1.0.16/</code>, which is the previous release.</p></div>
   </div></div>
@@ -3491,8 +3498,8 @@ Specifically tell me:
     <p><b>Your <code class="inline">config.py</code> is safe.</b> It is not in the repo &mdash; it never was
     &mdash; so there is no copy of it to land on yours. Your password and keys survive untouched.</p>
 
-    <div class="os-panel windows"><div class="code"><pre><span class="p">xcopy</span> /E /Y D:\wastelandz\gateway-1.0.18 D:\wastelandz-gateway\</pre></div></div>
-    <div class="os-panel linux"><div class="code"><pre><span class="p">sudo</span> cp -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/
+    <div class="os-panel windows"><div class="code"><pre><span class="p">xcopy</span> /E /Y D:\wastelandz_setup\gateway-1.0.18 D:\wastelandz-gateway\</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">sudo</span> cp -r /opt/wastelandz_setup/gateway-1.0.18/. /opt/wastelandz-gateway/
 <span class="c"># hand it back to you, or the venv below cannot write</span>
 <span class="p">sudo</span> chown -R $USER:$USER /opt/wastelandz-gateway</pre></div></div>
 
@@ -3511,7 +3518,7 @@ Specifically tell me:
     <h3>Install the requirements &mdash; this is where waitress arrives</h3>
     <p>Run this every time you update, even when nothing looks like it changed. It does nothing when
     nothing is new, and skipping it is how an upgrade half-lands.</p>
-    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> D:\wastelandz-gateway
+    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> /d D:\wastelandz-gateway
 <span class="p">pip</span> install -r requirements.txt</pre></div></div>
     <div class="os-panel linux"><div class="code"><pre><span class="p">cd</span> /opt/wastelandz-gateway
 <span class="c"># the venv from setup - Ubuntu 24.04 blocks system-wide pip</span>
@@ -3529,7 +3536,7 @@ Specifically tell me:
     <code class="inline">HTTP_THREADS</code> in <code class="inline">config.py</code> by hand.</p></div>
 
     <div class="note"><div class="h">Confirm waitress is actually installed</div>
-    <div class="code"><pre><span class="p">pip</span> show waitress</pre></div>
+    <div class="code"><pre><span class="p">venv/bin/pip</span> show waitress</pre></div>
     <p class="muted">A version number means yes. &ldquo;WARNING: Package(s) not found&rdquo; means the
     install did not take &mdash; run the pip line again and read the error.</p></div>
   </div></div>
@@ -3541,7 +3548,7 @@ Specifically tell me:
     <p class="muted">You run no SQL. The gateway applies the schema and the four pending migrations itself,
     and records what it applied so the same change can never run twice.</p>
 
-    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> D:\wastelandz-gateway
+    <div class="os-panel windows"><div class="code"><pre><span class="p">cd</span> /d D:\wastelandz-gateway
 <span class="p">python</span> gateway.py</pre></div>
     <p class="muted">Or double-click <code class="inline">start_gateway.bat</code>, which does the same and
     keeps the window open.</p></div>
@@ -3576,6 +3583,15 @@ Specifically tell me:
   <div class="step"><div class="n">7</div><div class="t">
     <h3>Start the game server and check the upgrade took</h3>
     <p>With the gateway running, start the game server as you normally do.</p>
+    <div class="note tip"><div class="h">Put the gateway back under systemd before you walk away</div>
+    <p>Step 6 ran it in the foreground so you could watch it migrate. That copy dies with your SSH
+    session. Stop it with Ctrl+C, then hand it back to the service:</p>
+    <div class="os-panel linux"><div class="code"><pre><span class="p">sudo</span> systemctl start wz-gateway
+<span class="p">sudo</span> systemctl status wz-gateway --no-pager
+<span class="p">sudo</span> systemctl start wz-server1</pre></div></div>
+    <div class="os-panel windows"><div class="code"><pre><span class="p">net</span> start wz-gateway
+<span class="p">net</span> start wz-server1</pre></div></div>
+    <p class="muted">No service? Then leave the gateway window open &mdash; closing it stops the gateway.</p></div>
     <div class="note tip"><div class="h">Four things to check, in order</div>
     <ul class="clean">
       <li><b>The mismatch warning is gone.</b> No more <code class="inline">GATEWAY VERSION MISMATCH</code>
@@ -3769,7 +3785,7 @@ Specifically tell me:
     <h4>Stop the server</h4>
     <p>Updating files under a running server is how you get a half-patched install.</p>
       <div class="os-panel linux"><div class="code"><pre><span class="c"># stop the game server</span>
-sudo systemctl stop wz-server</pre></div></div>
+sudo systemctl stop wz-server1</pre></div></div>
       <div class="os-panel windows"><div class="code"><pre><span class="c">REM close the server window, or stop the service</span>
 net stop wz-server1</pre></div></div>
   </div>
@@ -3791,7 +3807,7 @@ steamcmd +force_install_dir C:\reforger +login anonymous +app_update 1874900 val
 grep -m1 "version" /opt/reforger/profile/logs/*/console.log
 
 <span class="c"># or watch it boot live</span>
-sudo journalctl -u wz-server -f</pre></div></div>
+sudo journalctl -u wz-server1 -f</pre></div></div>
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM read it out of the newest server log</span>
 findstr /m "version" D:\reforger\profiles\server1\logs\*\console.log
 
@@ -3802,7 +3818,7 @@ findstr /m "version" D:\reforger\profiles\server1\logs\*\console.log
   <div class="step"><span class="n">4</span>
     <h4>Start the server &mdash; the mod updates itself here</h4>
     <p>On start, Reforger pulls the current Wasteland-Z build from the Workshop before loading it. Watch for the mod appearing in the log with its version.</p>
-    <div class="os-panel linux"><div class="code"><pre>sudo systemctl start wz-server</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre>sudo systemctl start wz-server1</pre></div></div>
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM run your start script, or the service if you made one</span>
 cd /d D:\reforger
 start_server1.bat</pre></div></div>
@@ -3866,7 +3882,7 @@ start_server1.bat</pre></div></div>
     <h4>Stop the server</h4>
     <p>Updating files under a running server is how you get a half-patched install.</p>
       <div class="os-panel linux"><div class="code"><pre><span class="c"># stop the game server</span>
-sudo systemctl stop wz-server</pre></div></div>
+sudo systemctl stop wz-server1</pre></div></div>
       <div class="os-panel windows"><div class="code"><pre><span class="c">REM close the server window, or stop the service</span>
 net stop wz-server1</pre></div></div>
   </div>
@@ -3888,7 +3904,7 @@ steamcmd +force_install_dir C:\reforger +login anonymous +app_update 1874900 val
 grep -m1 "version" /opt/reforger/profile/logs/*/console.log
 
 <span class="c"># or watch it boot live</span>
-sudo journalctl -u wz-server -f</pre></div></div>
+sudo journalctl -u wz-server1 -f</pre></div></div>
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM read it out of the newest server log</span>
 findstr /m "version" D:\reforger\profiles\server1\logs\*\console.log
 
@@ -3899,7 +3915,7 @@ findstr /m "version" D:\reforger\profiles\server1\logs\*\console.log
   <div class="step"><span class="n">4</span>
     <h4>Start the server &mdash; the mod updates itself here</h4>
     <p>On start, Reforger pulls the current Wasteland-Z build from the Workshop before loading it. Watch for the mod appearing in the log with its version.</p>
-    <div class="os-panel linux"><div class="code"><pre>sudo systemctl start wz-server</pre></div></div>
+    <div class="os-panel linux"><div class="code"><pre>sudo systemctl start wz-server1</pre></div></div>
     <div class="os-panel windows"><div class="code"><pre><span class="c">REM run your start script, or the service if you made one</span>
 cd /d D:\reforger
 start_server1.bat</pre></div></div>

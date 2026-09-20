@@ -38,7 +38,7 @@ Newest first. "Gateway" is the minimum that release needs.
 
 | Date | Mod | Gateway | What it needed from you |
 |---|---|---|---|
-| *unreleased* | *next* | **0.9.0** | In testing on the `beta` branch. Not on the Workshop. Do not install. **Mod first, then gateway.** |
+| 2026-09-20 | **1.0.18** | **0.9.6** | **Database upgrade.** Back up first - an upgraded database will not accept 0.7.1. The gateway migrates itself; you run no SQL. |
 | 2026-08-26 | 1.0.16 | **0.7.1** | **Security update — re-download the gateway.** See below. |
 | 2026-08-21 | **1.0.16** | 0.7.1 | Nothing. Towing keybinds returned (B sling, R heli start), loose props re-seat. |
 | 2026-08-16 | 1.0.15 | 0.7.1 | **Arma Reforger 1.8.0.10.** The server does not start on older builds. |
@@ -149,8 +149,8 @@ extra `config.py` copy **outside** the folder you are about to overwrite.
 
 **3. Copy the gateway files across**
 
-`sudo cp -r /opt/wastelandz/gateway-1.0.18/. /opt/wastelandz-gateway/` on Linux,
-`xcopy /E /Y D:\wastelandz\gateway-1.0.18 D:\wastelandz-gateway\` on Windows.
+`sudo cp -r /opt/wastelandz_setup/gateway-1.0.18/. /opt/wastelandz-gateway/` on Linux,
+`xcopy /E /Y D:\wastelandz_setup\gateway-1.0.18 D:\wastelandz-gateway\` on Windows.
 
 There is no `config.py` in the repo, so nothing can overwrite yours.
 
