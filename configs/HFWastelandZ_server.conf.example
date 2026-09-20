@@ -1499,3 +1499,118 @@ RESERVED_HIGHRISK_COUNT 8
 # Minimum admin tier that is protected + can bump (20=MOD, 30=ADMIN,
 # 40=OWNER). Tiers come from HFWastelandZ_admins.conf.
 RESERVED_MIN_TIER 20
+
+
+# ============================================================
+# NOTE ON THIS FILE - READ IF A SETTING YOU WANT IS NOT HERE
+# ============================================================
+# This example is a SUBSET. The mod writes the real, complete
+# HFWastelandZ_server.conf into your $profile: directory on its
+# first start, with every setting it supports and the comments
+# explaining each one. That generated file is the authority.
+#
+# As of mod 1.0.19 this example is missing 55 of the mod's 210
+# settings - whole areas including the garage, parachutes,
+# stamina, towing, vehicle despawn timers and the hive dashboard.
+# They are all present and documented in the file the mod writes.
+#
+# So: start your server once, then edit the file it generated.
+# Use this example to read ahead, not as the complete list.
+
+# ============================================================
+# BASE BUILDING - SUPPLIES
+# ============================================================
+# Players build from a construction vehicle and pay for what
+# they place in SUPPLIES. Every buildable already carries its
+# own price (10 to 300 depending on the piece) - you do not
+# price them here, you scale them.
+#
+# All of these can also be changed live, in game, from
+# F8 -> SETUP -> SUPPLY CONFIG. A change made there is written
+# straight back into this file.
+
+# Master switch for the whole base building supply system.
+# 0 = building does not consume supplies.
+# Default: 1 (on)
+BASE_BUILD_ENABLED 1
+
+# Multiplier on every buildable's supply price.
+# 1.0 = the price the piece ships with, 0.5 = half price,
+# 2.0 = double, 0 = everything is free.
+# Range 0 to 5. Default: 1.0
+BASE_BUILD_COST_MULT 1.0
+
+# How far from the construction vehicle a supply crate can sit
+# and still be spent.
+# 0 = the supplies must be LOADED INTO the vehicle. Above 0 is
+# a radius in metres around it, so a crate parked next to the
+# vehicle counts.
+# Range 0 to 100. Default: 0 (must be aboard)
+BASE_BUILD_SUPPLY_RANGE_M 0
+
+# Whether completing a mission can reward a stack of supplies.
+# Turn this off if supplies should only come from the store or
+# from an admin.
+# Default: 1 (on)
+BASE_BUILD_MISSION_DROPS 1
+
+# Whether a player can lock a structure they built, so other
+# players cannot use or dismantle it.
+# Default: 1 (on)
+BASE_BUILD_LOCK_ENABLED 1
+
+# How long a lock holds before it expires, in seconds.
+# 3600 = 1 hour, 86400 = 1 day, 604800 = 7 days (the maximum).
+# 0 = the lock never expires on its own.
+# Default: 86400 (24 hours, same as a locked loot crate)
+BASE_BUILD_LOCK_DURATION_SEC 86400
+
+# Whether structures from the base building list spawn with their
+# arsenal and medical boxes. Those boxes hand out gear for free,
+# and that gear can be sold at a store.
+# 0 = the boxes are left out when the structure is built.
+# 1 = structures spawn exactly as the game ships them.
+# Default: 0 (off)
+BASE_BUILD_ARSENAL_BOXES 0
+
+# ---------------------------------------------------------------
+# BUILD CAPS. All three are -1 by default, which means UNLIMITED,
+# so nothing changes on an existing server until you set them.
+#
+# These count what is STANDING. A structure that is dismantled
+# OR destroyed gives its allowance back. The supplies it cost are
+# gone either way - only the allowance returns, so a long war
+# cannot slowly lock every faction out of building.
+#
+# The allowance goes back to whoever BUILT it, not whoever tore
+# it down. Wrecking an enemy base frees THEIR budget, and the
+# refund crate BI drops is a separate, physical thing you still
+# need a construction vehicle to spend.
+# ---------------------------------------------------------------
+
+# How many separate structures ONE faction may have standing.
+# This counts pieces, not supplies, so you can stop the map
+# filling up without touching what anything costs.
+# 0 = that faction cannot build at all. -1 = unlimited.
+# Default: -1
+BASE_BUILD_MAX_PARTS -1
+
+# How many separate structures may stand on the map, EVERY
+# faction added together. The server runs one map at a time,
+# so this is the structure limit for the map.
+# 0 = nobody can build at all. -1 = unlimited.
+# Default: -1
+BASE_BUILD_SERVER_MAX_PARTS -1
+
+# How many supplies' worth of standing structure ONE faction
+# may hold. For scale: a guard tower is 240, a sandbag wall 40.
+# So 2400 is roughly ten guard towers.
+# 0 = that faction cannot build at all. -1 = unlimited.
+# Default: -1
+BASE_BUILD_FACTION_SUPPLY_CAP -1
+
+# The same, counting every faction together. Use this to cap the
+# whole server regardless of how the factions split it up.
+# -1 = unlimited.
+# Default: -1
+BASE_BUILD_SERVER_SUPPLY_CAP -1
