@@ -1,13 +1,46 @@
-# Secrets — never commit
-gateway/config.py
+# =========================================================================
+# THIS REPO IS PUBLIC. Nothing here may carry a credential.
+# =========================================================================
+# The gateway's real settings live in config.py: the database password and
+# every server's API key. Only config.example.py, which ships placeholders,
+# belongs in the repo.
+#
+# Matched by pattern, not by path, so a new per-release kit -
+# gateway-1.0.16/, gateway-1.0.18/, or whatever ships next - is covered the
+# moment it is created. A path-literal rule covered only gateway/ and left
+# the per-release folders open.
+#
+# The gateway itself writes timestamped config.py.bak-<stamp> copies when it
+# maintains the file, and Windows leaves "config - Copy.py" behind. Both hold
+# the same secrets as the original, so both are matched.
+gateway*/config*
+!gateway*/config.example.py
+config.py
+config*.bak-*
+config - Copy.py
 
-# Local database scratch files
-*.db
+# Server-side secrets an admin may leave next to the kit while setting up.
+# HFWastelandZ_secrets.conf holds the API key that pairs with config.py.
+*secrets.conf
+!*secrets.conf.example
 
-# Python
+# Database dumps. The backup step in the upgrade guide writes these into
+# whatever directory the admin happens to be standing in, which is often the
+# kit. A dump is the entire player database in plain text.
+*.sql.gz
+*.sql.bz2
+*-backup-*.sql
+wastelandz*.sql
+
+# Local Python noise
 __pycache__/
 *.py[cod]
+*.egg-info/
+.venv/
+venv/
 
-# OS junk
+# Local databases and OS clutter
+*.db
 Thumbs.db
 .DS_Store
+desktop.ini
