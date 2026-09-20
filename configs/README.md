@@ -38,7 +38,11 @@ but you have to fill them in before your server is usable:
    `config.py`). See `HFWastelandZ_secrets.conf.example` for the key-generation
    command.
 2. **`HFWastelandZ_admins.conf`** — generated empty, so nobody is an admin
-   until you add your Steam64 ID. See `HFWastelandZ_admins.conf.example`.
+   until you add your **Bohemia Identity GUID** — a lowercase
+   `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` code, **not** your Steam64
+   number. Find it on your profile in-game (upper right), or as the
+   `identityId=` value in the server log when you join. See
+   `HFWastelandZ_admins.conf.example`.
 
 ## Why the kit still ships `.example` files
 
@@ -59,8 +63,8 @@ it in `hf_wastelandz/configs/`.
 |---|---|
 | `HFWastelandZ_server.conf.example` | **The master settings file** — economy, loot density, vehicles, towns, spawn rules, map markers, HVT, resupply pricing, debug logging. Start here. |
 | `HFWastelandZ_secrets.conf.example` | The gateway API key. The only file with a password in it — never share it. |
-| `HFWastelandZ_admins.conf.example` | Staff roster — Steam64 ID → role (TRUSTED / MOD / ADMIN / OWNER). |
-| `HFWastelandZ_blacklist.conf.example` | Banned players. |
+| `HFWastelandZ_admins.conf.example` | Staff roster — **Bohemia Identity GUID** → role (TRUSTED / MOD / ADMIN / OWNER). Not a Steam64 number. |
+| `HFWastelandZ_blacklist.conf.example` | Banned players — keyed by **Steam64 ID**, unlike `admins.conf`. The two files use different identifiers on purpose; do not copy an ID between them. |
 | `HFWastelandZ_command_tiers.conf.example` | Which role each chat/admin command requires. |
 | `HFWastelandZ_loadouts.conf.example` | Faction starting loadouts — what a fresh spawn carries. |
 | `HFWastelandZ_general_catalog.conf.example` | General-store catalog — items and prices. |
