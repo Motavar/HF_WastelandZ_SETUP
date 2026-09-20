@@ -338,10 +338,10 @@
   </div>
 </div>
 
+<div class="os-bar"><div class="wrap"><span class="label">Choose your system</span><div class="seg" role="tablist" aria-label="Operating system"><button role="tab" data-os="linux" aria-selected="true">Linux</button><button role="tab" data-os="windows" aria-selected="false">Windows</button></div><span class="spacer"></span><span class="label" style="opacity:.75">Commands below switch with this.</span></div></div>
 <main class="view view-server chan production">
 <div class="hero"><div class="wrap">
   <div class="eyebrow">Wasteland-Z &middot; Dedicated Server</div>
-<div class="os-bar"><div class="wrap"><span class="label">Choose your system</span><div class="seg" role="tablist" aria-label="Operating system"><button role="tab" data-os="linux" aria-selected="true">Linux</button><button role="tab" data-os="windows" aria-selected="false">Windows</button></div><span class="spacer"></span><span class="label" style="opacity:.75">Commands below switch with this.</span></div></div>
   <h1>Set up your server, step by step.</h1>
   <p class="lede">Everything, in the order you run it — install the Arma Reforger server, make the database, start the gateway, and wire them together with simple start/stop scripts. No prior server experience needed. Pick your operating system below and follow the numbered steps.</p>
 </div></div>
@@ -422,14 +422,6 @@
   </div>
 </div></section>
 
-<div class="os-bar"><div class="wrap">
-  <span class="label">Choose your system</span>
-  <div class="seg" role="tablist" aria-label="Operating system">
-    <button role="tab" data-os="windows" aria-selected="false">Windows</button>
-    <button role="tab" data-os="linux" aria-selected="true">Linux</button>
-  </div>
-  <span class="spacer"></span>
-</div></div>
 
 <!-- ================= WINDOWS ================= -->
 <div class="os-panel windows">
@@ -1279,14 +1271,6 @@ admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></d
   </div>
 </div></section>
 
-<div class="os-bar"><div class="wrap">
-  <span class="label">Choose your system</span>
-  <div class="seg" role="tablist" aria-label="Operating system">
-    <button role="tab" data-os="windows" aria-selected="false">Windows</button>
-    <button role="tab" data-os="linux" aria-selected="true">Linux</button>
-  </div>
-  <span class="spacer"></span>
-</div></div>
 
 <!-- ================= WINDOWS ================= -->
 <div class="os-panel windows">
@@ -3240,13 +3224,6 @@ Specifically tell me:
     &mdash; a tiny file means mysqldump failed and printed the reason above the prompt.</p>
     <p class="muted"><b>Write down that folder path.</b> If anything goes wrong later, this is what you
     restore from, and it is the only way back to gateway 0.7.1.</p></div>
-    <div class="note warn"><div class="h">Why the folder is named after today</div>
-    <p>A backup command with a fixed filename <b>overwrites the last one without asking</b>. That matters
-    more than it sounds: if a first attempt goes wrong and you run the backup again, the database has
-    already been upgraded &mdash; so the second dump is a copy of the <i>upgraded</i> database, written
-    straight over the only copy of the original.</p>
-    <p>A new folder per day cannot do that. If the folder already exists, add the time to the name
-    (<code class="inline">2026-09-20-1830</code>) rather than reusing it.</p></div>
   </div></div>
 
   <div class="step"><div class="n">3</div><div class="t">
