@@ -504,7 +504,7 @@ FLUSH PRIVILEGES;</pre></div>
     <p>Prove the database and password you just made actually work, before anything depends on them. Open a normal <b>Command Prompt</b>, go to the folder where you unzipped this download, and run:</p>
     <div class="code"><pre><span class="p">mysql</span> -u wastelandz -p wastelandz &lt; gateway-1.0.16\setup_database.sql</pre></div>
     <p class="muted">It asks for the <code class="inline">wastelandz</code> password (from Step 2). <b>No error message means it worked</b> &mdash; and it built the tables while it was there.</p>
-    <div class="note"><div class="h">You are not required to run this</div>
+    <div class="note"><div class="h">You DO have to run this on 1.0.16</div>
     <p>On this release the gateway does <b>not</b> create tables, so this step is required &mdash; it is what builds them. Running it twice is harmless: the file only ever adds.</p>
     <p class="muted">Running it and letting the gateway run it are the same thing &mdash; the file is written so that running it twice changes nothing. There is no first-time-only path to get wrong.</p></div>
   </div>
@@ -691,7 +691,8 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <h4>Get the files onto the server</h4>
     <p>Everything in this kit is one GitHub repo. Two ways to get it onto the Linux box — pick one:</p>
     <p><b>Option A — git (recommended).</b> One command pulls the whole kit straight onto the server; updating later is one more command. On the server:</p>
-    <div class="code"><pre><span class="p">sudo</span> apt install -y git
+    <div class="code"><pre><span class="p">sudo</span> apt update
+<span class="p">sudo</span> apt install -y git
 <span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz_setup
 <span class="p">sudo</span> chown -R $USER /opt/wastelandz_setup</pre></div>
     <p class="muted">Get updates later with: <code class="inline">cd /opt/wastelandz_setup</code> then <code class="inline">git pull</code></p>
@@ -796,6 +797,8 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="p">python3</span> -c "import secrets; print(secrets.token_hex(32))"</pre></div>
     <p>Now copy the template to the real settings file and open it in <b>nano</b>:</p>
     <div class="code"><pre><span class="p">cp</span> config.example.py config.py
+<span class="c"># it holds your DB password and API keys - keep it to yourself</span>
+<span class="p">chmod</span> 600 config.py
 <span class="p">nano</span> config.py</pre></div>
     <p class="muted">Set <code class="inline">DB_PASSWORD</code> to your Step 4 password, and set <code class="inline">api_key</code> — the <b>GATEWAY KEY</b>, shown in the file as <code class="inline">CHANGE_ME_UNIQUE_KEY_1</code> — to the key you just generated. <b>Each server needs its own unique gateway key.</b> Leave <code class="inline">host</code> as <code class="inline">127.0.0.1</code> and <code class="inline">port</code> as <code class="inline">5000</code>. Save in nano: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>.</p>
     <div class="note danger"><div class="h">Keep it private</div><p><code class="inline">config.py</code> holds your password and key. Never share it or upload it anywhere public.</p></div>
@@ -843,6 +846,16 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="p">cp</span> -r /opt/wastelandz_setup/missions/rewards /opt/reforger/profiles/server1/profile/hf_wastelandz/missions/</pre></div>
     <p class="muted">These are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</p>
     <p class="muted">Now start it again (same command). Player data saves to the database — <b>you&rsquo;re live.</b></p>
+    <div class="note warn"><div class="h">Is the gateway actually running?</div>
+    <p>You started it once by hand and stopped it with Ctrl+C. Unless you have already done
+    <b>Part 2 Step A</b>, it is <b>not running now</b> &mdash; and the mod saves nothing without it.</p>
+    <div class="code"><pre><span class="c"># is it up?</span>
+<span class="p">curl</span> http://127.0.0.1:5000/api/ping
+
+<span class="c"># nothing back? start the service now (Part 2 Step A creates it)</span>
+<span class="p">sudo</span> systemctl enable --now wz-gateway
+<span class="p">sudo</span> systemctl status wz-gateway --no-pager</pre></div>
+    <p class="muted">Correct order, every time: <b>mysql &rarr; wz-gateway &rarr; wz-server1</b>.</p></div>
 
     <h5 class="substep"><span class="lt">+</span> Two optional asides (not required to go live)</h5>
     <div class="note tip"><div class="h">Server name &amp; admin password</div><p>Those aren&rsquo;t HF settings — they live in the Reforger config <code class="inline">server1.json</code> (the <code class="inline">name</code> and <code class="inline">passwordAdmin</code> fields). Change them any time:</p><div class="code"><pre><span class="p">nano</span> /opt/reforger/configs/server1.json</pre></div></div>
@@ -944,7 +957,8 @@ grep -n <span class="s">"User"</span> /etc/systemd/system/wz-server1.service    
   </div>
 
   <h3>Back up your data (do this regularly)</h3>
-  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wastelandz_backup_$(date +%F).sql</pre></div>
+  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; ~/wastelandz_backup_$(date +%F).sql
+<span class="p">chmod</span> 600 ~/wastelandz_backup_$(date +%F).sql</pre></div>
   <p class="muted">That file is your whole server&rsquo;s save — keep copies somewhere safe.</p>
 
   <hr class="rule">
@@ -1054,7 +1068,7 @@ MemoryMax=32G</pre></div>
   <h5 class="substep"><span class="lt">3</span> Apply</h5>
   <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
 <span class="p">sudo</span> systemctl restart wz-server1 wz-server2</pre></div>
-  <p class="muted"><code class="inline">CPUAffinity</code> = &ldquo;this service may only run on these cores.&rdquo; <code class="inline">MemoryMax</code> = if the server ever leaks past the cap, systemd kills <i>it</i> (and <code class="inline">Restart=on-failure</code> brings it right back) instead of the box dying. Leave the gateway and <code class="inline">mysql</code> <b>unpinned</b> — they&rsquo;re lightweight and slot into whatever&rsquo;s idle. Verify with <code class="inline">htop</code>: each server&rsquo;s load stays inside its own core block. One core pegged at 100% while its neighbours idle is the engine&rsquo;s normal single-thread ceiling, not a problem to fix — the levers for a struggling full server are <code class="inline">aiLimit</code> in <code class="inline">serverN.json</code> and Wasteland-Z&rsquo;s mission/AI density settings.</p>
+  <p class="muted"><code class="inline">CPUAffinity</code> = &ldquo;this service may only run on these cores.&rdquo; <code class="inline">MemoryMax</code> = if the server ever leaks past the cap, systemd kills <i>it</i> (and <code class="inline">Restart=on-failure</code> brings it right back) instead of the box dying. Leave the gateway and <code class="inline">mysql</code> <b>unpinned</b> — they&rsquo;re lightweight and slot into whatever&rsquo;s idle. Verify with <code class="inline">top</code> (or <code class="inline">sudo apt install -y htop</code>): each server&rsquo;s load stays inside its own core block. One core pegged at 100% while its neighbours idle is the engine&rsquo;s normal single-thread ceiling, not a problem to fix — the levers for a struggling full server are <code class="inline">aiLimit</code> in <code class="inline">serverN.json</code> and Wasteland-Z&rsquo;s mission/AI density settings.</p>
   <p><b>Cheat-sheet: 1&ndash;4 servers on a 16-core box</b> (two 8-core groups; CPU numbers per the usual AMD layout — verify yours with <code class="inline">lscpu -e</code>, Step 1):</p>
   <div class="tablewrap"><table class="rtab">
     <tr><th>Setup</th><th>Server &amp; players</th><th>CPUAffinity=</th><th>MemoryMax=</th></tr>
@@ -1069,7 +1083,7 @@ MemoryMax=32G</pre></div>
     <tr><td><span class="role">wz-server3</span> · 64</td><td><span class="role">8-11 24-27</span></td><td><span class="role">24G</span></td></tr>
     <tr><td><span class="role">wz-server4</span> · 64</td><td><span class="role">12-15 28-31</span></td><td><span class="role">24G</span></td></tr>
   </table></div>
-  <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole group each (max cache per server). 4 servers &rarr; half a group (4 cores) each — plenty at 32&ndash;64 players, and no server ever spans both groups. 3 servers is the awkward count: keep the two big ones on their own groups and let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch <code class="inline">htop</code> on busy nights and adjust <code class="inline">aiLimit</code> before touching the core map. RAM: even the 4-server row uses under half of a 128&nbsp;GB box.</p>
+  <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole group each (max cache per server). 4 servers &rarr; half a group (4 cores) each — plenty at 32&ndash;64 players, and no server ever spans both groups. 3 servers is the awkward count: keep the two big ones on their own groups and let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch <code class="inline">top</code> on busy nights and adjust <code class="inline">aiLimit</code> before touching the core map. RAM: even the 4-server row uses under half of a 128&nbsp;GB box.</p>
   <p class="muted"><b>Different CPU?</b> Step 1 tells you the truth about any chip. If every row&rsquo;s last digit is <code class="inline">0</code>, your chip is <b>one group</b> (most older Intels, e.g. an i9-9900K): there&rsquo;s no favourite to pick — split the cores in half (first half + their twins to server 1, the rest to server 2) and expect lower comfortable player caps on older chips. Newer Intels (12th&nbsp;gen up, e.g. an i7-13700K) mix fast <b>P-cores</b> and small <b>E-cores</b> — in <code class="inline">lscpu -e</code> the P-cores appear <i>twice</i> (they have twins), E-cores <i>once</i>. Pin game servers to P-cores only and leave the E-cores unpinned — they carry the gateway, MySQL and the system.</p>
 
   <h3>Troubleshooting</h3>
@@ -1618,7 +1632,8 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <h4>Get the files onto the server</h4>
     <p>Everything in this kit is one GitHub repo. Two ways to get it onto the Linux box — pick one:</p>
     <p><b>Option A — git (recommended).</b> One command pulls the whole kit straight onto the server; updating later is one more command. On the server:</p>
-    <div class="code"><pre><span class="p">sudo</span> apt install -y git
+    <div class="code"><pre><span class="p">sudo</span> apt update
+<span class="p">sudo</span> apt install -y git
 <span class="p">sudo</span> git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git /opt/wastelandz_setup
 <span class="p">sudo</span> chown -R $USER /opt/wastelandz_setup</pre></div>
     <p class="muted">Get updates later with: <code class="inline">cd /opt/wastelandz_setup</code> then <code class="inline">git pull</code></p>
@@ -1645,6 +1660,15 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <div class="note tip"><div class="h">Game updated?</div><p><strong>Updated for 1.8 &mdash; 2026-08-17:</strong> you no longer have to do this by hand. The service file from Part 2 runs SteamCMD before every start, so the server brings itself up to date each time it restarts. That matters because <strong>a server on an older build than its players is unjoinable</strong> &mdash; clients auto-update through Steam whether you do or not. Keep the command above for the first install, and for repairs (the <code class="inline">validate</code> flag re-checks every file &mdash; useful when something is corrupt, too slow to run on every restart).</p></div>
     <p>Drop in the ready-made config from the kit (Wasteland-Z is pre-listed in <code class="inline">mods</code> — it works as-is; open it in <code class="inline">nano</code> later to rename your server — save/exit with <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>):</p>
     <div class="code"><pre><span class="p">cp</span> /opt/wastelandz_setup/server/server1.json.example /opt/reforger/configs/server1.json</pre></div>
+    <div class="note warn"><div class="h">Before you start the server &mdash; keep saving OFF</div>
+    <p>That file ships a <code class="inline">missionHeader</code> block with
+    <code class="inline">"m_eSaveTypes": 0</code> and
+    <code class="inline">"m_bIsSavingEnabled": false</code>. <b>Leave both as they are.</b></p>
+    <p>With the game’s own saving on, the engine restores a saved copy of the world on start and
+    Wasteland-Z then builds the world again on top of it &mdash; <b>two of everything</b>. The symptom
+    admins report first is <b>every town listed twice</b>. Nothing is lost by leaving it off: money,
+    bank, gear, position and vehicles all live in your database.</p>
+    <p class="muted">Full detail in <b>The mission header</b> further down this page.</p></div>
     <p class="muted">Don&rsquo;t start it yet — it needs the database and gateway first (Steps 3&ndash;8). Step 9 does the first start.</p>
   </div>
 
@@ -1726,6 +1750,8 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="p">python3</span> -c "import secrets; print(secrets.token_hex(32))"</pre></div>
     <p>Now copy the template to the real settings file and open it in <b>nano</b>:</p>
     <div class="code"><pre><span class="p">cp</span> config.example.py config.py
+<span class="c"># it holds your DB password and API keys - keep it to yourself</span>
+<span class="p">chmod</span> 600 config.py
 <span class="p">nano</span> config.py</pre></div>
     <p class="muted">Set <code class="inline">DB_PASSWORD</code> to your Step 4 password, and set <code class="inline">api_key</code> — the <b>GATEWAY KEY</b>, shown in the file as <code class="inline">CHANGE_ME_UNIQUE_KEY_1</code> — to the key you just generated. <b>Each server needs its own unique gateway key.</b> Leave <code class="inline">host</code> as <code class="inline">127.0.0.1</code> and <code class="inline">port</code> as <code class="inline">5000</code>. Save in nano: <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>.</p>
     <div class="note danger"><div class="h">Keep it private</div><p><code class="inline">config.py</code> holds your password and key. Never share it or upload it anywhere public.</p></div>
@@ -1773,6 +1799,16 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="code"><pre><span class="p">cp</span> -r /opt/wastelandz_setup/missions/rewards /opt/reforger/profiles/server1/profile/hf_wastelandz/missions/</pre></div>
     <p class="muted">These are the loot crates and vehicles missions hand out. (Missions themselves are built in-game — see <code class="inline">missions/README.md</code>.)</p>
     <p class="muted">Now start it again (same command). Player data saves to the database — <b>you&rsquo;re live.</b></p>
+    <div class="note warn"><div class="h">Is the gateway actually running?</div>
+    <p>You started it once by hand and stopped it with Ctrl+C. Unless you have already done
+    <b>Part 2 Step A</b>, it is <b>not running now</b> &mdash; and the mod saves nothing without it.</p>
+    <div class="code"><pre><span class="c"># is it up?</span>
+<span class="p">curl</span> http://127.0.0.1:5000/api/ping
+
+<span class="c"># nothing back? start the service now (Part 2 Step A creates it)</span>
+<span class="p">sudo</span> systemctl enable --now wz-gateway
+<span class="p">sudo</span> systemctl status wz-gateway --no-pager</pre></div>
+    <p class="muted">Correct order, every time: <b>mysql &rarr; wz-gateway &rarr; wz-server1</b>.</p></div>
 
     <h5 class="substep"><span class="lt">+</span> Two optional asides (not required to go live)</h5>
     <div class="note tip"><div class="h">Server name &amp; admin password</div><p>Those aren&rsquo;t HF settings — they live in the Reforger config <code class="inline">server1.json</code> (the <code class="inline">name</code> and <code class="inline">passwordAdmin</code> fields). Change them any time:</p><div class="code"><pre><span class="p">nano</span> /opt/reforger/configs/server1.json</pre></div></div>
@@ -1874,7 +1910,8 @@ grep -n <span class="s">"User"</span> /etc/systemd/system/wz-server1.service    
   </div>
 
   <h3>Back up your data (do this regularly)</h3>
-  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wastelandz_backup_$(date +%F).sql</pre></div>
+  <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; ~/wastelandz_backup_$(date +%F).sql
+<span class="p">chmod</span> 600 ~/wastelandz_backup_$(date +%F).sql</pre></div>
   <p class="muted">That file is your whole server&rsquo;s save — keep copies somewhere safe.</p>
 
   <hr class="rule">
@@ -1984,7 +2021,7 @@ MemoryMax=32G</pre></div>
   <h5 class="substep"><span class="lt">3</span> Apply</h5>
   <div class="code"><pre><span class="p">sudo</span> systemctl daemon-reload
 <span class="p">sudo</span> systemctl restart wz-server1 wz-server2</pre></div>
-  <p class="muted"><code class="inline">CPUAffinity</code> = &ldquo;this service may only run on these cores.&rdquo; <code class="inline">MemoryMax</code> = if the server ever leaks past the cap, systemd kills <i>it</i> (and <code class="inline">Restart=on-failure</code> brings it right back) instead of the box dying. Leave the gateway and <code class="inline">mysql</code> <b>unpinned</b> — they&rsquo;re lightweight and slot into whatever&rsquo;s idle. Verify with <code class="inline">htop</code>: each server&rsquo;s load stays inside its own core block. One core pegged at 100% while its neighbours idle is the engine&rsquo;s normal single-thread ceiling, not a problem to fix — the levers for a struggling full server are <code class="inline">aiLimit</code> in <code class="inline">serverN.json</code> and Wasteland-Z&rsquo;s mission/AI density settings.</p>
+  <p class="muted"><code class="inline">CPUAffinity</code> = &ldquo;this service may only run on these cores.&rdquo; <code class="inline">MemoryMax</code> = if the server ever leaks past the cap, systemd kills <i>it</i> (and <code class="inline">Restart=on-failure</code> brings it right back) instead of the box dying. Leave the gateway and <code class="inline">mysql</code> <b>unpinned</b> — they&rsquo;re lightweight and slot into whatever&rsquo;s idle. Verify with <code class="inline">top</code> (or <code class="inline">sudo apt install -y htop</code>): each server&rsquo;s load stays inside its own core block. One core pegged at 100% while its neighbours idle is the engine&rsquo;s normal single-thread ceiling, not a problem to fix — the levers for a struggling full server are <code class="inline">aiLimit</code> in <code class="inline">serverN.json</code> and Wasteland-Z&rsquo;s mission/AI density settings.</p>
   <p><b>Cheat-sheet: 1&ndash;4 servers on a 16-core box</b> (two 8-core groups; CPU numbers per the usual AMD layout — verify yours with <code class="inline">lscpu -e</code>, Step 1):</p>
   <div class="tablewrap"><table class="rtab">
     <tr><th>Setup</th><th>Server &amp; players</th><th>CPUAffinity=</th><th>MemoryMax=</th></tr>
@@ -1999,7 +2036,7 @@ MemoryMax=32G</pre></div>
     <tr><td><span class="role">wz-server3</span> · 64</td><td><span class="role">8-11 24-27</span></td><td><span class="role">24G</span></td></tr>
     <tr><td><span class="role">wz-server4</span> · 64</td><td><span class="role">12-15 28-31</span></td><td><span class="role">24G</span></td></tr>
   </table></div>
-  <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole group each (max cache per server). 4 servers &rarr; half a group (4 cores) each — plenty at 32&ndash;64 players, and no server ever spans both groups. 3 servers is the awkward count: keep the two big ones on their own groups and let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch <code class="inline">htop</code> on busy nights and adjust <code class="inline">aiLimit</code> before touching the core map. RAM: even the 4-server row uses under half of a 128&nbsp;GB box.</p>
+  <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole group each (max cache per server). 4 servers &rarr; half a group (4 cores) each — plenty at 32&ndash;64 players, and no server ever spans both groups. 3 servers is the awkward count: keep the two big ones on their own groups and let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch <code class="inline">top</code> on busy nights and adjust <code class="inline">aiLimit</code> before touching the core map. RAM: even the 4-server row uses under half of a 128&nbsp;GB box.</p>
   <p class="muted"><b>Different CPU?</b> Step 1 tells you the truth about any chip. If every row&rsquo;s last digit is <code class="inline">0</code>, your chip is <b>one group</b> (most older Intels, e.g. an i9-9900K): there&rsquo;s no favourite to pick — split the cores in half (first half + their twins to server 1, the rest to server 2) and expect lower comfortable player caps on older chips. Newer Intels (12th&nbsp;gen up, e.g. an i7-13700K) mix fast <b>P-cores</b> and small <b>E-cores</b> — in <code class="inline">lscpu -e</code> the P-cores appear <i>twice</i> (they have twins), E-cores <i>once</i>. Pin game servers to P-cores only and leave the E-cores unpinned — they carry the gateway, MySQL and the system.</p>
 
   <h3>Troubleshooting</h3>
@@ -3993,12 +4030,6 @@ start_server1.bat</pre></div></div>
 [GATEWAY] Database connection: OK</pre></div>
   <p class="muted">On this release the gateway does not create or update tables &mdash; you run <code class="inline">setup_database.sql</code> yourself during setup. If it says <b>v0.9.0</b>, you have the beta gateway installed; see the mismatch entry above.</p></div>
 
-  <div class="note warn"><div class="h">Symptom: <code class="inline">REFUSING TO START</code> &mdash; schema is INCOMPLETE</div>
-  <p><b>Cause:</b> a database change that <b>removes</b> something is waiting, and the gateway never applies those unattended. It stops rather than serve a half-updated database, because a half-updated database is how an upgrade turns into lost data.</p>
-  <p><b>Fix:</b> the message names the exact command. It will be:</p>
-  <div class="code"><pre>python gateway.py --allow-destructive</pre></div>
-  <p>A backup is taken automatically before anything is removed, and if that backup cannot be written the change is refused instead. <b>Back up first anyway.</b></p>
-  <p class="muted">Normal upgrades never hit this &mdash; they only ever add. If you see it without having been told to expect it in a release note, ask before running it.</p></div>
 
   <div class="note warn"><div class="h">Symptom: <code class="inline">REFUSING TO START</code> &mdash; the gateway is older than the database</div>
   <p><b>Cause:</b> you rolled the gateway back further than the database. An older gateway writing to a newer database corrupts data quietly, so it refuses loudly instead.</p>
@@ -4015,11 +4046,11 @@ start_server1.bat</pre></div></div>
 
   <div class="note warn"><div class="h">Symptom: requests fail in bursts &mdash; typically right after a restart</div>
   <p><b>Cause:</b> this release serves HTTP on the development server Flask provides, which starts dropping requests when a lot arrive at once &mdash; such as a full server reconnecting after a restart. A dropped save is a lost save.</p>
-  <p><b>Fix:</b> there is no fix on this release; stagger restarts if you can. A production HTTP server ships with the next release and removes this ceiling.</p></div>
+  <p><b>Fix:</b> there is no fix on this release; stagger restarts if you can. A production HTTP server ships with mod 1.0.18 / gateway 0.9.6 and removes this ceiling.</p></div>
 
   <div class="note warn"><div class="h">Symptom: HTTP 503 <code class="inline">database unavailable</code> under load</div>
   <p><b>Cause:</b> the connection pool is exhausted. The gateway lends one database connection per in-flight request.</p>
-  <p><b>Fix:</b> keep <code class="inline">HTTP_THREADS &times; number_of_servers &le; DB_POOL_SIZE</code>. With the maximum <code class="inline">DB_POOL_SIZE</code> of 32: 2 servers &rarr; 16 threads, 6 servers &rarr; 5, 10 servers &rarr; 3, 16+ &rarr; 2. The gateway warns at startup when these do not line up.</p></div>
+  <p><b>Fix on 1.0.16:</b> stagger your restarts. Gateway 0.7.1 has no pool or thread settings to tune &mdash; <code class="inline">HTTP_THREADS</code> and <code class="inline">DB_POOL_SIZE_v2</code> arrive with gateway 0.9.6. Moving to mod 1.0.18 is the real fix.</p></div>
 
   <div class="note"><div class="h">Symptom: the gateway cannot connect to MySQL at all once you run several</div>
   <p><b>Cause:</b> MySQL&rsquo;s default <code class="inline">max_connections</code> is 151, which allows roughly four gateway processes at a pool size of 32.</p>
