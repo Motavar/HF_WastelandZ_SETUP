@@ -137,6 +137,40 @@
   body[data-os="windows"] .os-panel.windows{display:block}
   body[data-os="linux"] .os-panel.linux{display:block}
 
+  /* ---- collapsible headings + contents tree (built by script; no script = all open, no tree) ---- */
+  h2,h3,.part-head,.step{scroll-margin-top:var(--stick,124px)}
+  .sec-head{cursor:pointer;position:relative;padding-right:30px;user-select:none}
+  .sec-head:focus-visible{outline:2px solid var(--rust);outline-offset:4px;border-radius:4px}
+  .sec-head .chev{position:absolute;right:2px;top:50%;width:18px;height:18px;margin-top:-9px;
+    color:var(--rust);font-size:15px;line-height:18px;text-align:center;transition:transform .15s ease}
+  .sec-head[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+  .sec-body.collapsed{display:none}
+  .toc{display:none;position:fixed;left:16px;top:var(--stick,124px);bottom:16px;width:256px;overflow:auto;
+    z-index:16;background:rgba(20,17,13,.97);border:1px solid var(--line);border-radius:10px;padding:12px 8px 14px}
+  .toc .toc-h{display:flex;align-items:center;gap:8px;margin:0 6px 8px}
+  .toc .toc-h span{flex:1;font-family:var(--font-display);text-transform:uppercase;letter-spacing:.22em;
+    font-size:11.5px;font-weight:600;color:var(--ink-faint)}
+  .toc .toc-h button{font:inherit;font-size:11px;color:var(--ink-dim);background:var(--bg-2);border:1px solid var(--line);
+    border-radius:6px;padding:3px 7px;cursor:pointer}
+  .toc .toc-h button:hover{color:var(--ink);border-color:var(--line-2)}
+  .toc a{display:block;color:var(--ink-dim);text-decoration:none;padding:5px 8px;border-radius:6px;
+    font-size:13.5px;line-height:1.3;border-left:2px solid transparent}
+  .toc a:hover{color:var(--ink);background:var(--bg-2)}
+  .toc a .badge{color:var(--rust);font-weight:700;font-size:11px;letter-spacing:.08em;margin-right:6px;text-transform:uppercase}
+  .toc a.sub{padding-left:22px;font-size:12.5px;color:var(--ink-faint)}
+  .toc a.active{color:var(--ink);border-left-color:var(--rust);background:rgba(255,107,26,.07)}
+  .toc-btn{display:none}
+  @media(min-width:1200px){
+    body.toc-ready .toc{display:block}
+    body.toc-ready .wrap{margin-left:max(296px,calc((100vw - var(--wrap)) / 2));margin-right:auto}
+  }
+  @media(max-width:1199px){
+    body.toc-ready .toc-btn{display:block;position:fixed;left:12px;bottom:12px;z-index:17;font:inherit;font-size:13px;
+      font-weight:600;color:var(--ink);background:var(--bg-2);border:1px solid var(--line-2);border-radius:999px;
+      padding:9px 14px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+    body.toc-open .toc{display:block;left:12px;right:12px;width:auto;top:auto;bottom:62px;max-height:70vh}
+  }
+
   .part-head{display:flex;align-items:baseline;gap:14px;margin:14px 0 2px;flex-wrap:wrap}
   .part-badge{font-family:var(--font-display);text-transform:uppercase;letter-spacing:.12em;font-size:12px;
     font-weight:700;color:#1a1206;background:var(--sand);padding:4px 11px;border-radius:20px}
@@ -293,6 +327,9 @@
 </style>
 </head>
 <body data-os="linux" data-view="server" data-channel="v1018">
+<nav class="toc" id="toc" aria-label="Contents"></nav>
+<button class="toc-btn" id="tocBtn" type="button" aria-controls="toc" aria-expanded="false">&#9776; Contents</button>
+
 
 <header class="top">
   <div class="wrap">
@@ -1326,8 +1363,7 @@ rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
 </div></section>
 
 <section><div class="wrap">
-  <span class="section-tag">The three pieces</span>
-  <h2>What you're building</h2>
+  <div class="part-head"><span class="part-badge">Part 0</span><h2>What you're building</h2></div>
   <p class="muted">A working server is three programs talking to each other. You install all three once, then they run on their own.</p>
   <div class="flow">
     <div class="node"><div class="k">Game Server</div><div class="v">Arma Reforger + the Wasteland-Z mod (from the Workshop). Where people play.</div></div>
@@ -1396,6 +1432,7 @@ rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
 </div></section>
 
 
+<!-- Order: set up (per OS) -> everyday running (shared) -> more servers (per OS). -->
 <!-- ================= WINDOWS ================= -->
 <div class="os-panel windows">
 <section><div class="wrap">
@@ -1432,20 +1469,79 @@ rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
       <li><code class="inline">name</code> — your server&rsquo;s name in the browser list.</li>
       <li><code class="inline">passwordAdmin</code> — a password only you know.</li>
     </ul>
-    <div class="note warn"><div class="h">Leave <code class="inline">missionHeader</code> alone &mdash; saving must stay OFF</div>
-    <p>The example config ships this block, and it matters:</p>
-    <div class="code"><pre>"missionHeader": {
-  "m_sName": "WASTELAND Z",
-  "m_eSaveTypes": 0,
-  "m_bIsSavingEnabled": false
-}</pre></div>
-    <p><b>With saving on, the game saves the world and restores it on the next start &mdash; then Wasteland-Z builds the world again on top of what was restored.</b> The symptom admins report is <b>duplicate town names</b>; stores, markers and map circles can double the same way.</p>
-    <p>Wasteland-Z keeps everything that matters in its own database through the gateway &mdash; money, bank, gear, position, vehicles. It never uses the game&rsquo;s own save, so switching it off costs you nothing.</p>
-    <p class="muted">Already seeing duplicates? Add the block, then delete the saved session the game wrote &mdash; it lives under your profile folder. Starting fresh with saving off does not repeat it.</p></div>
     <p class="muted">Everything else already works: the <b>Wasteland-Z mod is pre-listed</b> in <code class="inline">mods</code> (it auto-downloads on first start), and the map is Everon (<code class="inline">21_GM_Eden</code>). For Arland instead, set <code class="inline">scenarioId</code> to <code class="inline">{2BBBE828037C6F4B}Missions/22_GM_Arland.conf</code>.</p>
     <div class="note warn"><div class="h">Router / firewall</div><p>Players connect over UDP ports <b>2001</b> (game) and <b>17777</b> (server browser). On a home connection, forward both UDP ports to this PC in your router. On a rented server, allow them in the provider&rsquo;s firewall panel.</p></div>
     <p>Don&rsquo;t start it yet — first set up the database and gateway below, so the server has something to save into.</p>
   </div>
+
+  <div class="step" id="mission-header-3b"><span class="n">3b</span>
+    <h4>Turn the game&rsquo;s own saving OFF &mdash; the mission header</h4>
+  <p class="lede">One block in <code class="inline">server1.json</code>. Get it wrong and your towns
+  appear twice.</p>
+
+  <div class="note warn"><div class="h">This block must be in your config</div>
+  <div class="code"><pre>"game": {
+  ...
+  "scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf",
+
+  "missionHeader": {
+    "m_sName": "WASTELAND Z",
+    "m_eSaveTypes": 0,
+    "m_bIsSavingEnabled": false
+  },
+  ...
+}</pre></div>
+  <p>It goes <b>inside</b> <code class="inline">"game"</code>, right after
+  <code class="inline">"scenarioId"</code>. The example configs in this kit already ship it.</p></div>
+
+  <h5 class="substep">What each line does</h5>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setting</th><th>Value</th><th>What it does</th></tr>
+    <tr><td><code class="inline">m_sName</code></td><td>WASTELAND Z</td>
+        <td>The mission name the game shows. Cosmetic &mdash; set it to whatever you like.</td></tr>
+    <tr><td><code class="inline">m_eSaveTypes</code></td><td><b>0</b></td>
+        <td>Turns off the engine&rsquo;s automatic saving. <b>Not optional.</b></td></tr>
+    <tr><td><code class="inline">m_bIsSavingEnabled</code></td><td><b>false</b></td>
+        <td>Turns off session saving. <b>Not optional.</b></td></tr>
+  </table></div>
+
+  <h5 class="substep">Why it matters</h5>
+  <p>Arma Reforger can save the whole world &mdash; every object placed in it &mdash; and restore that
+  save the next time the server starts. That is useful for the game modes it was built for. It is wrong
+  for Wasteland-Z.</p>
+  <p>When the server starts, Wasteland-Z builds the world: towns, stores, markers, map circles, vehicle
+  spawns. <b>If the engine has already restored a saved copy of all that, Wasteland-Z builds it again on
+  top.</b> Now there are two of everything.</p>
+  <p>The first thing anyone notices is the <b>town list showing every town twice</b>, because that list
+  is on screen and easy to read. Stores, markers and map circles double in exactly the same way &mdash;
+  they are just less obvious.</p>
+
+  <div class="note tip"><div class="h">You lose nothing by turning it off</div>
+  <p>Wasteland-Z does not use the game&rsquo;s save. Everything that has to survive a restart &mdash;
+  money, bank, gear, your last position, your vehicles, bans, stats &mdash; lives in <b>your MySQL
+  database</b>, written through the gateway. That is what the gateway is for.</p>
+  <p>The engine save is a second, competing copy of a much smaller slice of the same idea. Two systems
+  writing the same world is the problem, not the solution.</p></div>
+
+  <div class="note"><div class="h">Already seeing duplicates? Two steps</div>
+  <p><b>1.</b> Add the <code class="inline">missionHeader</code> block above and save the file.</p>
+  <p><b>2.</b> Delete the save the game already wrote, or it gets restored one more time on the next
+  start:</p>
+  <div class="os-panel linux"><div class="code"><pre><span class="c"># stop the server first</span>
+sudo systemctl stop wz-server1
+
+<span class="c"># the engine writes its saves under the profile you launch with</span>
+ls /opt/reforger/profiles/server1/
+rm -rf /opt/reforger/profiles/server1/saves</pre></div></div>
+  <div class="os-panel windows"><div class="code"><pre><span class="c">REM stop the server first</span>
+
+<span class="c">REM the engine writes its saves under the profile you launch with</span>
+dir C:\reforger\profiles\server1\
+rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
+  <p class="muted">Start the server again and the towns come up once. With saving off it does not
+  come back.</p></div>
+  </div>
+
 
   <hr class="rule">
   <div class="part-head"><span class="part-badge">Part 2</span><h2>Database &amp; gateway (one time)</h2></div>
@@ -1544,6 +1640,8 @@ FLUSH PRIVILEGES;</pre></div>
 
   <hr class="rule">
   <div class="part-head"><span class="part-badge">Part 3</span><h2>Run &middot; monitor &middot; stop</h2></div>
+  <div class="step"><span class="n">1</span>
+    <h4>Start, stop and watch everything</h4>
   <p class="muted">Day-to-day, with zero server knowledge: <b>every piece runs in its own labeled window</b>. If a window is open, that piece is running. Close a window, that piece stops — nothing else is touched. The batch files live in <code class="inline">C:\reforger\scripts\</code>.</p>
   <div class="ops">
     <div class="op"><h4>Start everything</h4><p>Double-click <code class="inline">start_all.bat</code>. It opens the <b>WZ-Gateway</b> window, waits a few seconds, then opens <b>WZ-Server-1</b> (and 2/3 if you enabled them).</p></div>
@@ -1557,11 +1655,15 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="op"><h4>Is it alive?</h4><p>Browse <code class="inline">http://127.0.0.1:5000/api/ping</code> anytime. <code class="inline">status: ok</code> = healthy.</p></div>
     <div class="op"><h4>Restart MySQL</h4><p><span class="kbd">Win</span>+<span class="kbd">R</span> &rarr; type <code class="inline">services.msc</code> &rarr; find <b>MySQL80</b> &rarr; right-click &rarr; Restart.</p></div>
   </div>
-  <h3>Back up your data (do this regularly)</h3>
+  </div>
+  <div class="step"><span class="n">2</span>
+    <h4>Back up your data (do this regularly)</h4>
   <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; wastelandz_backup.sql</pre></div>
   <p class="muted">Keep a copy of that file somewhere safe. It is your whole server&rsquo;s save.</p>
 
-  <h3>Troubleshooting</h3>
+  </div>
+  <div class="step"><span class="n">3</span>
+    <h4>Troubleshooting</h4>
   <ul class="clean muted">
     <li><b>&ldquo;Database connection failed&rdquo;</b> — the password in <code class="inline">config.py</code> doesn&rsquo;t match Step 2, or MySQL isn&rsquo;t running.</li>
     <li><b>Port 5000 already in use</b> — change <code class="inline">port</code> in <code class="inline">config.py</code> (and update <code class="inline">GATEWAY_URL</code> to match).</li>
@@ -1570,74 +1672,9 @@ FLUSH PRIVILEGES;</pre></div>
     <li><b>Last location &amp; kept gear don&rsquo;t restore on relog (but money &amp; inventory DO)</b> — your game server&rsquo;s <code class="inline">SERVER_ID</code> (in <code class="inline">HFWastelandZ_server.conf</code>) doesn&rsquo;t match the <code class="inline">server_id</code> the gateway uses for it. Money/inventory are hive-wide so they still work; only per-server data (your position, kept-on-relog gear) needs the two ids to match. Set <code class="inline">SERVER_ID</code> to the gateway&rsquo;s id and restart. The game log prints <code class="inline">SERVER_ID MISMATCH</code> with both values when it detects this — grep for it.</li>
   </ul>
 
+  </div>
+
   <hr class="rule">
-  <div class="part-head"><span class="part-badge">Part 4</span><h2>Two or three servers on one PC</h2></div>
-  <p class="muted">One database, one gateway, several game servers — that&rsquo;s a <b>hive</b>. Players keep the <b>same money, bank and gear</b> on every server in the hive; each server keeps its own world (positions, placed objects, map). One gateway serves them all — you do <b>not</b> run a second gateway or database.</p>
-  <p>The finished two-server setup, and how the pieces talk:</p>
-  <div class="code"><pre><span class="c">players → UDP 2001/17777 →</span> WZ-Server-1 (Everon)  <span class="c">→ http://127.0.0.1:5000 + key #1 ─┐</span>
-<span class="c">players → UDP 2002/17778 →</span> WZ-Server-2 (Arland)  <span class="c">→ http://127.0.0.1:5001 + key #2 ─┤</span>
-<span class="c">                                                                              └→</span> WZ-Gateway <span class="c">→</span> MySQL
-<span class="c">The gateway tells the servers apart by the PORT each one calls (5000 vs 5001)
-and proves it with that server's key. Both ports are ONE gateway window,
-and everything right of the players is local to the PC — nothing exposed.</span></pre></div>
-
-  <p>Every extra server is the <b>same four things with different numbers</b>. The unique-ports table:</p>
-  <div class="tablewrap"><table class="rtab">
-    <tr><th></th><th>Server 1</th><th>Server 2</th><th>Server 3</th></tr>
-    <tr><td>Game port (UDP, forward it)</td><td><span class="role">2001</span></td><td><span class="role">2002</span></td><td><span class="role">2003</span></td></tr>
-    <tr><td>Browser port (UDP, forward it)</td><td><span class="role">17777</span></td><td><span class="role">17778</span></td><td><span class="role">17779</span></td></tr>
-    <tr><td>Gateway port (local only)</td><td><span class="role">5000</span></td><td><span class="role">5001</span></td><td><span class="role">5002</span></td></tr>
-    <tr><td>Config file</td><td><span class="role">server1.json</span></td><td><span class="role">server2.json</span></td><td><span class="role">server3.json</span></td></tr>
-    <tr><td>Profile folder</td><td><span class="role">profiles\server1</span></td><td><span class="role">profiles\server2</span></td><td><span class="role">profiles\server3</span></td></tr>
-  </table></div>
-
-  <p>To add <b>server 2</b> (server 3 is the same pattern):</p>
-  <ul class="clean">
-    <li><b>Config:</b> copy this download&rsquo;s <code class="inline">server\server2.json.example</code> to <code class="inline">C:\reforger\configs\server2.json</code> — ports <b>2002</b>/<b>17778</b> and the Arland map are pre-set; change <code class="inline">name</code> and the admin password. The map is the <code class="inline">scenarioId</code> line — Wasteland-Z runs on top of any Game Master scenario:
-      <div class="code"><pre><span class="c">Everon (the big island):</span>
-"scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf"
-
-<span class="c">Arland (the smaller southern island):</span>
-"scenarioId": "{2BBBE828037C6F4B}Missions/22_GM_Arland.conf"</pre></div>
-      e.g. server 1 on Everon, server 2 on Arland — same hive, so players keep their money, bank and gear when they switch.
-      <p class="muted" style="margin-top:8px">Any other map — including community maps — works the same way. Find its ID on the Workshop website: open the map mod&rsquo;s page at <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a> and click its <b>Scenarios</b> tab — the ScenarioId shown there (it looks like <code class="inline">{GUID}Missions/Name.conf</code>) is what goes in <code class="inline">scenarioId</code>. Add that map mod to the same server&rsquo;s <code class="inline">mods</code> list too.</p></li>
-    <li><b>Batch files:</b> copy <code class="inline">start_server1.bat</code> &rarr; <code class="inline">start_server2.bat</code> and <code class="inline">stop_server1.bat</code> &rarr; <code class="inline">stop_server2.bat</code>. Inside both, change every <code class="inline">server1</code> to <code class="inline">server2</code> and the title <code class="inline">WZ-Server-1</code> to <code class="inline">WZ-Server-2</code>. (The install folder and <code class="inline">workshop\</code> mods folder are <b>shared</b> — don&rsquo;t copy those.)</li>
-    <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 5 command). Restart the gateway window — it now listens on 5000 <i>and</i> 5001.</li>
-    <li><b>Wire it:</b> in <code class="inline">profiles\server2\profile\hf_wastelandz\configs\</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
-    <li><b>Match the SERVER_ID (critical):</b> in server 2&rsquo;s <code class="inline">HFWastelandZ_server.conf</code>, set <code class="inline">SERVER_ID server-2</code> so it <b>exactly matches</b> that server&rsquo;s <code class="inline">server_id</code> in the gateway&rsquo;s <code class="inline">SERVERS</code> list. If they differ, last-location and kept-gear will <b>silently</b> not restore on that server (money/inventory still work, since those are hive-wide). The game log prints <code class="inline">SERVER_ID MISMATCH</code> if it&rsquo;s wrong.</li>
-    <li><b>Start it:</b> remove the <code class="inline">rem</code> in front of the server-2 lines in <code class="inline">start_all.bat</code>. Forward UDP 2002 + 17778 in your router.</li>
-  </ul>
-  <div class="note warn"><div class="h">One key per server</div><p>Each server gets its <b>own</b> gateway port and its <b>own</b> random <code class="inline">api_key</code> — that&rsquo;s how the gateway tells them apart. Never reuse a key across servers.</p></div>
-  <div class="note tip"><div class="h">Will my PC handle it?</div><p>Each Reforger server is heavy — roughly a few CPU cores and 4&ndash;8&nbsp;GB RAM per server under load. Two servers want a strong 8-core machine; three want more. The gateway and MySQL are lightweight by comparison.</p></div>
-
-  <h3>Big box? Give each server its own cores</h3>
-  <p><b>RAM needs no dividing</b> — Windows hands it out on demand, and a full 128-player server uses roughly 8&ndash;16&nbsp;GB. (Windows has no simple per-program RAM cap like Linux&rsquo;s — skip that part.) <b>CPU is the part worth splitting:</b> a big AMD chip (e.g. a 16-core Ryzen 7950X3D) is really <b>two groups of 8 cores</b>, each sharing one pot of very fast memory (cache). Two servers squeezed into one group fight over the pot — give each server its own group.</p>
-  <p>On Windows the tool is the <code class="inline">/affinity</code> flag. In <code class="inline">start_server1.bat</code>, change the server line:</p>
-  <div class="code"><pre><span class="c">rem before:</span>
-"%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60
-
-<span class="c">rem after — server 1 pinned to the first 16 processor numbers (group one):</span>
-start "" /affinity FFFF /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60
-
-<span class="c">rem and in start_server2.bat — the next 16 (group two):</span>
-start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60</pre></div>
-  <p class="muted">The mask is a code for &ldquo;which processors&rdquo;. <code class="inline">FFFF</code> = the first 16 processor numbers; Windows usually numbers each core twice back-to-back, so that&rsquo;s the first 8 cores = the first group (the big-cache one on X3D chips — give it to your busiest server). <code class="inline">/wait</code> keeps the auto-restart loop working. Sanity-check anytime: Task Manager &rarr; Details &rarr; right-click <code class="inline">ArmaReforgerServer.exe</code> &rarr; <b>Set affinity</b> shows exactly which processors each server is allowed on.</p>
-  <p><b>Cheat-sheet: 1&ndash;4 servers on a 16-core PC</b> (two 8-core groups; Windows numbers each core twice back-to-back):</p>
-  <div class="tablewrap"><table class="rtab">
-    <tr><th>Setup</th><th>Server &amp; players</th><th>/affinity mask</th></tr>
-    <tr><td rowspan="1">1 server (up to 128)</td><td><span class="role">WZ-Server-1</span> · 128</td><td><span class="role">none needed</span> (whole chip; or <span class="role">FFFF</span> for the big-cache group)</td></tr>
-    <tr><td rowspan="2">2 servers (2&times;128)</td><td><span class="role">WZ-Server-1</span> · 128</td><td><span class="role">FFFF</span></td></tr>
-    <tr><td><span class="role">WZ-Server-2</span> · 128</td><td><span class="role">FFFF0000</span></td></tr>
-    <tr><td rowspan="3">3 servers (2&times;128 + 1&times;64)</td><td><span class="role">WZ-Server-1</span> · 128</td><td><span class="role">FFFF</span></td></tr>
-    <tr><td><span class="role">WZ-Server-2</span> · 128</td><td><span class="role">FFFF0000</span></td></tr>
-    <tr><td><span class="role">WZ-Server-3</span> · 64</td><td><span class="role">none</span> (floats in the gaps)</td></tr>
-    <tr><td rowspan="4">4 servers (4&times;64 or 4&times;32)</td><td><span class="role">WZ-Server-1</span> · 64</td><td><span class="role">FF</span></td></tr>
-    <tr><td><span class="role">WZ-Server-2</span> · 64</td><td><span class="role">FF00</span></td></tr>
-    <tr><td><span class="role">WZ-Server-3</span> · 64</td><td><span class="role">FF0000</span></td></tr>
-    <tr><td><span class="role">WZ-Server-4</span> · 64</td><td><span class="role">FF000000</span></td></tr>
-  </table></div>
-  <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole group each (max cache per server). 4 servers &rarr; half a group (4 cores) each — plenty at 32&ndash;64 players, and no server ever spans both groups. 3 servers is the awkward count: pin the two big ones, let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch Task Manager on busy nights and adjust <code class="inline">aiLimit</code> before touching the masks.</p>
-  <p class="muted"><b>Different CPU?</b> Older Intels (e.g. an i9-9900K, 8 cores) are <b>one group</b> — no favourite half; split down the middle with <code class="inline">FF</code> / <code class="inline">FF00</code> and expect lower comfortable player caps. Newer hybrid Intels (12th&nbsp;gen up, e.g. an i7-13700K) mix fast <b>P-cores</b> (numbered first, each twice back-to-back) and small <b>E-cores</b> (after them): pin game servers to P-cores (<code class="inline">FF</code> / <code class="inline">FF00</code>) and leave the E-cores unpinned — they carry the gateway, MySQL and Windows itself. See your layout anytime: Task Manager &rarr; Details &rarr; right-click the server &rarr; <b>Set affinity</b> lists every processor number.</p>
 </div></section>
 </div>
 
@@ -1704,17 +1741,77 @@ start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%P
     <div class="note tip"><div class="h">Game updated?</div><p><strong>Updated for 1.8 &mdash; 2026-08-17:</strong> you no longer have to do this by hand. The service file from Part 2 runs SteamCMD before every start, so the server brings itself up to date each time it restarts. That matters because <strong>a server on an older build than its players is unjoinable</strong> &mdash; clients auto-update through Steam whether you do or not. Keep the command above for the first install, and for repairs (the <code class="inline">validate</code> flag re-checks every file &mdash; useful when something is corrupt, too slow to run on every restart).</p></div>
     <p>Drop in the ready-made config from the kit (Wasteland-Z is pre-listed in <code class="inline">mods</code> — it works as-is; open it in <code class="inline">nano</code> later to rename your server — save/exit with <span class="kbd">Ctrl</span>+<span class="kbd">O</span>, <span class="kbd">Enter</span>, <span class="kbd">Ctrl</span>+<span class="kbd">X</span>):</p>
     <div class="code"><pre><span class="p">cp</span> /opt/wastelandz_setup/server/server1.json.example /opt/reforger/configs/server1.json</pre></div>
-    <div class="note warn"><div class="h">Before you start the server &mdash; keep saving OFF</div>
-    <p>That file ships a <code class="inline">missionHeader</code> block with
-    <code class="inline">"m_eSaveTypes": 0</code> and
-    <code class="inline">"m_bIsSavingEnabled": false</code>. <b>Leave both as they are.</b></p>
-    <p>With the game’s own saving on, the engine restores a saved copy of the world on start and
-    Wasteland-Z then builds the world again on top of it &mdash; <b>two of everything</b>. The symptom
-    admins report first is <b>every town listed twice</b>. Nothing is lost by leaving it off: money,
-    bank, gear, position and vehicles all live in your database.</p>
-    <p class="muted">Full detail in <b>The mission header</b> further down this page.</p></div>
     <p class="muted">Don&rsquo;t start it yet — it needs the database and gateway first (Steps 3&ndash;8). Step 9 does the first start.</p>
   </div>
+
+  <div class="step" id="mission-header-2b"><span class="n">2b</span>
+    <h4>Turn the game&rsquo;s own saving OFF &mdash; the mission header</h4>
+  <p class="lede">One block in <code class="inline">server1.json</code>. Get it wrong and your towns
+  appear twice.</p>
+
+  <div class="note warn"><div class="h">This block must be in your config</div>
+  <div class="code"><pre>"game": {
+  ...
+  "scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf",
+
+  "missionHeader": {
+    "m_sName": "WASTELAND Z",
+    "m_eSaveTypes": 0,
+    "m_bIsSavingEnabled": false
+  },
+  ...
+}</pre></div>
+  <p>It goes <b>inside</b> <code class="inline">"game"</code>, right after
+  <code class="inline">"scenarioId"</code>. The example configs in this kit already ship it.</p></div>
+
+  <h5 class="substep">What each line does</h5>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setting</th><th>Value</th><th>What it does</th></tr>
+    <tr><td><code class="inline">m_sName</code></td><td>WASTELAND Z</td>
+        <td>The mission name the game shows. Cosmetic &mdash; set it to whatever you like.</td></tr>
+    <tr><td><code class="inline">m_eSaveTypes</code></td><td><b>0</b></td>
+        <td>Turns off the engine&rsquo;s automatic saving. <b>Not optional.</b></td></tr>
+    <tr><td><code class="inline">m_bIsSavingEnabled</code></td><td><b>false</b></td>
+        <td>Turns off session saving. <b>Not optional.</b></td></tr>
+  </table></div>
+
+  <h5 class="substep">Why it matters</h5>
+  <p>Arma Reforger can save the whole world &mdash; every object placed in it &mdash; and restore that
+  save the next time the server starts. That is useful for the game modes it was built for. It is wrong
+  for Wasteland-Z.</p>
+  <p>When the server starts, Wasteland-Z builds the world: towns, stores, markers, map circles, vehicle
+  spawns. <b>If the engine has already restored a saved copy of all that, Wasteland-Z builds it again on
+  top.</b> Now there are two of everything.</p>
+  <p>The first thing anyone notices is the <b>town list showing every town twice</b>, because that list
+  is on screen and easy to read. Stores, markers and map circles double in exactly the same way &mdash;
+  they are just less obvious.</p>
+
+  <div class="note tip"><div class="h">You lose nothing by turning it off</div>
+  <p>Wasteland-Z does not use the game&rsquo;s save. Everything that has to survive a restart &mdash;
+  money, bank, gear, your last position, your vehicles, bans, stats &mdash; lives in <b>your MySQL
+  database</b>, written through the gateway. That is what the gateway is for.</p>
+  <p>The engine save is a second, competing copy of a much smaller slice of the same idea. Two systems
+  writing the same world is the problem, not the solution.</p></div>
+
+  <div class="note"><div class="h">Already seeing duplicates? Two steps</div>
+  <p><b>1.</b> Add the <code class="inline">missionHeader</code> block above and save the file.</p>
+  <p><b>2.</b> Delete the save the game already wrote, or it gets restored one more time on the next
+  start:</p>
+  <div class="os-panel linux"><div class="code"><pre><span class="c"># stop the server first</span>
+sudo systemctl stop wz-server1
+
+<span class="c"># the engine writes its saves under the profile you launch with</span>
+ls /opt/reforger/profiles/server1/
+rm -rf /opt/reforger/profiles/server1/saves</pre></div></div>
+  <div class="os-panel windows"><div class="code"><pre><span class="c">REM stop the server first</span>
+
+<span class="c">REM the engine writes its saves under the profile you launch with</span>
+dir C:\reforger\profiles\server1\
+rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
+  <p class="muted">Start the server again and the towns come up once. With saving off it does not
+  come back.</p></div>
+  </div>
+
 
   <div class="step"><span class="n">3</span>
     <h4>Install MySQL and Python</h4>
@@ -1845,11 +1942,11 @@ FLUSH PRIVILEGES;</pre></div>
     <p class="muted">Now start it again (same command). Player data saves to the database — <b>you&rsquo;re live.</b></p>
     <div class="note warn"><div class="h">Is the gateway actually running?</div>
     <p>You started it once by hand and stopped it with Ctrl+C. Unless you have already done
-    <b>Part 2 Step A</b>, it is <b>not running now</b> &mdash; and the mod saves nothing without it.</p>
+    <b>Part 2 Step 1</b>, it is <b>not running now</b> &mdash; and the mod saves nothing without it.</p>
     <div class="code"><pre><span class="c"># is it up?</span>
 <span class="p">curl</span> http://127.0.0.1:5000/api/ping
 
-<span class="c"># nothing back? start the service now (Part 2 Step A creates it)</span>
+<span class="c"># nothing back? start the service now (Part 2 Step 1 creates it)</span>
 <span class="p">sudo</span> systemctl enable --now wz-gateway
 <span class="p">sudo</span> systemctl status wz-gateway --no-pager</pre></div>
     <p class="muted">Correct order, every time: <b>mysql &rarr; wz-gateway &rarr; wz-server1</b>.</p></div>
@@ -1870,14 +1967,14 @@ FLUSH PRIVILEGES;</pre></div>
 <span class="p">sed</span> -i 's/[[:space:]]*$//' HFWastelandZ_admins.conf
 <span class="p">cat</span> -A HFWastelandZ_admins.conf</pre></div><p class="muted">In the <code class="inline">cat -A</code> output your <code class="inline">OWNER</code> line must end in just <code class="inline">$</code> &mdash; <b>no</b> <code class="inline">^M</code> and <b>no</b> space before it. <i>Why:</i> <b>RESOLVED July 5, 2026</b> &mdash; the mod&rsquo;s config parser now strips trailing whitespace and Windows line-endings (<code class="inline">^M</code>) at the read boundary, so your ID matches even with hidden characters. This <code class="inline">sed</code> line is kept as belt-and-suspenders (and is still needed on <b>older</b> mod builds) &mdash; it never hurts to run. Restart the server after editing &mdash; then <span class="kbd">F8</span> opens the admin menu and <code class="inline">/zeus</code> gives you Game Master.</p></div>
 
-    <div class="note tip"><div class="h">Next: make it run on its own</div><p>Right now you&rsquo;re starting the game server by hand to confirm it works. <b>Part 2 &rarr; Step B</b> turns it into a background service (<code class="inline">wz-server1</code>) that starts on boot and restarts itself if it crashes — do that once you&rsquo;ve seen it boot and connect to the gateway.</p></div>
+    <div class="note tip"><div class="h">Next: make it run on its own</div><p>Right now you&rsquo;re starting the game server by hand to confirm it works. <b>Part 2 &rarr; Step 2</b> turns it into a background service (<code class="inline">wz-server1</code>) that starts on boot and restarts itself if it crashes — do that once you&rsquo;ve seen it boot and connect to the gateway.</p></div>
   </div>
 
   <hr class="rule">
   <div class="part-head"><span class="part-badge">Part 2</span><h2>Run &middot; monitor &middot; restart</h2></div>
   <p class="muted">Run the gateway as a <b>service</b> so it starts on its own and survives reboots. Built-in Linux tools only.</p>
 
-  <div class="step"><span class="n">A</span>
+  <div class="step"><span class="n">1</span>
     <h4>Make it a service (once)</h4>
     <p>Create the service file:</p>
     <div class="code"><pre><span class="p">sudo</span> nano /etc/systemd/system/wz-gateway.service</pre></div>
@@ -1900,9 +1997,9 @@ WantedBy=multi-user.target</pre></div>
     <p class="muted">Don&rsquo;t want to type it? The kit ships this file ready-made: copy <code class="inline">/opt/wastelandz_setup/server/wz-gateway.service.example</code> to <code class="inline">/etc/systemd/system/wz-gateway.service</code> and just change <code class="inline">youruser</code>.</p>
   </div>
 
-  <div class="step"><span class="n">B</span>
+  <div class="step"><span class="n">2</span>
     <h4>Make the game server a service</h4>
-    <p>Same idea as Step A, but for the game server. (You did its one-time first boot back in Part 1, Step 9 — that generated its config files; this step makes it run permanently in the background.) First make sure your user owns what the server writes to (its <code class="inline">profiles/</code> and <code class="inline">logs/</code>) — needed if you ran any of the install as root:</p>
+    <p>Same idea as Step 1, but for the game server. (You did its one-time first boot back in Part 1, Step 9 — that generated its config files; this step makes it run permanently in the background.) First make sure your user owns what the server writes to (its <code class="inline">profiles/</code> and <code class="inline">logs/</code>) — needed if you ran any of the install as root:</p>
     <div class="code"><pre><span class="p">sudo</span> chown -R $USER:$USER /opt/reforger</pre></div>
     <p class="muted">Then drop in the ready-made service file and set your username:</p>
     <div class="code"><pre><span class="p">sudo</span> cp /opt/wastelandz_setup/server/wz-server1.service.example /etc/systemd/system/wz-server1.service
@@ -1940,6 +2037,8 @@ grep -n <span class="s">"User"</span> /etc/systemd/system/wz-server1.service    
     <code>sudo systemctl reset-failed wz-server1</code> before starting again.</p>
   </div>
 
+  <div class="step"><span class="n">3</span>
+    <h4>Check, restart and watch your services</h4>
   <p class="muted"><b>Your three services:</b> <code class="inline">wz-server1</code> (the game server), <code class="inline">wz-gateway</code> (the gateway), and <code class="inline">mysql</code> (the database). Every command below works on <b>any</b> of them — just swap the name. After a reboot they start on their own; if you ever start them by hand, the order is <code class="inline">mysql</code> &rarr; <code class="inline">wz-gateway</code> &rarr; <code class="inline">wz-server1</code>.</p>
   <div class="ops">
     <div class="op"><h4>Is it running?</h4><div class="code"><pre><span class="p">sudo</span> systemctl status wz-server1</pre></div><p class="muted">Green <code class="inline">active (running)</code> = good. It opens a scrollable view — press <span class="kbd">q</span> to exit back to the prompt.</p></div>
@@ -1952,14 +2051,229 @@ grep -n <span class="s">"User"</span> /etc/systemd/system/wz-server1.service    
     <div class="op"><h4>Start on boot (on / off)</h4><div class="code"><pre><span class="p">sudo</span> systemctl enable wz-server1
 <span class="p">sudo</span> systemctl disable wz-server1</pre></div><p class="muted">Your earlier <code class="inline">enable --now</code> already turned both on — they auto-start after a reboot.</p></div>
   </div>
+  </div>
 
-  <h3>Back up your data (do this regularly)</h3>
+  <div class="step"><span class="n">4</span>
+    <h4>Back up your data (do this regularly)</h4>
   <div class="code"><pre><span class="p">mysqldump</span> -u wastelandz -p wastelandz &gt; ~/wastelandz_backup_$(date +%F).sql
 <span class="p">chmod</span> 600 ~/wastelandz_backup_$(date +%F).sql</pre></div>
   <p class="muted">That file is your whole server&rsquo;s save — keep copies somewhere safe.</p>
 
+  </div>
+
   <hr class="rule">
+</div></section>
+</div>
+
+<!-- ================= MODS (shared) ================= -->
+<section><div class="wrap">
+  <span class="section-tag">Mods</span>
+  <h2>Add, remove &amp; track mods</h2>
+  <p class="muted">Same on Windows and Linux. There is <b>no installer</b> — the <code class="inline">mods</code> list inside your server config (<code class="inline">server1.json</code>) <i>is</i> the mod manager. On every start the server reads that list, auto-downloads anything missing from the Reforger Workshop into your <code class="inline">workshop</code> folder, and loads <b>exactly what&rsquo;s listed — nothing else</b>.</p>
+
+  <div class="step"><span class="n">1</span>
+    <h4>Add a mod</h4>
+  <p>Find it on the official Workshop site: <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a>. The mod&rsquo;s ID is right in its page URL — the 16 characters before the name, e.g. <code class="inline">&hellip;/workshop/<b>68A616565DECAB19</b>-wasteland-z</code>. Add one block to the <code class="inline">mods</code> list and restart the server:</p>
+  <div class="note"><div class="h">Wasteland-Z is live on the Workshop</div><p>The kit already pre-lists it in every <code class="inline">mods</code> block, so you don&rsquo;t need to add it by hand — but here&rsquo;s its page: <a href="https://reforger.armaplatform.com/workshop/68A616565DECAB19" target="_blank" rel="noopener">reforger.armaplatform.com/workshop/68A616565DECAB19</a> (mod ID <code class="inline">68A616565DECAB19</code>).</p></div>
+  <div class="code"><pre>"mods": [
+    {
+        "modId": "68A616565DECAB19",
+        "name": "Wasteland-Z"
+    },
+    {
+        "modId": "ABCDEF1234567890",
+        "name": "Cool Helmet Pack"
+    },
+    {
+        "modId": "0123456789ABCDEF",
+        "name": "Winter Uniforms"
+    }
+]</pre></div>
+  <p class="muted">The <code class="inline">name</code> is your own label — write whatever helps you remember what it is. <b>The commas are the one gotcha:</b> every mod&rsquo;s closing <code class="inline">}</code> gets a comma <i>except the last one</i> — and never a semicolon, JSON doesn&rsquo;t use them. So when you add a mod at the end: the block that <i>used to be</i> last gains a comma, the new last block has none.</p>
+
+  </div>
+  <div class="step"><span class="n">2</span>
+    <h4>Remove a mod — including a problem mod</h4>
+  <p>Delete its block from the list, restart. That&rsquo;s the whole procedure — the server only loads what&rsquo;s listed. The mod&rsquo;s downloaded files stay in the <code class="inline">workshop</code> folder but are completely inert; if you want the disk space back, delete the folder named with that mod&rsquo;s ID inside the workshop folder.</p>
+
+  </div>
+  <div class="step"><span class="n">3</span>
+    <h4>Can&rsquo;t I just comment a mod out?</h4>
+  <p>Not in this file. <code class="inline">server1.json</code> is JSON, and <b>JSON forbids comments</b> — one <code class="inline">//</code> line and the server refuses the whole config. So in the json, deleting the block is the only off switch. The convenient middle ground is a <b>parking file</b>: keep a plain text file next to your configs that nothing reads, and move benched mod blocks there instead of losing them:</p>
+  <div class="code"><pre><span class="c">mods-parked.txt — your parking lot; the server never reads this file.
+Copy a block back into server1.json's "mods" list to re-enable it.</span>
+
+{ "modId": "ABCDEF1234567890", "name": "Cool Helmet Pack" },     broke after 1.7 update, retry later
+{ "modId": "0123456789ABCDEF", "name": "Winter Uniforms" },      summer season — bring back in December
+{ "modId": "FEDCBA9876543210", "name": "Extra Car Pack" },       testing caused rubber-banding</pre></div>
+  <p class="muted">(Wasteland-Z&rsquo;s own <code class="inline">.conf</code> files are different — those are <code class="inline">KEY VALUE</code> format and take <code class="inline">#</code> comments freely. Only the game server&rsquo;s <code class="inline">.json</code> is strict.)</p>
+
+  </div>
+  <div class="step"><span class="n">4</span>
+    <h4>Track your mods</h4>
+  <p>The <code class="inline">mods</code> list is the single source of truth — one block per mod, nothing can load that isn&rsquo;t in it. Running several servers? Each <code class="inline">serverN.json</code> has its <b>own</b> list, so server 1 and server 2 can run different mod sets. To see what a server actually loaded, its boot log prints every addon as it starts.</p>
+
+  <div class="note warn"><div class="h">One game mode at a time</div><p>Wasteland-Z is a <b>game mode</b> — it owns the gameplay. Content mods (weapons, clothing, vehicles, buildings) sit alongside it fine; adding <i>another</i> game-mode mod makes the two fight. If a mod&rsquo;s Workshop page says &ldquo;game mode,&rdquo; it doesn&rsquo;t belong on a Wasteland-Z server.</p></div>
+  <div class="note tip"><div class="h">Server broke after adding a mod — or after a game update?</div><p>Remove the last mod you added, restart. If it broke right after a Reforger update instead: mod authors need a few days to catch up with game patches — remove your extra mods, restart, then add them back one at a time as they&rsquo;re updated.</p></div>
+  </div>
+</div></section>
+
+<!-- ================= ROLES (shared) ================= -->
+<style>
+  .tablewrap{overflow-x:auto;margin:12px 0}
+  .rtab{width:100%;border-collapse:collapse;font-size:14.5px}
+  .rtab th,.rtab td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  .rtab th{font-family:var(--font-display);text-transform:uppercase;letter-spacing:.12em;font-size:12px;color:var(--rust);font-weight:600;white-space:nowrap}
+  .rtab td .role{font-family:var(--font-mono);color:var(--sand);white-space:nowrap}
+  .rtab td:first-child{white-space:nowrap}
+</style>
+<section><div class="wrap">
+  <span class="section-tag">Everyday admin</span>
+  <h2>Players, roles &amp; reserved slots</h2>
+  <p class="muted">This part is the same on Windows and Linux — it&rsquo;s done with config files and in-game commands.</p>
+
+  <div class="step"><span class="n">1</span>
+    <h4>The five roles</h4>
+  <p class="muted">Every player has a role. Higher beats lower. Roles live in one file: <code class="inline">$profile:HFWastelandZ_admins.conf</code>, keyed by <b>Bohemia Identity GUID</b> (a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code &mdash; not your Steam number; see Part 1 &rarr; Step 9d for how to find yours).</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Role</th><th>Can do</th></tr>
+    <tr><td><span class="role">OWNER</span></td><td>Everything, including <code class="inline">/admin restart</code>. Set by editing the file only.</td></tr>
+    <tr><td><span class="role">ADMIN</span></td><td>Game Master (Zeus), promote/demote others, save, all mission &amp; spot editing.</td></tr>
+    <tr><td><span class="role">MOD</span></td><td>Kick, ban, mute, teleport, heal, god, announce.</td></tr>
+    <tr><td><span class="role">TRUSTED</span></td><td>Donor / verified helper (reserved for future perks).</td></tr>
+    <tr><td><span class="role">EVERYONE</span></td><td>Default — every normal player. No line needed.</td></tr>
+  </table></div>
+
+  </div>
+  <div class="step" id="become-owner"><span class="n">2</span>
+    <h4>Make someone a mod, admin, or owner</h4>
+  <p><b>Your first admin — and the only way to set OWNER — is by editing the file.</b> Add a line and restart:</p>
+  <div class="code"><pre><span class="c"># in $profile:HFWastelandZ_admins.conf</span>
+OWNER a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+ADMIN b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+MOD   c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f</pre></div>
+  <p class="muted">Those are <b>Bohemia Identity GUIDs</b> (lowercase <code class="inline">8-4-4-4-12</code> hex), one per admin &mdash; find yours via Part 1 &rarr; Step 9d. Put <b>no trailing space</b> after the GUID (see the gotcha in Step 9d). Anyone not listed is EVERYONE.</p>
+  <p>After you have one admin, change roles <b>live, no restart</b>, from in-game chat:</p>
+  <div class="code"><pre>/admin promote &lt;name|playerId&gt; &lt;EVERYONE|TRUSTED|MOD|ADMIN&gt;</pre></div>
+  <div class="note warn"><div class="h">The rules</div><p>You must be <b>ADMIN or OWNER</b> to change roles. An ADMIN can grant any role <b>up to and including ADMIN</b>. <b>OWNER</b> is never granted in-game — it&rsquo;s file-only so no one can lock you out, so seed yourself as OWNER in the file first. You can change anyone at or below your own rank (an ADMIN can demote a peer ADMIN), but never someone above you — and an <b>OWNER can never be changed in-game</b> by anyone.</p></div>
+  <p>You can also change roles in the game — open the <b>F8 admin menu &rarr; Players</b> tab. The right-hand <b>STAFF</b> list shows everyone with a role (including <b>offline</b> people); click a player or staff row, then a role button (twice to confirm).</p>
+
+  </div>
+  <div class="step"><span class="n">3</span>
+    <h4>See who has what role</h4>
+  <div class="code"><pre>/admin who</pre></div>
+  <p class="muted">Lists everyone online with their role. Any MOD or higher can run it.</p>
+
+  </div>
+  <div class="step"><span class="n">4</span>
+    <h4>Change what each command needs (command tiers)</h4>
+  <p>Every command has a <b>minimum role</b>. To run it, your role must be equal or higher. Change any command&rsquo;s required role in <code class="inline">$profile:HFWastelandZ_command_tiers.conf</code>:</p>
+  <div class="code"><pre><span class="c"># format:  &lt;command&gt;.&lt;subcommand&gt; = &lt;ROLE&gt;</span>
+admin.god  = OWNER     <span class="c"># only owner can use god mode</span>
+admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></div>
+  <p class="muted">So <b>admins.conf</b> sets what role each <i>player</i> has, and <b>command_tiers.conf</b> sets what role each <i>command</i> needs. Restart to apply changes.</p>
+
+  </div>
+  <div class="step"><span class="n">5</span>
+    <h4>Reserved login slots (staff always get in)</h4>
+  <p class="muted">Keeps a couple of slots open so your staff can always join a full server, without permanently wasting seats. Set these in <code class="inline">$profile:HFWastelandZ_server.conf</code>:</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setting</th><th>Default</th><th>What it does</th></tr>
+    <tr><td><span class="role">RESERVED_SLOTS_ENABLED</span></td><td>0</td><td>Master on/off. Set to <b>1</b> to turn it on.</td></tr>
+    <tr><td><span class="role">RESERVED_BUFFER</span></td><td>2</td><td>Slots always kept free so staff join instantly.</td></tr>
+    <tr><td><span class="role">RESERVED_HIGHRISK_COUNT</span></td><td>8</td><td>How many newest regular players are &ldquo;bumpable.&rdquo;</td></tr>
+    <tr><td><span class="role">RESERVED_MIN_TIER</span></td><td>20</td><td>Lowest role treated as staff (20 = MOD).</td></tr>
+    <tr><td><span class="role">RESERVED_TOTAL_SLOTS</span></td><td>0</td><td>Leave 0 on a real server (read automatically). Only set on a Workbench test host.</td></tr>
+  </table></div>
+  <p><b>Setup:</b> in the game&rsquo;s <code class="inline">config.json</code>, set <code class="inline">game.maxPlayers</code> to your playable count <b>plus</b> the buffer, and set <code class="inline">RESERVED_TOTAL_SLOTS</code> to that same number. Example: 128 players &rarr; <code class="inline">maxPlayers 130</code>, <code class="inline">RESERVED_BUFFER 2</code>. ADMIN/OWNER always get in; MOD only bumps regular players.</p>
+  <div class="note tip"><div class="h">How to see it working</div><p>It runs on the server, so watch the <b>server console / log</b> — set <code class="inline">HF_DEBUG_ADMIN 1</code> in <code class="inline">server.conf</code> and you&rsquo;ll see lines like <code class="inline">ReservedSlots: ON total=130 buffer=2&hellip;</code> and <code class="inline">BUMP&hellip;</code> when it acts. Players in a bumpable slot also see a &ldquo;high-risk&rdquo; banner in their HUD.</p></div>
+  </div>
+</div></section>
+
+<!-- ================= WINDOWS: more servers ================= -->
+<div class="os-panel windows">
+<section><div class="wrap">
+  <div class="part-head"><span class="part-badge">Part 4</span><h2>Two or three servers on one PC</h2></div>
+  <div class="step"><span class="n">1</span>
+    <h4>Add the second and third server</h4>
+  <p class="muted">One database, one gateway, several game servers — that&rsquo;s a <b>hive</b>. Players keep the <b>same money, bank and gear</b> on every server in the hive; each server keeps its own world (positions, placed objects, map). One gateway serves them all — you do <b>not</b> run a second gateway or database.</p>
+  <p>The finished two-server setup, and how the pieces talk:</p>
+  <div class="code"><pre><span class="c">players → UDP 2001/17777 →</span> WZ-Server-1 (Everon)  <span class="c">→ http://127.0.0.1:5000 + key #1 ─┐</span>
+<span class="c">players → UDP 2002/17778 →</span> WZ-Server-2 (Arland)  <span class="c">→ http://127.0.0.1:5001 + key #2 ─┤</span>
+<span class="c">                                                                              └→</span> WZ-Gateway <span class="c">→</span> MySQL
+<span class="c">The gateway tells the servers apart by the PORT each one calls (5000 vs 5001)
+and proves it with that server's key. Both ports are ONE gateway window,
+and everything right of the players is local to the PC — nothing exposed.</span></pre></div>
+
+  <p>Every extra server is the <b>same four things with different numbers</b>. The unique-ports table:</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th></th><th>Server 1</th><th>Server 2</th><th>Server 3</th></tr>
+    <tr><td>Game port (UDP, forward it)</td><td><span class="role">2001</span></td><td><span class="role">2002</span></td><td><span class="role">2003</span></td></tr>
+    <tr><td>Browser port (UDP, forward it)</td><td><span class="role">17777</span></td><td><span class="role">17778</span></td><td><span class="role">17779</span></td></tr>
+    <tr><td>Gateway port (local only)</td><td><span class="role">5000</span></td><td><span class="role">5001</span></td><td><span class="role">5002</span></td></tr>
+    <tr><td>Config file</td><td><span class="role">server1.json</span></td><td><span class="role">server2.json</span></td><td><span class="role">server3.json</span></td></tr>
+    <tr><td>Profile folder</td><td><span class="role">profiles\server1</span></td><td><span class="role">profiles\server2</span></td><td><span class="role">profiles\server3</span></td></tr>
+  </table></div>
+
+  <p>To add <b>server 2</b> (server 3 is the same pattern):</p>
+  <ul class="clean">
+    <li><b>Config:</b> copy this download&rsquo;s <code class="inline">server\server2.json.example</code> to <code class="inline">C:\reforger\configs\server2.json</code> — ports <b>2002</b>/<b>17778</b> and the Arland map are pre-set; change <code class="inline">name</code> and the admin password. The map is the <code class="inline">scenarioId</code> line — Wasteland-Z runs on top of any Game Master scenario:
+      <div class="code"><pre><span class="c">Everon (the big island):</span>
+"scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf"
+
+<span class="c">Arland (the smaller southern island):</span>
+"scenarioId": "{2BBBE828037C6F4B}Missions/22_GM_Arland.conf"</pre></div>
+      e.g. server 1 on Everon, server 2 on Arland — same hive, so players keep their money, bank and gear when they switch.
+      <p class="muted" style="margin-top:8px">Any other map — including community maps — works the same way. Find its ID on the Workshop website: open the map mod&rsquo;s page at <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a> and click its <b>Scenarios</b> tab — the ScenarioId shown there (it looks like <code class="inline">{GUID}Missions/Name.conf</code>) is what goes in <code class="inline">scenarioId</code>. Add that map mod to the same server&rsquo;s <code class="inline">mods</code> list too.</p></li>
+    <li><b>Batch files:</b> copy <code class="inline">start_server1.bat</code> &rarr; <code class="inline">start_server2.bat</code> and <code class="inline">stop_server1.bat</code> &rarr; <code class="inline">stop_server2.bat</code>. Inside both, change every <code class="inline">server1</code> to <code class="inline">server2</code> and the title <code class="inline">WZ-Server-1</code> to <code class="inline">WZ-Server-2</code>. (The install folder and <code class="inline">workshop\</code> mods folder are <b>shared</b> — don&rsquo;t copy those.)</li>
+    <li><b>Gateway:</b> in <code class="inline">config.py</code>, un-comment the <code class="inline">server-2</code> line in <code class="inline">SERVERS</code> and give it its <b>own random</b> <code class="inline">api_key</code> (Step 5 command). Restart the gateway window — it now listens on 5000 <i>and</i> 5001.</li>
+    <li><b>Wire it:</b> in <code class="inline">profiles\server2\profile\hf_wastelandz\configs\</code> (created on server 2&rsquo;s first start), set <code class="inline">GATEWAY_URL http://127.0.0.1:5001/</code> and put server 2&rsquo;s key in its <code class="inline">HFWastelandZ_secrets.conf</code>.</li>
+    <li><b>Match the SERVER_ID (critical):</b> in server 2&rsquo;s <code class="inline">HFWastelandZ_server.conf</code>, set <code class="inline">SERVER_ID server-2</code> so it <b>exactly matches</b> that server&rsquo;s <code class="inline">server_id</code> in the gateway&rsquo;s <code class="inline">SERVERS</code> list. If they differ, last-location and kept-gear will <b>silently</b> not restore on that server (money/inventory still work, since those are hive-wide). The game log prints <code class="inline">SERVER_ID MISMATCH</code> if it&rsquo;s wrong.</li>
+    <li><b>Start it:</b> remove the <code class="inline">rem</code> in front of the server-2 lines in <code class="inline">start_all.bat</code>. Forward UDP 2002 + 17778 in your router.</li>
+  </ul>
+  <div class="note warn"><div class="h">One key per server</div><p>Each server gets its <b>own</b> gateway port and its <b>own</b> random <code class="inline">api_key</code> — that&rsquo;s how the gateway tells them apart. Never reuse a key across servers.</p></div>
+  <div class="note tip"><div class="h">Will my PC handle it?</div><p>Each Reforger server is heavy — roughly a few CPU cores and 4&ndash;8&nbsp;GB RAM per server under load. Two servers want a strong 8-core machine; three want more. The gateway and MySQL are lightweight by comparison.</p></div>
+
+  </div>
+  <div class="step"><span class="n">2</span>
+    <h4>Big box? Give each server its own cores</h4>
+  <p><b>RAM needs no dividing</b> — Windows hands it out on demand, and a full 128-player server uses roughly 8&ndash;16&nbsp;GB. (Windows has no simple per-program RAM cap like Linux&rsquo;s — skip that part.) <b>CPU is the part worth splitting:</b> a big AMD chip (e.g. a 16-core Ryzen 7950X3D) is really <b>two groups of 8 cores</b>, each sharing one pot of very fast memory (cache). Two servers squeezed into one group fight over the pot — give each server its own group.</p>
+  <p>On Windows the tool is the <code class="inline">/affinity</code> flag. In <code class="inline">start_server1.bat</code>, change the server line:</p>
+  <div class="code"><pre><span class="c">rem before:</span>
+"%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60
+
+<span class="c">rem after — server 1 pinned to the first 16 processor numbers (group one):</span>
+start "" /affinity FFFF /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60
+
+<span class="c">rem and in start_server2.bat — the next 16 (group two):</span>
+start "" /affinity FFFF0000 /wait "%SERVER_EXE%" -config "%CONFIG%" -profile "%PROFILE%" -addonDownloadDir "%ADDONS%" -maxFPS 60</pre></div>
+  <p class="muted">The mask is a code for &ldquo;which processors&rdquo;. <code class="inline">FFFF</code> = the first 16 processor numbers; Windows usually numbers each core twice back-to-back, so that&rsquo;s the first 8 cores = the first group (the big-cache one on X3D chips — give it to your busiest server). <code class="inline">/wait</code> keeps the auto-restart loop working. Sanity-check anytime: Task Manager &rarr; Details &rarr; right-click <code class="inline">ArmaReforgerServer.exe</code> &rarr; <b>Set affinity</b> shows exactly which processors each server is allowed on.</p>
+  <p><b>Cheat-sheet: 1&ndash;4 servers on a 16-core PC</b> (two 8-core groups; Windows numbers each core twice back-to-back):</p>
+  <div class="tablewrap"><table class="rtab">
+    <tr><th>Setup</th><th>Server &amp; players</th><th>/affinity mask</th></tr>
+    <tr><td rowspan="1">1 server (up to 128)</td><td><span class="role">WZ-Server-1</span> · 128</td><td><span class="role">none needed</span> (whole chip; or <span class="role">FFFF</span> for the big-cache group)</td></tr>
+    <tr><td rowspan="2">2 servers (2&times;128)</td><td><span class="role">WZ-Server-1</span> · 128</td><td><span class="role">FFFF</span></td></tr>
+    <tr><td><span class="role">WZ-Server-2</span> · 128</td><td><span class="role">FFFF0000</span></td></tr>
+    <tr><td rowspan="3">3 servers (2&times;128 + 1&times;64)</td><td><span class="role">WZ-Server-1</span> · 128</td><td><span class="role">FFFF</span></td></tr>
+    <tr><td><span class="role">WZ-Server-2</span> · 128</td><td><span class="role">FFFF0000</span></td></tr>
+    <tr><td><span class="role">WZ-Server-3</span> · 64</td><td><span class="role">none</span> (floats in the gaps)</td></tr>
+    <tr><td rowspan="4">4 servers (4&times;64 or 4&times;32)</td><td><span class="role">WZ-Server-1</span> · 64</td><td><span class="role">FF</span></td></tr>
+    <tr><td><span class="role">WZ-Server-2</span> · 64</td><td><span class="role">FF00</span></td></tr>
+    <tr><td><span class="role">WZ-Server-3</span> · 64</td><td><span class="role">FF0000</span></td></tr>
+    <tr><td><span class="role">WZ-Server-4</span> · 64</td><td><span class="role">FF000000</span></td></tr>
+  </table></div>
+  <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole group each (max cache per server). 4 servers &rarr; half a group (4 cores) each — plenty at 32&ndash;64 players, and no server ever spans both groups. 3 servers is the awkward count: pin the two big ones, let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch Task Manager on busy nights and adjust <code class="inline">aiLimit</code> before touching the masks.</p>
+  <p class="muted"><b>Different CPU?</b> Older Intels (e.g. an i9-9900K, 8 cores) are <b>one group</b> — no favourite half; split down the middle with <code class="inline">FF</code> / <code class="inline">FF00</code> and expect lower comfortable player caps. Newer hybrid Intels (12th&nbsp;gen up, e.g. an i7-13700K) mix fast <b>P-cores</b> (numbered first, each twice back-to-back) and small <b>E-cores</b> (after them): pin game servers to P-cores (<code class="inline">FF</code> / <code class="inline">FF00</code>) and leave the E-cores unpinned — they carry the gateway, MySQL and Windows itself. See your layout anytime: Task Manager &rarr; Details &rarr; right-click the server &rarr; <b>Set affinity</b> lists every processor number.</p>
+  </div>
+</div></section>
+</div>
+
+<!-- ================= LINUX: more servers ================= -->
+<div class="os-panel linux">
+<section><div class="wrap">
   <div class="part-head"><span class="part-badge">Part 3</span><h2>Two or three servers on one box</h2></div>
+  <div class="step"><span class="n">1</span>
+    <h4>Add the second and third server</h4>
   <p class="muted">One database, one gateway, several game servers — a <b>hive</b>. Players keep the <b>same money, bank and gear</b> on every server; each server keeps its own world (positions, placed objects, map). The Windows tab&rsquo;s &ldquo;Part 4&rdquo; ports table applies here too: game <b>2001/2002/2003</b>, browser <b>17777/17778/17779</b>, gateway <b>5000/5001/5002</b>.</p>
   <p>The finished two-server setup, and how the pieces talk:</p>
   <div class="code"><pre><span class="c">players → UDP 2001/17777 →</span> wz-server1 (Everon)  <span class="c">→ http://127.0.0.1:5000 + key #1 ─┐</span>
@@ -2029,7 +2343,9 @@ grep -H API_KEY    /opt/reforger/profiles/server*/profile/hf_wastelandz/configs/
   <div class="note warn"><div class="h">One key per server</div><p>Each server gets its <b>own</b> gateway port and its <b>own</b> random <code class="inline">api_key</code> — that&rsquo;s how the gateway tells them apart. Never reuse a key across servers.</p></div>
   <div class="note tip"><div class="h">Will the box handle it?</div><p>Each Reforger server is heavy — roughly a few CPU cores and 4&ndash;8&nbsp;GB RAM per server under load. Two servers want a strong 8-core machine; three want more. The gateway and MySQL are lightweight by comparison.</p></div>
 
-  <h3>Start / stop / restart anything — one pattern</h3>
+  </div>
+  <div class="step"><span class="n">2</span>
+    <h4>Start / stop / restart anything — one pattern</h4>
   <p>Every piece is a service with a name — <code class="inline">wz-server1</code>, <code class="inline">wz-server2</code>, <code class="inline">wz-gateway</code>, <code class="inline">mysql</code> — and one command pattern drives them all. Learn it once with server 1:</p>
   <div class="code"><pre><span class="p">sudo</span> systemctl start   wz-server1    <span class="c"># start it</span>
 <span class="p">sudo</span> systemctl stop    wz-server1    <span class="c"># stop it (players get dropped)</span>
@@ -2039,7 +2355,9 @@ grep -H API_KEY    /opt/reforger/profiles/server*/profile/hf_wastelandz/configs/
   <p class="muted">Swap the name for any other piece: bounce only server 2 = <code class="inline">sudo systemctl restart wz-server2</code>; stop the gateway = <code class="inline">sudo systemctl stop wz-gateway</code>; restart the database = <code class="inline">sudo systemctl restart mysql</code>. Each piece is independent — players on server 1 keep playing while you bounce server 2.</p>
   <p class="muted"><b>Order?</b> After a full stop (or a reboot where something didn&rsquo;t come up): <code class="inline">mysql</code> first, then <code class="inline">wz-gateway</code>, then the game servers. A briefly-down gateway doesn&rsquo;t crash the game servers — saves pause and Wasteland-Z resyncs every player automatically when it comes back — but don&rsquo;t leave it down long.</p>
 
-  <h3>Big box? Give each server its own cores</h3>
+  </div>
+  <div class="step"><span class="n">3</span>
+    <h4>Big box? Give each server its own cores</h4>
   <p><b>RAM first — there&rsquo;s nothing to divide.</b> Linux hands out memory on demand: a full 128-player Reforger server uses roughly 8&ndash;16&nbsp;GB, MySQL + the gateway a few more. Even three servers fit comfortably in 64&nbsp;GB. The only setting worth adding is a per-server safety cap (below) so a memory leak can never take down the whole box.</p>
   <p><b>CPU is the part worth splitting.</b> A big AMD chip (like a 16-core Ryzen 7950X3D) is really <b>two groups of 8 cores</b> glued together. Each group shares one pot of very fast memory called <i>cache</i> — the chip&rsquo;s short-term memory. A game server runs best when its group belongs to it alone; two servers squeezed into one group fight over the pot and both get slower. The fix is one line per server that says &ldquo;you may only use <i>these</i> cores&rdquo; — one server per group.</p>
   <h5 class="substep"><span class="lt">1</span> See your two groups</h5>
@@ -2083,7 +2401,9 @@ MemoryMax=32G</pre></div>
   <p class="muted">The logic: 1&ndash;2 servers &rarr; a whole group each (max cache per server). 4 servers &rarr; half a group (4 cores) each — plenty at 32&ndash;64 players, and no server ever spans both groups. 3 servers is the awkward count: keep the two big ones on their own groups and let the third float. Player caps live in each <code class="inline">serverN.json</code> (<code class="inline">maxPlayers</code>); what actually loads a core is AI + player count together, so watch <code class="inline">top</code> on busy nights and adjust <code class="inline">aiLimit</code> before touching the core map. RAM: even the 4-server row uses under half of a 128&nbsp;GB box.</p>
   <p class="muted"><b>Different CPU?</b> Step 1 tells you the truth about any chip. If every row&rsquo;s last digit is <code class="inline">0</code>, your chip is <b>one group</b> (most older Intels, e.g. an i9-9900K): there&rsquo;s no favourite to pick — split the cores in half (first half + their twins to server 1, the rest to server 2) and expect lower comfortable player caps on older chips. Newer Intels (12th&nbsp;gen up, e.g. an i7-13700K) mix fast <b>P-cores</b> and small <b>E-cores</b> — in <code class="inline">lscpu -e</code> the P-cores appear <i>twice</i> (they have twins), E-cores <i>once</i>. Pin game servers to P-cores only and leave the E-cores unpinned — they carry the gateway, MySQL and the system.</p>
 
-  <h3>Troubleshooting</h3>
+  </div>
+  <div class="step"><span class="n">4</span>
+    <h4>Troubleshooting</h4>
   <ul class="clean muted">
     <li><b>&ldquo;Database connection failed&rdquo;</b> — <code class="inline">DB_PASSWORD</code> in <code class="inline">config.py</code> doesn&rsquo;t match Step 4, or MySQL is stopped (<code class="inline">sudo systemctl status mysql</code>).</li>
     <li><b>Service won&rsquo;t start</b> — run <code class="inline">journalctl -u wz-gateway -e</code> to see why; usually a wrong path or username in the service file.</li>
@@ -2096,183 +2416,9 @@ MemoryMax=32G</pre></div>
     <li><b>Money/gear not saving</b> — <code class="inline">GATEWAY_URL</code> or <code class="inline">api_key</code> mismatch between the game server and <code class="inline">config.py</code>.</li>
     <li><b>Last location &amp; kept gear don&rsquo;t restore on relog (but money &amp; inventory DO)</b> — the game server&rsquo;s <code class="inline">SERVER_ID</code> (in <code class="inline">HFWastelandZ_server.conf</code>) doesn&rsquo;t match the <code class="inline">server_id</code> the gateway uses for it (its <code class="inline">SERVERS</code> entry / <code class="inline">SERVER_ID</code>). Money/inventory are hive-wide so they still work; only per-server data (position, kept-on-relog gear) needs the ids to match. Set <code class="inline">SERVER_ID</code> to the gateway&rsquo;s id and restart. The game log prints <code class="inline">SERVER_ID MISMATCH</code> with both values when it detects this — <code class="inline">grep -i "SERVER_ID MISMATCH"</code> your log.</li>
   </ul>
+  </div>
 </div></section>
 </div>
-
-<!-- ================= MODS (shared) ================= -->
-<section><div class="wrap">
-  <span class="section-tag">Mods</span>
-  <h2>Add, remove &amp; track mods</h2>
-  <p class="muted">Same on Windows and Linux. There is <b>no installer</b> — the <code class="inline">mods</code> list inside your server config (<code class="inline">server1.json</code>) <i>is</i> the mod manager. On every start the server reads that list, auto-downloads anything missing from the Reforger Workshop into your <code class="inline">workshop</code> folder, and loads <b>exactly what&rsquo;s listed — nothing else</b>.</p>
-
-  <h3>Add a mod</h3>
-  <p>Find it on the official Workshop site: <a href="https://reforger.armaplatform.com/workshop" target="_blank" rel="noopener">reforger.armaplatform.com/workshop</a>. The mod&rsquo;s ID is right in its page URL — the 16 characters before the name, e.g. <code class="inline">&hellip;/workshop/<b>68A616565DECAB19</b>-wasteland-z</code>. Add one block to the <code class="inline">mods</code> list and restart the server:</p>
-  <div class="note"><div class="h">Wasteland-Z is live on the Workshop</div><p>The kit already pre-lists it in every <code class="inline">mods</code> block, so you don&rsquo;t need to add it by hand — but here&rsquo;s its page: <a href="https://reforger.armaplatform.com/workshop/68A616565DECAB19" target="_blank" rel="noopener">reforger.armaplatform.com/workshop/68A616565DECAB19</a> (mod ID <code class="inline">68A616565DECAB19</code>).</p></div>
-  <div class="code"><pre>"mods": [
-    {
-        "modId": "68A616565DECAB19",
-        "name": "Wasteland-Z"
-    },
-    {
-        "modId": "ABCDEF1234567890",
-        "name": "Cool Helmet Pack"
-    },
-    {
-        "modId": "0123456789ABCDEF",
-        "name": "Winter Uniforms"
-    }
-]</pre></div>
-  <p class="muted">The <code class="inline">name</code> is your own label — write whatever helps you remember what it is. <b>The commas are the one gotcha:</b> every mod&rsquo;s closing <code class="inline">}</code> gets a comma <i>except the last one</i> — and never a semicolon, JSON doesn&rsquo;t use them. So when you add a mod at the end: the block that <i>used to be</i> last gains a comma, the new last block has none.</p>
-
-  <h3>Remove a mod — including a problem mod</h3>
-  <p>Delete its block from the list, restart. That&rsquo;s the whole procedure — the server only loads what&rsquo;s listed. The mod&rsquo;s downloaded files stay in the <code class="inline">workshop</code> folder but are completely inert; if you want the disk space back, delete the folder named with that mod&rsquo;s ID inside the workshop folder.</p>
-
-  <h3>Can&rsquo;t I just comment a mod out?</h3>
-  <p>Not in this file. <code class="inline">server1.json</code> is JSON, and <b>JSON forbids comments</b> — one <code class="inline">//</code> line and the server refuses the whole config. So in the json, deleting the block is the only off switch. The convenient middle ground is a <b>parking file</b>: keep a plain text file next to your configs that nothing reads, and move benched mod blocks there instead of losing them:</p>
-  <div class="code"><pre><span class="c">mods-parked.txt — your parking lot; the server never reads this file.
-Copy a block back into server1.json's "mods" list to re-enable it.</span>
-
-{ "modId": "ABCDEF1234567890", "name": "Cool Helmet Pack" },     broke after 1.7 update, retry later
-{ "modId": "0123456789ABCDEF", "name": "Winter Uniforms" },      summer season — bring back in December
-{ "modId": "FEDCBA9876543210", "name": "Extra Car Pack" },       testing caused rubber-banding</pre></div>
-  <p class="muted">(Wasteland-Z&rsquo;s own <code class="inline">.conf</code> files are different — those are <code class="inline">KEY VALUE</code> format and take <code class="inline">#</code> comments freely. Only the game server&rsquo;s <code class="inline">.json</code> is strict.)</p>
-
-  <h3>Track your mods</h3>
-  <p>The <code class="inline">mods</code> list is the single source of truth — one block per mod, nothing can load that isn&rsquo;t in it. Running several servers? Each <code class="inline">serverN.json</code> has its <b>own</b> list, so server 1 and server 2 can run different mod sets. To see what a server actually loaded, its boot log prints every addon as it starts.</p>
-
-  <div class="note warn"><div class="h">One game mode at a time</div><p>Wasteland-Z is a <b>game mode</b> — it owns the gameplay. Content mods (weapons, clothing, vehicles, buildings) sit alongside it fine; adding <i>another</i> game-mode mod makes the two fight. If a mod&rsquo;s Workshop page says &ldquo;game mode,&rdquo; it doesn&rsquo;t belong on a Wasteland-Z server.</p></div>
-  <div class="note tip"><div class="h">Server broke after adding a mod — or after a game update?</div><p>Remove the last mod you added, restart. If it broke right after a Reforger update instead: mod authors need a few days to catch up with game patches — remove your extra mods, restart, then add them back one at a time as they&rsquo;re updated.</p></div>
-</div></section>
-
-<!-- ================= ROLES (shared) ================= -->
-<style>
-  .tablewrap{overflow-x:auto;margin:12px 0}
-  .rtab{width:100%;border-collapse:collapse;font-size:14.5px}
-  .rtab th,.rtab td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-  .rtab th{font-family:var(--font-display);text-transform:uppercase;letter-spacing:.12em;font-size:12px;color:var(--rust);font-weight:600;white-space:nowrap}
-  .rtab td .role{font-family:var(--font-mono);color:var(--sand);white-space:nowrap}
-  .rtab td:first-child{white-space:nowrap}
-</style>
-<section><div class="wrap">
-  <span class="section-tag">Everyday admin</span>
-  <h2>Players, roles &amp; reserved slots</h2>
-  <p class="muted">This part is the same on Windows and Linux — it&rsquo;s done with config files and in-game commands.</p>
-
-  <h3>The five roles</h3>
-  <p class="muted">Every player has a role. Higher beats lower. Roles live in one file: <code class="inline">$profile:HFWastelandZ_admins.conf</code>, keyed by <b>Bohemia Identity GUID</b> (a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code &mdash; not your Steam number; see Part 1 &rarr; Step 9d for how to find yours).</p>
-  <div class="tablewrap"><table class="rtab">
-    <tr><th>Role</th><th>Can do</th></tr>
-    <tr><td><span class="role">OWNER</span></td><td>Everything, including <code class="inline">/admin restart</code>. Set by editing the file only.</td></tr>
-    <tr><td><span class="role">ADMIN</span></td><td>Game Master (Zeus), promote/demote others, save, all mission &amp; spot editing.</td></tr>
-    <tr><td><span class="role">MOD</span></td><td>Kick, ban, mute, teleport, heal, god, announce.</td></tr>
-    <tr><td><span class="role">TRUSTED</span></td><td>Donor / verified helper (reserved for future perks).</td></tr>
-    <tr><td><span class="role">EVERYONE</span></td><td>Default — every normal player. No line needed.</td></tr>
-  </table></div>
-
-  <h3>Make someone a mod, admin, or owner</h3>
-  <p><b>Your first admin — and the only way to set OWNER — is by editing the file.</b> Add a line and restart:</p>
-  <div class="code"><pre><span class="c"># in $profile:HFWastelandZ_admins.conf</span>
-OWNER a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-ADMIN b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
-MOD   c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f</pre></div>
-  <p class="muted">Those are <b>Bohemia Identity GUIDs</b> (lowercase <code class="inline">8-4-4-4-12</code> hex), one per admin &mdash; find yours via Part 1 &rarr; Step 9d. Put <b>no trailing space</b> after the GUID (see the gotcha in Step 9d). Anyone not listed is EVERYONE.</p>
-  <p>After you have one admin, change roles <b>live, no restart</b>, from in-game chat:</p>
-  <div class="code"><pre>/admin promote &lt;name|playerId&gt; &lt;EVERYONE|TRUSTED|MOD|ADMIN&gt;</pre></div>
-  <div class="note warn"><div class="h">The rules</div><p>You must be <b>ADMIN or OWNER</b> to change roles. An ADMIN can grant any role <b>up to and including ADMIN</b>. <b>OWNER</b> is never granted in-game — it&rsquo;s file-only so no one can lock you out, so seed yourself as OWNER in the file first. You can change anyone at or below your own rank (an ADMIN can demote a peer ADMIN), but never someone above you — and an <b>OWNER can never be changed in-game</b> by anyone.</p></div>
-  <p>You can also change roles in the game — open the <b>F8 admin menu &rarr; Players</b> tab. The right-hand <b>STAFF</b> list shows everyone with a role (including <b>offline</b> people); click a player or staff row, then a role button (twice to confirm).</p>
-
-  <h3>See who has what role</h3>
-  <div class="code"><pre>/admin who</pre></div>
-  <p class="muted">Lists everyone online with their role. Any MOD or higher can run it.</p>
-
-  <h3>Change what each command needs (command tiers)</h3>
-  <p>Every command has a <b>minimum role</b>. To run it, your role must be equal or higher. Change any command&rsquo;s required role in <code class="inline">$profile:HFWastelandZ_command_tiers.conf</code>:</p>
-  <div class="code"><pre><span class="c"># format:  &lt;command&gt;.&lt;subcommand&gt; = &lt;ROLE&gt;</span>
-admin.god  = OWNER     <span class="c"># only owner can use god mode</span>
-admin.kick = ADMIN     <span class="c"># mods can no longer kick</span></pre></div>
-  <p class="muted">So <b>admins.conf</b> sets what role each <i>player</i> has, and <b>command_tiers.conf</b> sets what role each <i>command</i> needs. Restart to apply changes.</p>
-
-  <h3>Reserved login slots (staff always get in)</h3>
-  <p class="muted">Keeps a couple of slots open so your staff can always join a full server, without permanently wasting seats. Set these in <code class="inline">$profile:HFWastelandZ_server.conf</code>:</p>
-  <div class="tablewrap"><table class="rtab">
-    <tr><th>Setting</th><th>Default</th><th>What it does</th></tr>
-    <tr><td><span class="role">RESERVED_SLOTS_ENABLED</span></td><td>0</td><td>Master on/off. Set to <b>1</b> to turn it on.</td></tr>
-    <tr><td><span class="role">RESERVED_BUFFER</span></td><td>2</td><td>Slots always kept free so staff join instantly.</td></tr>
-    <tr><td><span class="role">RESERVED_HIGHRISK_COUNT</span></td><td>8</td><td>How many newest regular players are &ldquo;bumpable.&rdquo;</td></tr>
-    <tr><td><span class="role">RESERVED_MIN_TIER</span></td><td>20</td><td>Lowest role treated as staff (20 = MOD).</td></tr>
-    <tr><td><span class="role">RESERVED_TOTAL_SLOTS</span></td><td>0</td><td>Leave 0 on a real server (read automatically). Only set on a Workbench test host.</td></tr>
-  </table></div>
-  <p><b>Setup:</b> in the game&rsquo;s <code class="inline">config.json</code>, set <code class="inline">game.maxPlayers</code> to your playable count <b>plus</b> the buffer, and set <code class="inline">RESERVED_TOTAL_SLOTS</code> to that same number. Example: 128 players &rarr; <code class="inline">maxPlayers 130</code>, <code class="inline">RESERVED_BUFFER 2</code>. ADMIN/OWNER always get in; MOD only bumps regular players.</p>
-  <div class="note tip"><div class="h">How to see it working</div><p>It runs on the server, so watch the <b>server console / log</b> — set <code class="inline">HF_DEBUG_ADMIN 1</code> in <code class="inline">server.conf</code> and you&rsquo;ll see lines like <code class="inline">ReservedSlots: ON total=130 buffer=2&hellip;</code> and <code class="inline">BUMP&hellip;</code> when it acts. Players in a bumpable slot also see a &ldquo;high-risk&rdquo; banner in their HUD.</p></div>
-</div></section>
-  <section><div class="wrap">
-  <span class="section-tag">Required setting</span>
-  <h2>The mission header &mdash; turn the game&rsquo;s own saving OFF</h2>
-  <p class="lede">One block in <code class="inline">server1.json</code>. Get it wrong and your towns
-  appear twice.</p>
-
-  <div class="note warn"><div class="h">This block must be in your config</div>
-  <div class="code"><pre>"game": {
-  ...
-  "scenarioId": "{59AD59368755F41A}Missions/21_GM_Eden.conf",
-
-  "missionHeader": {
-    "m_sName": "WASTELAND Z",
-    "m_eSaveTypes": 0,
-    "m_bIsSavingEnabled": false
-  },
-  ...
-}</pre></div>
-  <p>It goes <b>inside</b> <code class="inline">"game"</code>, right after
-  <code class="inline">"scenarioId"</code>. The example configs in this kit already ship it.</p></div>
-
-  <h3 style="margin-top:22px">What each line does</h3>
-  <div class="tablewrap"><table class="rtab">
-    <tr><th>Setting</th><th>Value</th><th>What it does</th></tr>
-    <tr><td><code class="inline">m_sName</code></td><td>WASTELAND Z</td>
-        <td>The mission name the game shows. Cosmetic &mdash; set it to whatever you like.</td></tr>
-    <tr><td><code class="inline">m_eSaveTypes</code></td><td><b>0</b></td>
-        <td>Turns off the engine&rsquo;s automatic saving. <b>Not optional.</b></td></tr>
-    <tr><td><code class="inline">m_bIsSavingEnabled</code></td><td><b>false</b></td>
-        <td>Turns off session saving. <b>Not optional.</b></td></tr>
-  </table></div>
-
-  <h3 style="margin-top:22px">Why it matters</h3>
-  <p>Arma Reforger can save the whole world &mdash; every object placed in it &mdash; and restore that
-  save the next time the server starts. That is useful for the game modes it was built for. It is wrong
-  for Wasteland-Z.</p>
-  <p>When the server starts, Wasteland-Z builds the world: towns, stores, markers, map circles, vehicle
-  spawns. <b>If the engine has already restored a saved copy of all that, Wasteland-Z builds it again on
-  top.</b> Now there are two of everything.</p>
-  <p>The first thing anyone notices is the <b>town list showing every town twice</b>, because that list
-  is on screen and easy to read. Stores, markers and map circles double in exactly the same way &mdash;
-  they are just less obvious.</p>
-
-  <div class="note tip"><div class="h">You lose nothing by turning it off</div>
-  <p>Wasteland-Z does not use the game&rsquo;s save. Everything that has to survive a restart &mdash;
-  money, bank, gear, your last position, your vehicles, bans, stats &mdash; lives in <b>your MySQL
-  database</b>, written through the gateway. That is what the gateway is for.</p>
-  <p>The engine save is a second, competing copy of a much smaller slice of the same idea. Two systems
-  writing the same world is the problem, not the solution.</p></div>
-
-  <div class="note"><div class="h">Already seeing duplicates? Two steps</div>
-  <p><b>1.</b> Add the <code class="inline">missionHeader</code> block above and save the file.</p>
-  <p><b>2.</b> Delete the save the game already wrote, or it gets restored one more time on the next
-  start:</p>
-  <div class="os-panel linux"><div class="code"><pre><span class="c"># stop the server first</span>
-sudo systemctl stop wz-server1
-
-<span class="c"># the engine writes its saves under the profile you launch with</span>
-ls /opt/reforger/profiles/server1/
-rm -rf /opt/reforger/profiles/server1/saves</pre></div></div>
-  <div class="os-panel windows"><div class="code"><pre><span class="c">REM stop the server first</span>
-
-<span class="c">REM the engine writes its saves under the profile you launch with</span>
-dir C:\reforger\profiles\server1\
-rmdir /S /Q C:\reforger\profiles\server1\saves</pre></div></div>
-  <p class="muted">Start the server again and the towns come up once. With saving off it does not
-  come back.</p></div>
-</div></section>
 </main>
 
 <main class="view view-hive chan production">
@@ -4913,6 +5059,194 @@ python3 wz_watchdog.py /opt/reforger/profile/hf_wastelandz/configs --loop</pre><
       window.scrollTo({top:document.querySelector('.os-bar').offsetTop-60,behavior:'auto'});
     });
   });
+  // Links to a heading inside a tab (e.g. #become-owner): switch to the tab
+  // and release that hold it, then scroll there. The tabs have no URLs of
+  // their own, so without this a link would land on a hidden section.
+  function openHash(){
+    var id=decodeURIComponent((location.hash||'').slice(1));
+    if(!id) return;
+    var el=document.getElementById(id);
+    if(!el) return;
+    var view=el.closest('main.view');
+    if(view){
+      var cls=view.className.split(/\s+/), v=null, ch=null;
+      cls.forEach(function(c){
+        if(c.indexOf('view-')===0) v=c.slice(5);
+        else if(c!=='view' && c!=='chan') ch=c;
+      });
+      if(v){
+        body.setAttribute('data-view', v);
+        document.querySelectorAll('.viewtabs button').forEach(function(b){
+          b.setAttribute('aria-selected', b.getAttribute('data-view')===v ? 'true':'false');
+        });
+      }
+      if(ch){
+        body.setAttribute('data-channel', ch);
+        document.querySelectorAll('.chanseg button').forEach(function(b){
+          b.setAttribute('aria-selected', b.getAttribute('data-channel')===ch ? 'true':'false');
+        });
+      }
+    }
+    openTo(el);
+    el.scrollIntoView({block:'start'});
+  }
+
+  // ---- Collapsible headings -------------------------------------------
+  // Every Part heading and every h2 becomes a header that opens and closes
+  // the content under it, up to the next heading. The first heading of each
+  // tab starts open, the rest start closed. Built here so the HTML stays as
+  // it is: with no script, everything shows open and there is no tree.
+  function isHead(n){
+    return n.nodeType===1 && (n.classList.contains('part-head') || (n.tagName==='H2' && !n.closest('.part-head')));
+  }
+  function setOpen(head, open){
+    head.setAttribute('aria-expanded', open ? 'true':'false');
+    if(head._body) head._body.classList.toggle('collapsed', !open);
+  }
+  function openTo(el){
+    for(var n=el; n; n=n.parentElement){
+      if(n.classList && n.classList.contains('sec-body') && n._head) setOpen(n._head, true);
+    }
+    var head=(el.classList && el.classList.contains('sec-head')) ? el : (el.closest ? el.closest('.sec-head') : null);
+    if(head) setOpen(head, true);
+  }
+  function toggle(h){ setOpen(h, h.getAttribute('aria-expanded')!=='true'); }
+  document.querySelectorAll('main.view .wrap').forEach(function(wrap){
+    var kids=[].slice.call(wrap.children);
+    for(var i=0;i<kids.length;i++){
+      if(!isHead(kids[i])) continue;
+      var head=kids[i], part=document.createElement('div');
+      part.className='sec-body';
+      var j=i+1;
+      while(j<kids.length && !isHead(kids[j]) &&
+            !(kids[j].classList.contains('section-tag') && j+1<kids.length && isHead(kids[j+1]))){
+        part.appendChild(kids[j]); j++;
+      }
+      head.parentNode.insertBefore(part, head.nextSibling);
+      head._body=part; part._head=head;
+      head.classList.add('sec-head');
+      head.setAttribute('role','button');
+      head.setAttribute('tabindex','0');
+      var chev=document.createElement('span');
+      chev.className='chev'; chev.textContent='▾'; chev.setAttribute('aria-hidden','true');
+      head.appendChild(chev);
+      head.addEventListener('click', function(e){
+        if(e.target.closest('a')) return;
+        toggle(e.currentTarget);
+      });
+      head.addEventListener('keydown', function(e){
+        if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggle(e.currentTarget); }
+      });
+      i=j-1;
+    }
+  });
+  document.querySelectorAll('main.view').forEach(function(view){
+    view.querySelectorAll('.sec-head').forEach(function(h, k){ setOpen(h, k===0); });
+  });
+  // A link to the hash already in the address bar fires no hashchange, so
+  // open it here too.
+  document.addEventListener('click', function(e){
+    var a=e.target.closest('a[href^="#"]');
+    if(!a || a.closest('#toc')) return;
+    var id=a.getAttribute('href').slice(1);
+    if(id && id===decodeURIComponent((location.hash||'').slice(1))){ e.preventDefault(); openHash(); }
+  });
+
+  // ---- Contents tree ---------------------------------------------------
+  // Rebuilt from the headings on screen whenever the tab, the release or the
+  // OS changes, so it never needs maintaining by hand.
+  var toc=document.getElementById('toc'), tocBtn=document.getElementById('tocBtn'), observer=null;
+  function stickyTop(){
+    var top=document.querySelector('header.top'), bar=document.querySelector('.os-bar');
+    var h=(top ? top.offsetHeight : 60) + (bar ? bar.offsetHeight : 0) + 12;
+    document.documentElement.style.setProperty('--stick', h+'px');
+    return h;
+  }
+  function currentView(){
+    return document.querySelector('main.view.view-'+body.getAttribute('data-view')+'.'+body.getAttribute('data-channel'));
+  }
+  function headText(h){
+    var badge=h.querySelector('.part-badge'), h2=(h.tagName==='H2') ? h : h.querySelector('h2');
+    var title=(h2 ? h2.textContent : h.textContent).replace('▾','').trim();
+    return {badge: badge ? badge.textContent.trim() : '', title: title};
+  }
+  function closePhone(){
+    body.classList.remove('toc-open');
+    if(tocBtn) tocBtn.setAttribute('aria-expanded','false');
+  }
+  function go(target, head){
+    openTo(head); openTo(target);
+    target.scrollIntoView({block:'start'});
+    closePhone();
+  }
+  function buildToc(){
+    var view=currentView();
+    if(!toc || !view) return;
+    toc.innerHTML='';
+    var hdr=document.createElement('div');
+    hdr.className='toc-h';
+    hdr.innerHTML='<span>Contents</span><button type="button" data-all="1">Open all</button><button type="button" data-all="0">Close all</button>';
+    toc.appendChild(hdr);
+    hdr.querySelectorAll('button').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var open=btn.getAttribute('data-all')==='1';
+        view.querySelectorAll('.sec-head').forEach(function(h){ setOpen(h, open); });
+      });
+    });
+    var targets=[];
+    view.querySelectorAll('.sec-head').forEach(function(h){
+      var panel=h.closest('.os-panel');
+      if(panel && !panel.classList.contains(body.getAttribute('data-os'))) return;
+      var txt=headText(h), a=document.createElement('a');
+      a.href='#';
+      if(txt.badge){ var s=document.createElement('span'); s.className='badge'; s.textContent=txt.badge; a.appendChild(s); }
+      a.appendChild(document.createTextNode(txt.title));
+      a.addEventListener('click', function(e){ e.preventDefault(); go(h, h); });
+      toc.appendChild(a);
+      targets.push([h, a]);
+      if(h._body){
+        // Sub-entries: h3 headings and numbered step boxes, in page order.
+        h._body.querySelectorAll('h3, .step > h4').forEach(function(el){
+          if(el.closest('.sec-body')!==h._body) return;
+          var target=(el.tagName==='H4') ? el.parentNode : el;
+          var num=(el.tagName==='H4') ? target.querySelector(':scope > .n') : null;
+          var sub=document.createElement('a');
+          sub.href='#'; sub.className='sub';
+          if(num){ var nb=document.createElement('span'); nb.className='badge'; nb.textContent=num.textContent.trim(); sub.appendChild(nb); }
+          sub.appendChild(document.createTextNode(el.textContent.trim()));
+          sub.addEventListener('click', function(e){ e.preventDefault(); go(target, h); });
+          toc.appendChild(sub);
+        });
+      }
+    });
+    // Highlight the heading at the top of the screen. Browser visibility
+    // events, not a timer.
+    if(observer) observer.disconnect();
+    if('IntersectionObserver' in window){
+      observer=new IntersectionObserver(function(entries){
+        entries.forEach(function(en){
+          if(!en.isIntersecting) return;
+          targets.forEach(function(p){ p[1].classList.toggle('active', p[0]===en.target); });
+        });
+      }, {rootMargin:'-'+stickyTop()+'px 0px -65% 0px'});
+      targets.forEach(function(p){ observer.observe(p[0]); });
+    }
+  }
+  if(tocBtn) tocBtn.addEventListener('click', function(){
+    var open=!body.classList.contains('toc-open');
+    body.classList.toggle('toc-open', open);
+    tocBtn.setAttribute('aria-expanded', open ? 'true':'false');
+  });
+  document.querySelectorAll('.viewtabs button, .chanseg button, .seg button').forEach(function(btn){
+    btn.addEventListener('click', buildToc);
+  });
+  window.addEventListener('resize', stickyTop);
+  stickyTop();
+  body.classList.add('toc-ready');
+
+  window.addEventListener('hashchange', function(){ openHash(); buildToc(); });
+  openHash();
+  buildToc();
   // Copy buttons
   document.querySelectorAll('.code').forEach(function(box){
     var pre=box.querySelector('pre'); if(!pre) return;
