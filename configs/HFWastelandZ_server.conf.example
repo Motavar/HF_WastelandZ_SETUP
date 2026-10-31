@@ -1509,10 +1509,11 @@ RESERVED_MIN_TIER 20
 # first start, with every setting it supports and the comments
 # explaining each one. That generated file is the authority.
 #
-# As of mod 1.0.19 this example is missing 55 of the mod's 210
-# settings - whole areas including the garage, parachutes,
-# stamina, towing, vehicle despawn timers and the hive dashboard.
-# They are all present and documented in the file the mod writes.
+# Many settings are not in this example - whole areas including
+# the garage, parachutes, stamina, towing, vehicle despawn timers,
+# the hive dashboard, storage mode and food and water. New
+# settings arrive with mod updates and are added to your real file
+# on their own. They are all present and documented there.
 #
 # So: start your server once, then edit the file it generated.
 # Use this example to read ahead, not as the complete list.

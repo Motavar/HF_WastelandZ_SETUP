@@ -13,7 +13,7 @@ behind. That is what this file is for.
 
 | | Version | Where |
 |---|---|---|
-| **Mod** | **1.0.19** | Workshop — automatic, nothing to do |
+| **Mod** | **1.0.18 or newer** | Workshop — automatic, nothing to do |
 | **Gateway** | **0.9.6** | `gateway-1.0.18/` in this repo |
 | **Game server** | **Arma Reforger 1.8.0.10** or newer | SteamCMD |
 
@@ -23,8 +23,8 @@ Check your gateway by looking at the first line it prints on start:
   WastelandZ Gateway v0.9.6
 ```
 
-> **The folder is still `gateway-1.0.18/` and that is correct.** The gateway did
-> not change for 1.0.19 — 1.0.18 and 1.0.19 both run **0.9.6** from that folder.
+> **The folder is `gateway-1.0.18/` and that is correct.** 1.0.18 is the first mod
+> that needs gateway 0.9.6, and every mod since runs **0.9.6** from that folder.
 >
 > **Coming from 1.0.16? The database is upgraded.** Back up before you start
 > 0.9.6 for the first time — once the database is upgraded an older gateway
@@ -32,7 +32,7 @@ Check your gateway by looking at the first line it prints on start:
 
 > **Still on mod 1.0.16?** Gateway `0.7.1` is still in `gateway-1.0.16/` and
 > still works. Do not run 0.9.6 against 1.0.16, or 0.7.1 against 1.0.18 or
-> 1.0.19 — either pairing stops gear saving.
+> newer — either pairing stops gear saving.
 
 
 ## Version history
@@ -41,6 +41,7 @@ Newest first. "Gateway" is the minimum that release needs.
 
 | Date | Mod | Gateway | What it needed from you |
 |---|---|---|---|
+| 2026-10-20 | **1.0.20** | 0.9.6 | **Nothing — update the mod.** Same gateway, same database. Adds `STORAGE_MODE LOCAL` (run without the gateway, optional); see below. |
 | 2026-09-20 | **1.0.19** | 0.9.6 | **Nothing — update the mod.** Same gateway, same database. Fixes base building for normal players; see below. |
 | 2026-09-20 | **1.0.18** | **0.9.6** | **Database upgrade.** Back up first - an upgraded database will not accept 0.7.1. The gateway migrates itself; you run no SQL. |
 | 2026-08-26 | 1.0.16 | **0.7.1** | **Security update — re-download the gateway.** See below. |
@@ -52,6 +53,24 @@ Newest first. "Gateway" is the minimum that release needs.
 | 2026-07-16 | — | 0.7.0 | Nothing. Weight/speed dial, realtime stamina tuning. |
 | 2026-07-04 | **1.0.0** | 0.7.0 | First public release. |
 | 2026-06-30 | — | **0.7.0** | Hive-shared schema. |
+
+---
+
+## 2026-10-20 — Mod 1.0.20
+
+**What you do: nothing.** The Workshop updates the mod. Gateway stays on **0.9.6**,
+same database, no backup.
+
+New, and all optional:
+
+- **`STORAGE_MODE LOCAL`** — save players to files on the server instead of the
+  gateway and MySQL. Every existing server stays on `STORAGE_MODE GATEWAY`. Switching
+  modes starts every player fresh; there is no import between the two.
+- **Creature AI mods** such as Project Outbreak work in HF events and missions. HF does
+  not include or require them.
+- **Selling at the stores** — quick-sell buttons, crates and vehicles. Two new settings,
+  `SUPPLY_SELL_RATE` and `SELL_STARTING_GEAR`, are added to your config on their own.
+- **F8 SERVER tab** with DATABASE, FILES/LOGS and SERVER HEALTH.
 
 ---
 
@@ -212,9 +231,8 @@ you copy, not by a branch:
 
 | Your mod | Needs gateway | Folder |
 |---|---|---|
-| 1.0.19 | 0.9.6 | `gateway-1.0.18/` |
-| 1.0.18 | 0.9.6 | `gateway-1.0.18/` |
-| 1.0.16 | 0.7.1 | `gateway-1.0.16/` |
+| 1.0.18 and newer | 0.9.6 | `gateway-1.0.18/` |
+| 1.0.16 and older | 0.7.1 | `gateway-1.0.16/` |
 
 ```
 git clone https://github.com/Motavar/HF_WastelandZ_SETUP.git

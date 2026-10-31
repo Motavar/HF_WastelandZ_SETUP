@@ -18,25 +18,19 @@ starts. **The gateway is the part you host**, and it has to match the mod.
 
 | Your mod | Needs gateway | Folder in this repo | |
 |---|---|---|---|
-| **1.0.19** | **0.9.6** | [`gateway-1.0.18/`](gateway-1.0.18) | **Current release** |
-| 1.0.18 | 0.9.6 | [`gateway-1.0.18/`](gateway-1.0.18) | Same gateway as 1.0.19 — update the mod only |
-| 1.0.16 | 0.7.1 | [`gateway-1.0.16/`](gateway-1.0.16) | Legacy — kept for servers not yet upgraded |
+| **1.0.18 and newer** | **0.9.6** | [`gateway-1.0.18/`](gateway-1.0.18) | **Current** |
+| 1.0.16 and older | 0.7.1 | [`gateway-1.0.16/`](gateway-1.0.16) | Legacy — kept for servers not yet upgraded |
 
-The folder is still called `gateway-1.0.18/` because the gateway itself did not
-change. **1.0.18 and 1.0.19 both run gateway 0.9.6**, from that same folder.
+The folder is called `gateway-1.0.18/` because 1.0.18 is the first mod that
+needs it. **Every mod from 1.0.18 on runs gateway 0.9.6**, from that same folder.
+This page changes only when a new gateway ships.
 
 Not sure which you have? Your server console prints it on start as
 `[HF] WastelandZ <version>`.
 
-> **Mod 1.0.19 is the current release.**
->
-> **On 1.0.18? Do nothing.** The Workshop updates the mod for you. Same gateway,
-> same database, no backup needed — 1.0.19 changes the mod and nothing else.
->
-> **Why it exists:** 1.0.18 stopped normal players from opening the build menu.
-> Base building worked for admins, so a server could run for days without anyone
-> realising players could not build. 1.0.19 fixes it, and a player who is refused
-> is now told why on screen instead of being left with a tool that does nothing.
+> **On 1.0.18 or newer? Do nothing.** The Workshop updates the mod for you. Same
+> gateway, same database, no backup needed. What changed in each release:
+> [`RELEASES.md`](RELEASES.md).
 >
 > **On 1.0.16?** You need gateway **0.9.6** and it **upgrades your database** —
 > read the backup step below before you start. The 0.7.1 kit is still here and
