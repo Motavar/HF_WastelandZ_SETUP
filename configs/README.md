@@ -43,6 +43,9 @@ but you have to fill them in before your server is usable:
    number. Find it on your profile in-game (upper right), or as the
    `identityId=` value in the server log when you join. See
    `HFWastelandZ_admins.conf.example`.
+   From mod 1.0.21 you can skip the editing: while the file is empty the
+   server log shows a one-time `/claim` code; type it in chat to become
+   OWNER.
 
 ## Why the kit still ships `.example` files
 

@@ -617,6 +617,14 @@ FLUSH PRIVILEGES;</pre></div>
 
     <div class="note warn"><div class="h">One more thing, or you are not an admin on your own server</div>
     <p><code class="inline">HFWastelandZ_admins.conf</code> is created <b>empty</b>. Until you put yourself in it, <span class="kbd">F8</span> does nothing and <code class="inline">/zeus</code> is refused &mdash; on the server you just built.</p>
+    <p><b>Easiest, from mod 1.0.21: claim it in chat.</b> While the admin list is empty, the server window and its log (<code class="inline">console.log</code> or <code class="inline">script.log</code> in the server&rsquo;s <code class="inline">logs</code> folder) show a one-time code:</p>
+    <div class="code"><pre>########################################
+##  SERVER HAS NO OWNER
+##  TYPE THIS IN CHAT TO BECOME OWNER:  /claim 4F7K92
+##  ONE TIME USE
+########################################</pre></div>
+    <p>Join your server and type that line, with your code, in chat. A green box confirms you are <b>OWNER</b>, saved in <code class="inline">HFWastelandZ_admins.conf</code>; closing it opens <span class="kbd">F8</span>. Restart the server once. Until someone claims, every player sees a <b>SERVER HAS NO OWNER</b> box in the top right corner. Anyone who can read the server log can claim it while it has no owner, so claim it before you share the log.</p>
+    <p><b>Or add yourself by hand</b> (any version):</p>
     <p>Wasteland-Z keys admins by <b>Bohemia Identity GUID</b>, a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code tied to your Bohemia account. <b>It is not your Steam number.</b> Two ways to find yours:</p>
     <p><b>1) In the game:</b> launch Arma Reforger and click your <b>profile</b> in the upper-right corner. The Identity GUID is listed there.</p>
     <p><b>2) From the server window:</b> join your own server once, then find the line carrying your player name and copy the <code class="inline">identityId=</code> value.</p>
@@ -931,6 +939,14 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="note tip"><div class="h">Server name &amp; admin password</div><p>Those aren&rsquo;t HF settings — they live in the Reforger config <code class="inline">server1.json</code> (the <code class="inline">name</code> and <code class="inline">passwordAdmin</code> fields). Change them any time:</p><div class="code"><pre><span class="p">nano</span> /opt/reforger/configs/server1.json</pre></div></div>
     <div class="note tip"><div class="h">Optional — tune loot / economy later</div><p>To customize loot/economy/etc., rename the kit&rsquo;s <code class="inline">/opt/wastelandz_setup/configs/*.example</code> files (drop <code class="inline">.example</code>) and copy them into the profile&rsquo;s <code class="inline">hf_wastelandz/configs/</code> folder. <code class="inline">configs/README.md</code> documents each one — none of it is needed to go live.</p></div>
     <h5 class="substep"><span class="lt">d</span> Make yourself the admin</h5>
+    <p><b>Easiest, from mod 1.0.21: claim it in chat.</b> While the admin list is empty, the server output and its log (<code class="inline">console.log</code> or <code class="inline">script.log</code> under <code class="inline">/opt/reforger/profiles/server1/logs/</code>) show a one-time code:</p>
+    <div class="code"><pre>########################################
+##  SERVER HAS NO OWNER
+##  TYPE THIS IN CHAT TO BECOME OWNER:  /claim 4F7K92
+##  ONE TIME USE
+########################################</pre></div>
+    <p>Join your server and type that line, with your code, in chat. A green box confirms you are <b>OWNER</b>, saved in <code class="inline">HFWastelandZ_admins.conf</code>; closing it opens <span class="kbd">F8</span>. Restart the server once. Until someone claims, every player sees a <b>SERVER HAS NO OWNER</b> box in the top right corner. Anyone who can read the server log can claim it while it has no owner, so claim it before you share the log.</p>
+    <p><b>Or add yourself by hand</b> (any version):</p>
     <p>Do this once it&rsquo;s running. Wasteland-Z admins are keyed by <b>Bohemia Identity GUID</b> &mdash; a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code tied to your Bohemia account. <b>It is NOT your Steam number.</b> There are two ways to find yours:</p>
     <p><b>1) In the game (easiest):</b> launch Arma Reforger, click your <b>profile</b> in the upper-right corner &mdash; your Identity GUID is listed there. Copy it.</p>
     <p><b>2) From the server log:</b> join the running server once, then read it out of the log:</p>
@@ -1235,7 +1251,7 @@ Copy a block back into server1.json's "mods" list to re-enable it.</span>
   <p class="muted">Every player has a role. Higher beats lower. Roles live in one file: <code class="inline">$profile:HFWastelandZ_admins.conf</code>, keyed by <b>Bohemia Identity GUID</b> (a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code &mdash; not your Steam number; see Part 1 &rarr; Step 9d for how to find yours).</p>
   <div class="tablewrap"><table class="rtab">
     <tr><th>Role</th><th>Can do</th></tr>
-    <tr><td><span class="role">OWNER</span></td><td>Everything, including <code class="inline">/admin restart</code>. Set by editing the file only.</td></tr>
+    <tr><td><span class="role">OWNER</span></td><td>Everything, including <code class="inline">/admin restart</code>. Set by <code class="inline">/claim</code> on a new server, by another OWNER in F8 (mod 1.0.21), or by editing the file. Never changed in game.</td></tr>
     <tr><td><span class="role">ADMIN</span></td><td>Game Master (Zeus), promote/demote others, save, all mission &amp; spot editing.</td></tr>
     <tr><td><span class="role">MOD</span></td><td>Kick, ban, mute, teleport, heal, god, announce.</td></tr>
     <tr><td><span class="role">TRUSTED</span></td><td>Donor / verified helper (reserved for future perks).</td></tr>
@@ -1243,7 +1259,7 @@ Copy a block back into server1.json's "mods" list to re-enable it.</span>
   </table></div>
 
   <h3>Make someone a mod, admin, or owner</h3>
-  <p><b>Your first admin — and the only way to set OWNER — is by editing the file.</b> Add a line and restart:</p>
+  <p><b>Your first owner:</b> type <code class="inline">/claim</code> and the code from the server log (mod 1.0.21, see Part 1), or edit the file. Add a line and restart:</p>
   <div class="code"><pre><span class="c"># in $profile:HFWastelandZ_admins.conf</span>
 OWNER a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
 ADMIN b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
@@ -1251,8 +1267,9 @@ MOD   c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f</pre></div>
   <p class="muted">Those are <b>Bohemia Identity GUIDs</b> (lowercase <code class="inline">8-4-4-4-12</code> hex), one per admin &mdash; find yours via Part 1 &rarr; Step 9d. Put <b>no trailing space</b> after the GUID (see the gotcha in Step 9d). Anyone not listed is EVERYONE.</p>
   <p>After you have one admin, change roles <b>live, no restart</b>, from in-game chat:</p>
   <div class="code"><pre>/admin promote &lt;name|playerId&gt; &lt;EVERYONE|TRUSTED|MOD|ADMIN&gt;</pre></div>
-  <div class="note warn"><div class="h">The rules</div><p>You must be <b>ADMIN or OWNER</b> to change roles. An ADMIN can grant any role <b>up to and including ADMIN</b>. <b>OWNER</b> is never granted in-game — it&rsquo;s file-only so no one can lock you out, so seed yourself as OWNER in the file first. You can change anyone at or below your own rank (an ADMIN can demote a peer ADMIN), but never someone above you — and an <b>OWNER can never be changed in-game</b> by anyone.</p></div>
+  <div class="note warn"><div class="h">The rules</div><p>You must be <b>ADMIN or OWNER</b> to change roles. An ADMIN can grant any role <b>up to and including ADMIN</b>. <b>OWNER</b> is granted in game only by another OWNER (F8, mod 1.0.21); your first OWNER comes from <code class="inline">/claim</code> or the file. You can change anyone at or below your own rank (an ADMIN can demote a peer ADMIN), but never someone above you — and an <b>OWNER can never be changed in-game</b> by anyone.</p></div>
   <p>You can also change roles in the game — open the <b>F8 admin menu &rarr; Players</b> tab. The right-hand <b>STAFF</b> list shows everyone with a role (including <b>offline</b> people); click a player or staff row, then a role button (twice to confirm).</p>
+  <div class="note warn"><div class="h">Owners (mod 1.0.21)</div><p>An OWNER sees a fifth button, <b>OWNER</b>, in F8 &rarr; Players, and can make another player an OWNER. Only an OWNER can do this. <b>An OWNER can never be changed in game, not even by another owner</b>, so no owner can lock another out. To remove or demote an owner, edit <code class="inline">HFWastelandZ_admins.conf</code> and restart.</p></div>
 
   <h3>See who has what role</h3>
   <div class="code"><pre>/admin who</pre></div>
@@ -1629,6 +1646,14 @@ FLUSH PRIVILEGES;</pre></div>
 
     <div class="note warn"><div class="h">One more thing, or you are not an admin on your own server</div>
     <p><code class="inline">HFWastelandZ_admins.conf</code> is created <b>empty</b>. Until you put yourself in it, <span class="kbd">F8</span> does nothing and <code class="inline">/zeus</code> is refused &mdash; on the server you just built.</p>
+    <p><b>Easiest, from mod 1.0.21: claim it in chat.</b> While the admin list is empty, the server window and its log (<code class="inline">console.log</code> or <code class="inline">script.log</code> in the server&rsquo;s <code class="inline">logs</code> folder) show a one-time code:</p>
+    <div class="code"><pre>########################################
+##  SERVER HAS NO OWNER
+##  TYPE THIS IN CHAT TO BECOME OWNER:  /claim 4F7K92
+##  ONE TIME USE
+########################################</pre></div>
+    <p>Join your server and type that line, with your code, in chat. A green box confirms you are <b>OWNER</b>, saved in <code class="inline">HFWastelandZ_admins.conf</code>; closing it opens <span class="kbd">F8</span>. Restart the server once. Until someone claims, every player sees a <b>SERVER HAS NO OWNER</b> box in the top right corner. Anyone who can read the server log can claim it while it has no owner, so claim it before you share the log.</p>
+    <p><b>Or add yourself by hand</b> (any version):</p>
     <p>Wasteland-Z keys admins by <b>Bohemia Identity GUID</b>, a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code tied to your Bohemia account. <b>It is not your Steam number.</b> Two ways to find yours:</p>
     <p><b>1) In the game:</b> launch Arma Reforger and click your <b>profile</b> in the upper-right corner. The Identity GUID is listed there.</p>
     <p><b>2) From the server window:</b> join your own server once, then find the line carrying your player name and copy the <code class="inline">identityId=</code> value.</p>
@@ -1956,6 +1981,14 @@ FLUSH PRIVILEGES;</pre></div>
     <div class="note tip"><div class="h">Server name &amp; admin password</div><p>Those aren&rsquo;t HF settings — they live in the Reforger config <code class="inline">server1.json</code> (the <code class="inline">name</code> and <code class="inline">passwordAdmin</code> fields). Change them any time:</p><div class="code"><pre><span class="p">nano</span> /opt/reforger/configs/server1.json</pre></div></div>
     <div class="note tip"><div class="h">Optional — tune loot / economy later</div><p>To customize loot/economy/etc., rename the kit&rsquo;s <code class="inline">/opt/wastelandz_setup/configs/*.example</code> files (drop <code class="inline">.example</code>) and copy them into the profile&rsquo;s <code class="inline">hf_wastelandz/configs/</code> folder. <code class="inline">configs/README.md</code> documents each one — none of it is needed to go live.</p></div>
     <h5 class="substep"><span class="lt">d</span> Make yourself the admin</h5>
+    <p><b>Easiest, from mod 1.0.21: claim it in chat.</b> While the admin list is empty, the server output and its log (<code class="inline">console.log</code> or <code class="inline">script.log</code> under <code class="inline">/opt/reforger/profiles/server1/logs/</code>) show a one-time code:</p>
+    <div class="code"><pre>########################################
+##  SERVER HAS NO OWNER
+##  TYPE THIS IN CHAT TO BECOME OWNER:  /claim 4F7K92
+##  ONE TIME USE
+########################################</pre></div>
+    <p>Join your server and type that line, with your code, in chat. A green box confirms you are <b>OWNER</b>, saved in <code class="inline">HFWastelandZ_admins.conf</code>; closing it opens <span class="kbd">F8</span>. Restart the server once. Until someone claims, every player sees a <b>SERVER HAS NO OWNER</b> box in the top right corner. Anyone who can read the server log can claim it while it has no owner, so claim it before you share the log.</p>
+    <p><b>Or add yourself by hand</b> (any version):</p>
     <p>Do this once it&rsquo;s running. Wasteland-Z admins are keyed by <b>Bohemia Identity GUID</b> &mdash; a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code tied to your Bohemia account. <b>It is NOT your Steam number.</b> There are two ways to find yours:</p>
     <p><b>1) In the game (easiest):</b> launch Arma Reforger, click your <b>profile</b> in the upper-right corner &mdash; your Identity GUID is listed there. Copy it.</p>
     <p><b>2) From the server log:</b> join the running server once, then read it out of the log:</p>
@@ -2138,7 +2171,7 @@ Copy a block back into server1.json's "mods" list to re-enable it.</span>
   <p class="muted">Every player has a role. Higher beats lower. Roles live in one file: <code class="inline">$profile:HFWastelandZ_admins.conf</code>, keyed by <b>Bohemia Identity GUID</b> (a lowercase <code class="inline">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code> code &mdash; not your Steam number; see Part 1 &rarr; Step 9d for how to find yours).</p>
   <div class="tablewrap"><table class="rtab">
     <tr><th>Role</th><th>Can do</th></tr>
-    <tr><td><span class="role">OWNER</span></td><td>Everything, including <code class="inline">/admin restart</code>. Set by editing the file only.</td></tr>
+    <tr><td><span class="role">OWNER</span></td><td>Everything, including <code class="inline">/admin restart</code>. Set by <code class="inline">/claim</code> on a new server, by another OWNER in F8 (mod 1.0.21), or by editing the file. Never changed in game.</td></tr>
     <tr><td><span class="role">ADMIN</span></td><td>Game Master (Zeus), promote/demote others, save, all mission &amp; spot editing.</td></tr>
     <tr><td><span class="role">MOD</span></td><td>Kick, ban, mute, teleport, heal, god, announce.</td></tr>
     <tr><td><span class="role">TRUSTED</span></td><td>Donor / verified helper (reserved for future perks).</td></tr>
@@ -2148,7 +2181,7 @@ Copy a block back into server1.json's "mods" list to re-enable it.</span>
   </div>
   <div class="step" id="become-owner"><span class="n">2</span>
     <h4>Make someone a mod, admin, or owner</h4>
-  <p><b>Your first admin — and the only way to set OWNER — is by editing the file.</b> Add a line and restart:</p>
+  <p><b>Your first owner:</b> type <code class="inline">/claim</code> and the code from the server log (mod 1.0.21, see Part 1), or edit the file. Add a line and restart:</p>
   <div class="code"><pre><span class="c"># in $profile:HFWastelandZ_admins.conf</span>
 OWNER a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
 ADMIN b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
@@ -2156,8 +2189,9 @@ MOD   c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f</pre></div>
   <p class="muted">Those are <b>Bohemia Identity GUIDs</b> (lowercase <code class="inline">8-4-4-4-12</code> hex), one per admin &mdash; find yours via Part 1 &rarr; Step 9d. Put <b>no trailing space</b> after the GUID (see the gotcha in Step 9d). Anyone not listed is EVERYONE.</p>
   <p>After you have one admin, change roles <b>live, no restart</b>, from in-game chat:</p>
   <div class="code"><pre>/admin promote &lt;name|playerId&gt; &lt;EVERYONE|TRUSTED|MOD|ADMIN&gt;</pre></div>
-  <div class="note warn"><div class="h">The rules</div><p>You must be <b>ADMIN or OWNER</b> to change roles. An ADMIN can grant any role <b>up to and including ADMIN</b>. <b>OWNER</b> is never granted in-game — it&rsquo;s file-only so no one can lock you out, so seed yourself as OWNER in the file first. You can change anyone at or below your own rank (an ADMIN can demote a peer ADMIN), but never someone above you — and an <b>OWNER can never be changed in-game</b> by anyone.</p></div>
+  <div class="note warn"><div class="h">The rules</div><p>You must be <b>ADMIN or OWNER</b> to change roles. An ADMIN can grant any role <b>up to and including ADMIN</b>. <b>OWNER</b> is granted in game only by another OWNER (F8, mod 1.0.21); your first OWNER comes from <code class="inline">/claim</code> or the file. You can change anyone at or below your own rank (an ADMIN can demote a peer ADMIN), but never someone above you — and an <b>OWNER can never be changed in-game</b> by anyone.</p></div>
   <p>You can also change roles in the game — open the <b>F8 admin menu &rarr; Players</b> tab. The right-hand <b>STAFF</b> list shows everyone with a role (including <b>offline</b> people); click a player or staff row, then a role button (twice to confirm).</p>
+  <div class="note warn"><div class="h">Owners (mod 1.0.21)</div><p>An OWNER sees a fifth button, <b>OWNER</b>, in F8 &rarr; Players, and can make another player an OWNER. Only an OWNER can do this. <b>An OWNER can never be changed in game, not even by another owner</b>, so no owner can lock another out. To remove or demote an owner, edit <code class="inline">HFWastelandZ_admins.conf</code> and restart.</p></div>
 
   </div>
   <div class="step"><span class="n">3</span>
